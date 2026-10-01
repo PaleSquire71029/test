@@ -41,7 +41,7 @@ export function saveGame(s){
   const raw=JSON.stringify(s);try{localStorage.setItem(KEY+"-backup",localStorage.getItem(KEY)||"")}catch{};localStorage.setItem(KEY,raw)
 }
 export function hasSave(){return !!localStorage.getItem(KEY)}
-export function clearSave(){localStorage.removeItem(KEY)}
+export function clearSave(){localStorage.removeItem(KEY);localStorage.removeItem(KEY+"-backup")}
 export function saveLabel(s){
   const when=s.updatedAt?new Date(s.updatedAt).toLocaleString("zh-CN",{hour12:false}):"无记录";
   return "WAVE "+(s.wave||1)+" · CORE "+(s.core||0)+" · "+when

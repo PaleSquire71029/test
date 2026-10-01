@@ -28,7 +28,7 @@ button{border:0;color:#031018;background:#67e8f9;font-weight:900;padding:13px 20
 .stick b{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px;border-radius:50%;background:#67e8f91c;border:1px solid #67e8f955;box-shadow:0 0 25px #67e8f922;transition:transform .05s}
 .stick.left{left:20px;bottom:22px}
 .dash{position:absolute;right:28px;bottom:35px;width:78px;height:78px;border-radius:50%;border:1px solid #67e8f955;background:#0b1728dd;color:#67e8f9;font-weight:900;pointer-events:auto;box-shadow:0 0 30px #67e8f91c;backdrop-filter:blur(8px)}
-.rotate{display:none;position:fixed;inset:0;z-index:30;background:#03050beF;place-items:center;text-align:center;padding:30px}
+.settingsBtn{position:fixed;right:16px;top:14px;z-index:8;width:42px;height:42px;padding:0;border-radius:50%;background:#0a1020cc;color:#cfe7ff;border:1px solid #ffffff16;backdrop-filter:blur(8px);box-shadow:none;font-size:18px}.settingsOverlay{z-index:25}.settingsRows{display:grid;gap:10px;margin-top:18px}.setting{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border:1px solid #ffffff10;border-radius:14px;background:#0b1220}.setting span{color:#dbeafe}.setting small{display:block;color:#71809a;margin-top:3px}.switch{width:52px;height:30px;padding:3px;border-radius:99px;background:#1a2538;border:1px solid #ffffff14;position:relative}.switch i{display:block;width:22px;height:22px;border-radius:50%;background:#64748b;transition:.18s}.switch.on{background:#164e63}.switch.on i{transform:translateX(22px);background:#67e8f9;box-shadow:0 0 15px #67e8f955}.rotate{display:none;position:fixed;inset:0;z-index:30;background:#03050beF;place-items:center;text-align:center;padding:30px}
 .touch.portrait .rotate{display:grid}
 .rotate .panel{max-width:420px}
 .hidden{display:none!important}
@@ -51,7 +51,7 @@ button{border:0;color:#031018;background:#67e8f9;font-weight:900;padding:13px 20
 <body>
 <canvas id="game"></canvas>
 <div class="rotate"><div class="panel"><div class="brand">VOID//RUN · MOBILE</div><h2>请横屏游玩</h2><div class="sub">为了获得完整视野、虚拟摇杆和更舒服的战斗空间，请将手机旋转到横屏。</div><div class="actions"><button id="rotateBtn">尝试进入横屏</button></div></div></div>
-<div id="hud">
+<button class="settingsBtn" id="settingsBtn" aria-label="设置">⚙</button>\n<div id="hud">
   <div class="top"><div class="brand">VOID//RUN</div><div class="stats">
     <div class="pill">WAVE <b id="wave">1</b></div><div class="pill">SCORE <b id="score">0</b></div><div class="pill">SCRAP <b id="scrap">0</b></div>
   </div></div>
@@ -63,7 +63,7 @@ button{border:0;color:#031018;background:#67e8f9;font-weight:900;padding:13px 20
   <div class="actions"><button id="startBtn">开始运行</button><button class="secondary" id="resetBtn">清除最高分</button></div>
   <div class="sub" style="margin-top:16px;font-size:12px">最高分：<b id="best">0</b>　·　每局随机强化　·　进度自动保存在本机</div>
 </div></div>
-<div id="upgrade" class="overlay hidden"><div class="panel"><div class="brand">SYSTEM EVOLUTION</div><h2>选择强化</h2><div class="sub">这一项会立即生效。选择没有正确答案。</div><div id="cards"></div></div></div>
+<div id="settings" class="overlay settingsOverlay hidden"><div class="panel"><div class="brand">SYSTEM SETTINGS</div><h2>游戏设置</h2><div class="sub">设置会自动保存在本机，下次打开仍会保留。</div><div class="settingsRows"><button class="setting" id="vibeToggle"><span>震动反馈<small>射击、受伤、冲刺和升级时反馈</small></span><b class="switch"><i></i></b></button><button class="setting" id="aimToggle"><span>自动瞄准<small>自动锁定距离最近的敌人</small></span><b class="switch"><i></i></b></button><button class="setting" id="rotateToggle"><span>横屏提示<small>竖屏时显示“请横屏游玩”提示</small></span><b class="switch"><i></i></b></button></div><div class="actions"><button class="secondary" id="closeSettings">关闭</button></div></div></div>\n<div id="upgrade" class="overlay hidden"><div class="panel"><div class="brand">SYSTEM EVOLUTION</div><h2>选择强化</h2><div class="sub">这一项会立即生效。选择没有正确答案。</div><div id="cards"></div></div></div>
 <div id="dead" class="overlay hidden"><div class="panel"><div class="brand">SIGNAL LOST</div><h1>运行结束</h1><div class="sub">本次运行到达第 <b id="finalWave">1</b> 波，获得 <b id="finalScore">0</b> 分。</div><div class="actions"><button id="again">再次运行</button><button class="secondary" id="menu">返回标题</button></div></div></div>
 <div id="mobile"><div class="stick left" id="moveStick"><b></b></div><button class="dash" id="dashBtn">冲刺</button></div>
 <script>
@@ -72,7 +72,7 @@ let W=innerWidth,H=innerHeight,D=devicePixelRatio||1;
 function resize(){W=innerWidth;H=innerHeight;C.width=W*D;C.height=H*D;C.style.width=W+'px';C.style.height=H+'px';ctx.setTransform(D,0,0,D,0,0)}addEventListener('resize',resize);resize();
 const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(isTouch)document.body.classList.add('touch');
-function syncOrientation(){if(isTouch)document.body.classList.toggle('portrait',innerHeight>innerWidth)}
+function syncOrientation(){if(isTouch)document.body.classList.toggle('portrait',innerHeight>innerWidth&&settings.rotateTip)}
 addEventListener('resize',syncOrientation);addEventListener('orientationchange',()=>setTimeout(syncOrientation,100));syncOrientation();
 $('rotateBtn').onclick=async()=>{try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();if(screen.orientation?.lock)await screen.orientation.lock('landscape')}catch(e){}syncOrientation()};
 
@@ -80,7 +80,7 @@ const rnd=(a,b)=>Math.random()*(b-a)+a, clamp=(v,a,b)=>Math.max(a,Math.min(b,v))
 let keys={},mouse={x:W/2,y:H/2,down:false},running=false,paused=false,last=0,spawn=0,waveTimer=0,wave=1,score=0,scrap=0,best=+localStorage.voidBest||0;
 $('best').textContent=best;
 const player={x:W/2,y:H/2,r:13,hp:100,maxHp:100,speed:235,fire:.16,cd:0,damage:18,bulletSpeed:650,shots:1,crit:.08,dash:0,dashCd:0,inv:0};
-let enemies=[],bullets=[],particles=[],drops=[],shake=0,moveTouch={x:0,y:0},drag=false;
+let enemies=[],bullets=[],particles=[],drops=[],shake=0,moveTouch={x:0,y:0},drag=false;\nconst settings=Object.assign({vibrate:true,autoAim:true,rotateTip:true},JSON.parse(localStorage.voidSettings||'{}'));\nfunction saveSettings(){localStorage.voidSettings=JSON.stringify(settings)}\nfunction syncSettingsUI(){[['vibeToggle','vibrate'],['aimToggle','autoAim'],['rotateToggle','rotateTip']].forEach(([id,k])=>$(id).querySelector('.switch').classList.toggle('on',settings[k]))}\nfunction haptic(ms=12){if(settings.vibrate&&isTouch&&navigator.vibrate)navigator.vibrate(ms)}\nfunction hapticPattern(pattern){if(settings.vibrate&&isTouch&&navigator.vibrate)navigator.vibrate(pattern)}
 function haptic(ms=12){if(isTouch&&navigator.vibrate)navigator.vibrate(ms)}
 function hapticPattern(pattern){if(isTouch&&navigator.vibrate)navigator.vibrate(pattern)}
 
@@ -99,7 +99,7 @@ function applyUpgrade(u){let [n,k,v]=u;if(k==='heal')player.hp=clamp(player.hp+v
 
 function resetGame(){Object.assign(player,{x:W/2,y:H/2,hp:100,maxHp:100,speed:235,fire:.16,cd:0,damage:18,bulletSpeed:650,shots:1,crit:.08,dash:0,dashCd:0,inv:0});magnet=70;pierce=0;enemies=[];bullets=[];particles=[];drops=[];wave=1;score=0;scrap=0;spawn=0;waveTimer=0;shake=0}
 function start(){resetGame();running=true;$('start').classList.add('hidden');$('dead').classList.add('hidden');last=performance.now();requestAnimationFrame(loop)}
-$('startBtn').onclick=start;$('again').onclick=start;$('menu').onclick=()=>{$('dead').classList.add('hidden');$('start').classList.remove('hidden')};$('resetBtn').onclick=()=>{best=0;localStorage.voidBest=0;$('best').textContent=0};
+$('startBtn').onclick=start;$('again').onclick=start;\n$('settingsBtn').onclick=()=>{$('settings').classList.remove('hidden');syncSettingsUI()};$('closeSettings').onclick=()=>{$('settings').classList.add('hidden')};[['vibeToggle','vibrate'],['aimToggle','autoAim'],['rotateToggle','rotateTip']].forEach(([id,k])=>$(id).onclick=()=>{settings[k]=!settings[k];saveSettings();syncSettingsUI();if(k==='rotateTip')syncOrientation();if(k==='vibrate')haptic(8)});syncSettingsUI();$('menu').onclick=()=>{$('dead').classList.add('hidden');$('start').classList.remove('hidden')};$('resetBtn').onclick=()=>{best=0;localStorage.voidBest=0;$('best').textContent=0};
 
 function enemySpawn(){
   const side=Math.floor(rnd(0,4)),pad=45;let x,y;
@@ -112,7 +112,7 @@ function enemySpawn(){
 function boss(){enemies.push({x:W/2,y:-50,r:30,hp:550+wave*90,maxHp:550+wave*90,speed:42,type:'boss',elite:true,hit:0,shoot:2.5})}
 function fire(){
   if(player.cd>0)return;player.cd=player.fire;
-  let target=enemies.reduce((a,e)=>!a||dist(player.x,player.y,e.x,e.y)<dist(player.x,player.y,a.x,a.y)?e:a,null);
+  let target=settings.autoAim?enemies.reduce((a,e)=>!a||dist(player.x,player.y,e.x,e.y)<dist(player.x,player.y,a.x,a.y)?e:a,null):null;
   let ang=target?Math.atan2(target.y-player.y,target.x-player.x):Math.atan2(mouse.y-player.y,mouse.x-player.x);
   if(!target)ang=Math.atan2(mouse.y-player.y,mouse.x-player.x);
   for(let i=0;i<player.shots;i++){let spread=(i-(player.shots-1)/2)*.13;let a=ang+spread;let crit=Math.random()<player.crit;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*player.bulletSpeed,vy:Math.sin(a)*player.bulletSpeed,r:4,damage:player.damage*(crit?2.2:1),life:1.4,pierce:pierce,crit})}
@@ -142,7 +142,7 @@ function update(dt){
   let dx=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0),dy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
   if(moveTouch.x||moveTouch.y){dx=moveTouch.x;dy=moveTouch.y}let l=Math.hypot(dx,dy)||1;
   if(dx||dy){player.x=clamp(player.x+dx/l*player.speed*dt,18,W-18);player.y=clamp(player.y+dy/l*player.speed*dt,18,H-18)}
-  if(mouse.down||innerWidth<701)fire();
+  if(mouse.down||isTouch)fire();
   waveTimer+=dt;spawn-=dt;
   let aliveTarget=4+wave*1.8;
   if(spawn<=0&&enemies.length<aliveTarget){enemySpawn();spawn=Math.max(.18,.75-wave*.012)}

@@ -44,26 +44,22 @@ export const STORY={
   choice("return_core","退出CORE，不继续读取",{flags:{coreWithdrawn:true}})
  ]},
  comm10:{id:"comm10",wave:10,speaker:"SYSTEM",title:"观察者协议",text:"“观察者已记录。”\n“请确认：你是否愿意让ECHO PROTOCOL继续记录你的选择？”\n\n“接受：系统将保留你的完整决策链。”\n“拒绝：系统仍会运行，但历史将失去可验证的连续性。”\n\n系统补充：\n“记录也意味着责任。”",choices:[
-  choice("accept_protocol","允许协议继续记录",{choices:{final:"accept"},flags:{protocolAccepted:true},task:{protocol:"done"}}),
-  choice("reject_protocol","拒绝协议，保留未知",{choices:{final:"reject"},flags:{protocolRejected:true},task:{protocol:"done"}})
+  choice("accept_protocol","允许协议继续记录",{choices:{final:"accept"},flags:{protocolAccepted:true},task:{protocol:"active"}}),
+  choice("reject_protocol","拒绝协议，保留未知",{choices:{final:"reject"},flags:{protocolRejected:true},task:{protocol:"active"}})
  ]},
  comm11:{id:"comm11",wave:11,speaker:"SYSTEM",title:"责任链",text:"“发现三次记录修改。”\n“第一次：删除事故前43秒。”\n“第二次：修改幸存者名单。”\n“第三次：将林舟标记为主动离场。”\n\n“执行者身份：均已隐藏。”\n\n系统询问：\n“是否需要一个责任人？”\n\n你忽然意识到，它问的并不是‘谁做了这些事’，而是‘你是否需要一个人来承担全部故事’。",conditions:[{task:"responsibility",equals:"active"}],choices:[
   choice("trace_chain","继续追查完整责任链",{flags:{chainTraced:true},task:{responsibility:"done"}}),
   choice("refuse_scapegoat","拒绝寻找替罪羊，只保存证据",{flags:{scapegoatRefused:true},task:{archive:"done",responsibility:"done"}})
  ]},
  comm12:{id:"comm12",wave:12,speaker:"ASTER",title:"最后一次通讯",text:"“我以前以为，记录是为了证明我没有错。”\n\n“后来我才明白，真正困难的是留下那些能证明自己也错过的东西。”\n\n“你不需要相信我。”\n“只要别让任何一个人的版本，成为唯一留下来的版本。”",conditions:[{flag:"asterTrusted"}],choices:[
-  choice("leave_with_record","带着完整记录离开",{flags:{recordEscaped:true},task:{archive:"done",protocol:"done"}}),
-  choice("stay_with_echo","留下继续核对记录",{flags:{stayWithEcho:true},task:{protocol:"done"}})
+  choice("leave_with_record","带着完整记录离开",{flags:{recordEscaped:true},task:{archive:"done",protocol:"active"}}),
+  choice("stay_with_echo","留下继续核对记录",{flags:{stayWithEcho:true},task:{protocol:"active"}})
  ]},
  comm13:{id:"comm13",wave:13,speaker:"MIRA",title:"没有英雄",text:"“我终于明白林舟为什么把档案留下。”\n\n“他不是想证明自己正确。”\n“他只是害怕下一批人看到一份被整理得很漂亮的谎言，然后重复同样的错误。”\n\n“如果完整真相让所有人都不舒服，你还会留下它吗？”",conditions:[{flag:"miraFollowed"}],choices:[
   choice("publish_truth","留下完整真相，即使它没有英雄",{flags:{truthKept:true},task:{archive:"done"}}),
   choice("protect_people","隐藏部分细节，优先保护仍然活着的人",{flags:{peopleProtected:true}})
  ]},
- final1:{id:"final1",wave:15,speaker:"ECHO",title:"终章 · 汇流",text:"“十五轮之后，所有被分开的记录开始重新排列。\n\n屏幕上出现三条时间线。\n\n一条来自Aster：她相信自己的时间戳，却逐渐发现自己的判断也可能有偏差。\n一条来自Mira：她追着被删除的地点，却发现‘被删除’本身就是一种权力。\n还有一条属于你：你曾经选择追问、沉默、保存，或者继续前进。\n\n它们最终指向同一个时间点：事故发生前十七分钟。\n\n没有哪条路线拥有全部真相。”",choices:[choice("continue","继续查看完整记录",{task:{protocol:"active"}})]},
- final2:{id:"final2",wave:15,speaker:"CORE",title:"终章 · 四十三秒",text:"“第一份证据：被删除的43秒。\n\n画面没有出现凶手。\n只有几个人在事故前后做出的普通操作。\n\n有人认为删掉无关画面可以节省存储。\n有人发现异常，却认为应该交给上级处理。\n有人知道记录不完整，却选择先完成任务。\n\n每一个决定单独看，都像是可以理解的。\n\n当它们连在一起，事故才真正形成。\n\n你终于看见：灾难不一定从恶意开始。”",choices:[choice("continue","继续查看幸存者记录",{task:{protocol:"active"}})]},
- final3:{id:"final3",wave:15,speaker:"CORE",title:"终章 · 被删除的人",text:"“第二份证据：林舟。\n\n完整档案显示，他不是英雄，也不是叛徒。\n他曾经犯错，也曾经试图纠正错误。\n\n最后一次操作，他把原始档案复制到了无人拥有权限的存储区。\n\n随后，他被标记为‘主动离场’。\n\n没有人知道是谁改的。\n\n真正改变他的不是某一次审判，而是记录里逐渐没有人再提起他的名字。\n\n一个人第二次消失，是从记忆里消失。”",choices:[choice("continue","继续查看最后记录",{task:{protocol:"active"}})]},
- final4:{id:"final4",wave:15,speaker:"SYSTEM",title:"终章 · 你也在记录里",text:"“第三份证据：观察者。\n\n系统展开你的选择记录。\n\n你相信过Aster。\n你怀疑过系统。\n你追过Mira的信号。\n你也曾经为了继续前进而放弃追问。\n\n这些选择没有被评价。\n\n系统只是告诉你：\n你无法要求历史诚实，却要求自己的选择被隐藏。\n\n从现在开始，你也是这份记录的一部分。”",choices:[choice("continue","面对最终问题",{task:{protocol:"active"}})]},
- final5:{id:"final5",wave:15,speaker:"ECHO",title:"终章 · 回声协议",text:"“现在，所有路线汇合。\n\nAster的证词、Mira找到的名字、林舟留下的档案、被删除的43秒，以及你的选择，被放进同一份记录。\n\n它们互相矛盾，也互相补充。\n没有英雄。没有唯一的恶人。也没有一个选择可以抹掉其他选择。\n\n你可以继续争论谁应该负责。\n但在争论之前，先把发生过的事情留下来。\n\n当真相不再需要你相信，它仍然需要你负责吗？”",choices:[choice("accept_truth","接受记录",{ending:"truth",choices:{endingRoute:"accepted"},task:{protocol:"done"}})]}}
+ comm14:{id:"comm14",wave:14,speaker:"CORE",title:"最后一块拼图",text:"“如果你已经走到这里，前面的记录应该已经足够让你产生怀疑。”\n\n“43秒被删除过。\n事故时间被提前过。\n第七码头被从地图上抹去。\n林舟被重新定义成‘主动离场’。\n而你自己的选择，也已经被写进协议。”\n\nCORE停顿了一秒。\n\n“但这些还不能组成真相。”\n\n“因为每一份记录都只描述了发生过的一部分。”\n\n“最后一轮开放后，系统会把所有原始记录放在一起。那时你会看见：不是谁单独制造了事故，而是许多看似合理的决定，怎样共同把事情推向了无法挽回的方向。”\n\n“到那时，不要再问哪条路线才是真的。”\n\n“问你自己：如果所有版本都是真的一部分，你愿意留下什么？””,choices:[choice("enter_final","进入最终记录",{task:{protocol:"active"}})]},\n final:{id:"final",wave:15,speaker:"ECHO",title:"终章 · 回声协议",text:"“现在，所有路线汇合。\n\nAster的证词、Mira找到的名字、林舟留下的档案、被删除的43秒，以及你的选择，被放进同一份记录。\n\n第一层：时间。\n事故发生前十七分钟，系统已经出现异常；随后43秒被删除。没有一个画面能直接告诉你‘谁是凶手’，只有一连串普通决定。\n\n第二层：名字。\n林舟不是英雄，也不是叛徒。他犯过错，也试图纠正错误。真正让他第二次消失的，是后来没有人再提起他的名字。\n\n第三层：选择。\n你相信过人，也怀疑过系统；你追查过被删除的地方，也有过为了继续前进而放弃追问的时候。没有一种选择能抹掉另一种选择。\n\n最后，所有记录互相矛盾，也互相补充。它们没有替你选出一个唯一的恶人，也没有给你一个可以轻易接受的答案。\n\nECHO最后问：\n‘当真相不再需要你相信，它仍然需要你负责吗？’”,choices:[choice("accept_truth","接受完整记录",{ending:"truth",choices:{endingRoute:"accepted"},task:{protocol:"done"}})]}}
 export function initStory(save){save.choices??={};save.choiceLog??=[];save.flags??={};save.tasks??={};for(const k of Object.keys(TASKS))save.tasks[k]??="";return save}
 function cond(save,c){if(!c)return true;if(c.flag)return c.equals===undefined?!!save.flags[c.flag]:!!save.flags[c.flag]===c.equals;if(c.choice)return save.choices[c.choice]===c.equals;if(c.task)return save.tasks[c.task]===c.equals;return true}
 export function canShow(save,node){return (node.conditions||[]).every(c=>cond(save,c))}

@@ -23,13 +23,13 @@ function restorePlayer(){
 function start(fresh=true){
   if(fresh){Object.assign(save,defaults());save.stats.runs=1;save.tasks.signal="active";secret=false;found=false}
   else{save.stats.runs++;secret=!!save.flags.secretUnlocked;found=!!save.flags.secretFound}
-  restorePlayer();en=[];shots=[];loot=[];fx=[];wave=fresh?1:Math.max(1,save.wave||1);spawn=0;wait=0;dashOK=1;dashT=0;skillT=0;run=1;pause=0;delete save.flags.ending;save.wave=wave;saveGame(save);
+  restorePlayer();en=[];shots=[];loot=[];fx=[];wave=fresh?1:Math.max(1,save.wave||1);spawn=0;wait=0;dashOK=1;dashT=0;skillT=0;run=1;pause=0;delete save.flags.ending;save.wave=wave;persist();
   for(const q of document.querySelectorAll(".screen,.panel"))q.classList.add("hidden");
   $("hud").style.display="block";$("touch").style.display="block";sync();renderCharacter();next()
 }
 function next(){
   spawn=wave%5?Math.min(38,6+wave):0;wait=0;bossLive=0;
-  const r=wave<=15?REGIONS.r1:REGIONS.r2;save.wave=wave;snapshot();saveGame(save);
+  const r=wave<=15?REGIONS.r1:REGIONS.r2;save.wave=wave;snapshot();persist();
   $("region").textContent=r.name+" · "+r.subtitle;$("wave").textContent="WAVE "+wave;
   $("objectiveText").textContent=wave%5?(wave<=15?"清除灰潮湾区域并回收 CORE。":"穿越镜原城区并回收 CORE。"):"警告：高能目标接近。";
   if(wave%5===0){boss();bossLive=1}
@@ -100,7 +100,7 @@ function upd(dt){
   $("hp").textContent="HP "+Math.max(0,Math.ceil(player.hp))+(player.shield?" +"+Math.ceil(player.shield):"");
   $("core").textContent="CORE "+save.core;
   
-  if(saveDirty&&Math.random()<.04){snapshot();saveGame(save);saveDirty=0}
+  if(saveDirty&&Math.random()<.04){snapshot();persist();saveDirty=0}
 }function burst(x,y,n){if(save.settings.lowFx)n=Math.min(4,n);else n=Math.min(18,n);for(let i=0;i<n;i++)fx.push({x,y,vx:R(-100,100),vy:R(-100,100),life:R(250,650),r:R(1,3)});if(fx.length>180)fx.splice(0,fx.length-180)}
 function draw(){
   if(bgW!==W||bgH!==H)rebuildBackground();
@@ -109,11 +109,11 @@ function draw(){
   const low=save.settings.lowFx;
 for(const z of loot){x.fillStyle="#bd8cff";x.beginPath();x.arc(z.x,z.y,4,0,7);x.fill()}for(const b of shots){x.fillStyle=b.enemy?"#ff668a":b.cr?"#fff2a6":"#6ce7ff";x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.fill()}for(const e of en){x.fillStyle=e.boss?"#ff668a":e.type=="tank"?"#c48cff":e.type=="striker"?"#ff4fa3":e.type=="hunter"?"#ffb86b":"#6ce7ff";x.beginPath();x.arc(e.x,e.y,e.r,0,7);x.fill();x.fillStyle="#111";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2,3);x.fillStyle="#7dffb2";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2*Math.max(0,e.hp/e.maxHp),3)}if(player){if(player.invuln>0)x.globalAlpha=.55+.45*Math.sin(performance.now()/45);x.shadowBlur=18;x.shadowColor="#6ce7ff";x.fillStyle="#e9fbff";x.beginPath();x.arc(player.x,player.y,player.r,0,7);x.fill();x.shadowBlur=0;x.globalAlpha=1}for(const p of fx){if(!low){x.globalAlpha=p.life/650;x.fillStyle="#8defff";x.fillRect(p.x,p.y,p.r,p.r)}}x.globalAlpha=1;if(shaken)x.restore()}
 function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;upd(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
-function upgrades(){pause=1;let box=$("upgradeChoices");box.innerHTML="";[...UPGRADES].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{let b=document.createElement("button");b.innerHTML="<b>"+u[1]+"</b><small>"+u[2]+"</small>";b.onclick=()=>{u[3](player);save.upgrades.push(u[0]);saveGame(save);$("upgrade").classList.add("hidden");pause=0;next()};box.appendChild(b)});$("upgradeWave").textContent="WAVE "+wave;$("upgrade").classList.remove("hidden")}
-function comm(node){pause=1;if(node.id==="comm2")save.tasks.signal="active";if(node.id==="comm4")save.tasks.aster="active";if(node.id==="comm6"||node.id==="comm8")save.tasks.mira="active";if(node.id==="comm10"||node.id==="comm12"||node.id==="comm14"||node.id==="r2_16"||node.id==="r2_27"||node.id==="r2_29"||node.id==="final")save.tasks.protocol="active";save.flags["seen_"+node.id]=1;saveGame(save);$("dialogue").classList.remove("hidden");$("speaker").textContent=node.speaker;$("commId").textContent=node.id.toUpperCase();$("dialogueText").textContent=node.text;let box=$("choices");box.innerHTML="";const opts=node.choices.filter(ch=>(ch.conditions||[]).every(c=>canShow(save,{conditions:[c]})));if(!opts.length){box.innerHTML="<p>当前状态下没有可用回应。</p>"}opts.forEach(ch=>{let b=document.createElement("button");b.textContent=ch.label;b.onclick=()=>{const ending=applyChoice(save,node,ch);saveGame(save);renderTasks();box.innerHTML="<p>选择已记录。你的经历将进入下一阶段。</p>";if(ending){setTimeout(()=>finish(),250)}};box.appendChild(b)});$("closeDialogue").onclick=()=>{$("dialogue").classList.add("hidden");pause=0;if(node.id==="final"&&!save.flags.ending)save.flags.ending=getEnding(save,wave);saveGame(save);if(node.id==="final")finish()}}function secretRoom(){secret=1;save.flags.secretUnlocked=1;saveGame(save);pause=1;$("secret").classList.remove("hidden");$("secretText").textContent=found?"CORE已接入。":"房间里只有一台没有型号的终端：是否接入CORE？"}
-$("takeSecret").onclick=()=>{found=1;save.flags.secretFound=1;save.flags.coreTruth=1;save.tasks.core="done";saveGame(save);$("secretText").textContent="接入成功。你获得了一段无法解释的坐标。";$("takeSecret").disabled=1;vib([15,30,45])};$("leaveSecret").onclick=()=>{$("secret").classList.add("hidden");pause=0};
-function finish(){snapshot();run=0;const k=getEnding(save,wave)||"survivor";save.flags.ending=k;const e=ENDINGS[k]||ENDINGS.survivor;$("death").classList.add("hidden");$("endingTitle").textContent=e[0];$("endingText").textContent=e[1];$("ending").classList.remove("hidden");$("touch").style.display="none";saveGame(save)}
-function die(){snapshot();run=0;$("deathReason").textContent="生命信号丢失。你到达 WAVE "+wave+"，回收 CORE "+save.core+"。";$("death").classList.remove("hidden");$("touch").style.display="none";saveGame(save)}
+function upgrades(){pause=1;let box=$("upgradeChoices");box.innerHTML="";[...UPGRADES].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{let b=document.createElement("button");b.innerHTML="<b>"+u[1]+"</b><small>"+u[2]+"</small>";b.onclick=()=>{u[3](player);save.upgrades.push(u[0]);persist();$("upgrade").classList.add("hidden");pause=0;next()};box.appendChild(b)});$("upgradeWave").textContent="WAVE "+wave;$("upgrade").classList.remove("hidden")}
+function comm(node){pause=1;if(node.id==="comm2")save.tasks.signal="active";if(node.id==="comm4")save.tasks.aster="active";if(node.id==="comm6"||node.id==="comm8")save.tasks.mira="active";if(node.id==="comm10"||node.id==="comm12"||node.id==="comm14"||node.id==="r2_16"||node.id==="r2_27"||node.id==="r2_29"||node.id==="final")save.tasks.protocol="active";save.flags["seen_"+node.id]=1;persist();$("dialogue").classList.remove("hidden");$("speaker").textContent=node.speaker;$("commId").textContent=node.id.toUpperCase();$("dialogueText").textContent=node.text;let box=$("choices");box.innerHTML="";const opts=node.choices.filter(ch=>(ch.conditions||[]).every(c=>canShow(save,{conditions:[c]})));if(!opts.length){box.innerHTML="<p>当前状态下没有可用回应。</p>"}opts.forEach(ch=>{let b=document.createElement("button");b.textContent=ch.label;b.onclick=()=>{const ending=applyChoice(save,node,ch);persist();renderTasks();box.innerHTML="<p>选择已记录。你的经历将进入下一阶段。</p>";if(ending){setTimeout(()=>finish(),250)}};box.appendChild(b)});$("closeDialogue").onclick=()=>{$("dialogue").classList.add("hidden");pause=0;if(node.id==="final"&&!save.flags.ending)save.flags.ending=getEnding(save,wave);persist();if(node.id==="final")finish()}}function secretRoom(){secret=1;save.flags.secretUnlocked=1;persist();pause=1;$("secret").classList.remove("hidden");$("secretText").textContent=found?"CORE已接入。":"房间里只有一台没有型号的终端：是否接入CORE？"}
+$("takeSecret").onclick=()=>{found=1;save.flags.secretFound=1;save.flags.coreTruth=1;save.tasks.core="done";persist();$("secretText").textContent="接入成功。你获得了一段无法解释的坐标。";$("takeSecret").disabled=1;vib([15,30,45])};$("leaveSecret").onclick=()=>{$("secret").classList.add("hidden");pause=0};
+function finish(){snapshot();run=0;const k=getEnding(save,wave)||"survivor";save.flags.ending=k;const e=ENDINGS[k]||ENDINGS.survivor;$("death").classList.add("hidden");$("endingTitle").textContent=e[0];$("endingText").textContent=e[1];$("ending").classList.remove("hidden");$("touch").style.display="none";persist()}
+function die(){snapshot();run=0;$("deathReason").textContent="生命信号丢失。你到达 WAVE "+wave+"，回收 CORE "+save.core+"。";$("death").classList.remove("hidden");$("touch").style.display="none";persist()}
 function renderTasks(){if(!$("taskList"))return;const labels={active:"进行中",done:"已完成","":"未开始"};$("taskList").innerHTML=Object.entries(TASKS).map(([k,t])=>{const st=save.tasks[k]||"";return "<div class='loreItem'><b>"+t.title+" · "+labels[st]+"</b><p>"+t.desc+"</p></div>"}).join("")}
 function tasks(){pause=1;renderTasks();$("tasks").classList.remove("hidden")}
 function lore(){pause=1;$("lore").classList.remove("hidden");$("loreList").innerHTML=LORE.map(a=>"<div class='loreItem'><b>"+a[0]+"</b><p>"+a[1]+"</p></div>").join("")}
@@ -146,6 +146,28 @@ function renderSavePanel(){
 }
 function sync(){["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].forEach(k=>$(k).checked=!!save.settings[k]);$("sensitivity").value=save.settings.sensitivity*100;$("sensValue").textContent=Math.round(save.settings.sensitivity*100)+"%";$("touch").classList.toggle("left",save.settings.leftHand);renderCharacter()}
 const hasSaveLabel=true;
+let saveErrorShown=false;
+function persist(){
+  try{persist();saveErrorShown=false;return true}
+  catch(err){
+    console.error("VOID//RUN save failed",err);
+    if(!saveErrorShown){
+      saveErrorShown=true;
+      const box=$("saveInfo");
+      if(box)box.textContent="本机存储暂时不可用。游戏仍可运行，但当前进度可能无法保存。";
+    }
+    return false
+  }
+}
+function showBootError(err){
+  console.error("VOID//RUN boot error",err);
+  const box=document.createElement("div");
+  box.style.cssText="position:fixed;inset:16px;z-index:99999;padding:18px;background:#120914;color:#ffd8e3;border:1px solid #ff668a;border-radius:14px;font:13px/1.7 monospace;white-space:pre-wrap;overflow:auto";
+  box.textContent="VOID//RUN 启动异常\\n\\n"+(err?.stack||err?.message||String(err));
+  document.body.appendChild(box)
+}
+addEventListener("error",e=>{if(e.error)showBootError(e.error)});
+addEventListener("unhandledrejection",e=>showBootError(e.reason));
 
 $("newGame").onclick=()=>{start(true);if(save.settings.showHints){pause=1;$("help").classList.remove("hidden")}};
 $("helpBtn").onclick=()=>{pause=1;$("help").classList.remove("hidden")};$("closeHelp").onclick=()=>{$("help").classList.add("hidden");pause=0};
@@ -156,16 +178,16 @@ $("characterBtn").onclick=()=>{pause=1;renderCharacter();$("character").classLis
 $("closeCharacter").onclick=()=>{$("character").classList.add("hidden");pause=0};
 $("saveBtn").onclick=()=>{pause=1;renderSavePanel();$("savePanel").classList.remove("hidden")};
 $("closeSave").onclick=()=>{$("savePanel").classList.add("hidden");pause=0};
-$("manualSave").onclick=()=>{snapshot();saveGame(save);saveDirty=0;renderSavePanel();vib([15,25])};
-$("exportSave").onclick=()=>{snapshot();saveGame(save);const blob=new Blob([makeExport(save)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="voidrun-save-wave-"+wave+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderSavePanel()};
+$("manualSave").onclick=()=>{snapshot();persist();saveDirty=0;renderSavePanel();vib([15,25])};
+$("exportSave").onclick=()=>{snapshot();persist();const blob=new Blob([makeExport(save)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="voidrun-save-wave-"+wave+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderSavePanel()};
 $("importSave").onclick=()=>$("saveFile").click();
-$("saveFile").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const imported=parseImport(await file.text());Object.assign(save,imported);saveGame(save);alert("存档导入成功。");renderSavePanel();start(false)}catch{alert("存档文件无效或已损坏。")}e.target.value=""};
+$("saveFile").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const imported=parseImport(await file.text());Object.assign(save,imported);persist();alert("存档导入成功。");renderSavePanel();start(false)}catch{alert("存档文件无效或已损坏。")}e.target.value=""};
 $("clearSave").onclick=()=>{if(confirm("确定删除本机存档？导出的JSON不会受影响。")){clearSave();Object.assign(save,defaults());renderSavePanel()}};
 $("pauseBtn").onclick=()=>{if(!run)return;pause=!pause;$("pauseMenu").classList.toggle("hidden",!pause);$("touch").style.display=pause?"none":"block"};
 $("resumeBtn").onclick=()=>{pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="block"};
-$("pauseSaveBtn").onclick=()=>{snapshot();saveGame(save);run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
+$("pauseSaveBtn").onclick=()=>{snapshot();persist();run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
 $("pauseMenuBtn").onclick=()=>{run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
 $("skill").onclick=skill;
-$("closeTasks").onclick=()=>{$("tasks").classList.add("hidden");pause=0};$("loreBtn").onclick=lore;$("closeLore").onclick=()=>{$("lore").classList.add("hidden");pause=0};$("settingsBtn").onclick=()=>{$("settings").classList.remove("hidden");pause=1;sync()};$("closeSettings").onclick=()=>{$("settings").classList.add("hidden");pause=0};$("deathMenu").onclick=()=>{$("death").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};$("endingMenu").onclick=()=>{$("ending").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].forEach(k=>$(k).onchange=()=>{save.settings[k]=$(k).checked;saveGame(save);sync()});$("sensitivity").oninput=e=>{save.settings.sensitivity=+e.target.value/100;saveGame(save);sync()};addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=1;if(e.key==" ")dash()});addEventListener("keyup",e=>keys[e.key.toLowerCase()]=0);c.onpointermove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};c.onpointerdown=e=>{mouse.down=1;mouse.x=e.clientX;mouse.y=e.clientY};addEventListener("pointerup",()=>mouse.down=0);
+$("closeTasks").onclick=()=>{$("tasks").classList.add("hidden");pause=0};$("loreBtn").onclick=lore;$("closeLore").onclick=()=>{$("lore").classList.add("hidden");pause=0};$("settingsBtn").onclick=()=>{$("settings").classList.remove("hidden");pause=1;sync()};$("closeSettings").onclick=()=>{$("settings").classList.add("hidden");pause=0};$("deathMenu").onclick=()=>{$("death").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};$("endingMenu").onclick=()=>{$("ending").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].forEach(k=>$(k).onchange=()=>{save.settings[k]=$(k).checked;persist();sync()});$("sensitivity").oninput=e=>{save.settings.sensitivity=+e.target.value/100;persist();sync()};addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=1;if(e.key==" ")dash()});addEventListener("keyup",e=>keys[e.key.toLowerCase()]=0);c.onpointermove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};c.onpointerdown=e=>{mouse.down=1;mouse.x=e.clientX;mouse.y=e.clientY};addEventListener("pointerup",()=>mouse.down=0);
 function stick(el,type){let on=0,s={x:0,y:0};el.onpointerdown=e=>{on=1;s={x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId);el.classList.add("active")};el.onpointermove=e=>{if(!on)return;let sens=save.settings.sensitivity||1;let a=(e.clientX-s.x)/52*sens,b=(e.clientY-s.y)/52*sens,l=Math.hypot(a,b);if(l>1){a/=l;b/=l}if(type=="m")move={x:a,y:b};else{aim={x:a,y:b};aim.active=l>.12}};el.onpointerup=()=>{on=0;el.classList.remove("active");if(type=="m")move={x:0,y:0};else aim.active=0}}stick($("moveStick"),"m");stick($("aimStick"),"a");$("dash").onclick=dash;
-document.addEventListener("visibilitychange",()=>{if(document.hidden&&run){snapshot();saveGame(save)}});addEventListener("beforeunload",()=>{if(run){snapshot();saveGame(save)}});sync();renderHUD();renderTasks();renderSavePanel();$("hud").style.display="none";$("touch").style.display="none";
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&run){snapshot();persist()}});addEventListener("beforeunload",()=>{if(run){snapshot();persist()}});sync();renderHUD();renderTasks();renderSavePanel();$("hud").style.display="none";$("touch").style.display="none";

@@ -133,8 +133,10 @@ function renderCharacter(){
   $("charFire").textContent=Math.round(player.fireRate)+"ms";
   $("charSpeed").textContent=Math.round(player.speed);
   $("charCrit").textContent=Math.round(player.crit*100)+"%";
-  const ids=save.upgrades.length?save.upgrades:"暂无模块";
-  $("loadout").innerHTML=ids.map(id=>"<span>"+id+"</span>").join("")+(save.upgrades.length?"":"<span>基础武装</span>");
+  const upgrades=Array.isArray(save.upgrades)?save.upgrades:[];
+  if(!Array.isArray(save.upgrades))save.upgrades=upgrades;
+  const ids=upgrades.length?upgrades:["暂无模块"];
+  $("loadout").innerHTML=ids.map(id=>"<span>"+id+"</span>").join("")+(upgrades.length?"":"<span>基础武装</span>");
 }
 function renderHUD(){
   if(!player)return;

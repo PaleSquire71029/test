@@ -37,7 +37,14 @@ export function loadSave(){
 export function saveGame(s){
   if(!s.createdAt)s.createdAt=Date.now();
   s.updatedAt=Date.now();
-  const raw=JSON.stringify(s);try{localStorage.setItem(KEY+"-backup",localStorage.getItem(KEY)||"")}catch{};localStorage.setItem(KEY,raw)
+  const raw=JSON.stringify(s);
+  try{
+    const previous=localStorage.getItem(KEY);
+    if(previous)localStorage.setItem(KEY+"-backup",previous);
+    localStorage.setItem(KEY,raw)
+  }catch{
+    throw new Error("SAVE_FAILED")
+  }
 }
 export function hasSave(){return !!(read(KEY)||read(KEY+"-backup"))}
 export function clearSave(){localStorage.removeItem(KEY);localStorage.removeItem(KEY+"-backup")}

@@ -25,22 +25,21 @@ function merge(base,src){
   }
   return base
 }
+function read(key){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null}catch{return null}}
 export function loadSave(){
-  try{
-    const raw=JSON.parse(localStorage.getItem(KEY)||"null");
-    if(!raw)return clone(D);
-    const s=merge(clone(D),raw);
-    s.version=4;
-    s.settings=merge(clone(D.settings),s.settings);
-    return s
-  }catch{return clone(D)}
+  const raw=read(KEY)||read(KEY+"-backup");
+  if(!raw)return clone(D);
+  const s=merge(clone(D),raw);
+  s.version=4;
+  s.settings=merge(clone(D.settings),s.settings);
+  return s
 }
 export function saveGame(s){
   if(!s.createdAt)s.createdAt=Date.now();
   s.updatedAt=Date.now();
   const raw=JSON.stringify(s);try{localStorage.setItem(KEY+"-backup",localStorage.getItem(KEY)||"")}catch{};localStorage.setItem(KEY,raw)
 }
-export function hasSave(){return !!localStorage.getItem(KEY)}
+export function hasSave(){return !!(read(KEY)||read(KEY+"-backup"))}
 export function clearSave(){localStorage.removeItem(KEY);localStorage.removeItem(KEY+"-backup")}
 export function saveLabel(s){
   const when=s.updatedAt?new Date(s.updatedAt).toLocaleString("zh-CN",{hour12:false}):"无记录";
@@ -53,7 +52,7 @@ export function makeExport(s){
 export function parseImport(text){
   if(typeof text!=="string"||text.length>2_000_000)throw new Error("INVALID_SAVE_SIZE");const p=JSON.parse(text);
   const s=p&&p.save?p.save:p;
-  if(!s||typeof s!=="object"||typeof s.wave!=="number")throw new Error("INVALID_SAVE");
+  if(!s||typeof s!=="object"||typeof s.wave!=="number"||!Number.isFinite(s.wave)||s.wave<1||s.wave>999)throw new Error("INVALID_SAVE");
   return merge(clone(D),s)
 }
 export function saveKey(){return KEY}

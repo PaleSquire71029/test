@@ -47,7 +47,10 @@ button{border:0;color:#031018;background:#67e8f9;font-weight:900;padding:13px 20
   #cards{grid-template-columns:1fr}.card:nth-child(n+2){display:none}
 }
 .loreBtn{position:fixed;right:68px;top:14px;z-index:8;width:42px;height:42px;padding:0;border-radius:50%;background:#0a1020cc;color:#cfe7ff;border:1px solid #ffffff16;font-size:17px}.loreOverlay{z-index:24}.loreGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.storyBox{margin-top:18px;padding:15px;border-radius:14px;border:1px solid #67e8f933;background:linear-gradient(135deg,#0b1728,#09101d)}.storyBox strong{color:#67e8f9}.storyBox p{margin:6px 0 0;color:#a9b8cf;line-height:1.6;font-size:13px}.codexGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.codexItem{padding:13px;border-radius:12px;background:#080f1b;border:1px solid #ffffff0d}.codexItem b{color:#fff}.codexItem span{display:block;color:#7f90aa;font-size:12px;line-height:1.5;margin-top:4px}.loreGrid{grid-template-columns:repeat(3,1fr)}.loreCard{padding:15px;border-radius:14px;border:1px solid #ffffff10;background:#0b1220}.loreCard strong{display:block;color:#fff;margin-bottom:6px}.loreCard span{color:#8798b2;line-height:1.55;font-size:12px}.comms{margin-top:18px;display:grid;gap:8px}.comm{padding:12px;border-left:2px solid #67e8f9;background:#08111e;border-radius:8px}.comm b{color:#67e8f9}.comm span{display:block;color:#9aaac0;font-size:12px;line-height:1.5;margin-top:4px}.choice{display:grid;gap:9px;margin-top:14px}.choice button{text-align:left;background:#0b1728;color:#dbeafe;border:1px solid #ffffff12}.choice button:hover{border-color:#67e8f966}.secret{margin-top:14px;padding:14px;border:1px dashed #a78bfa66;border-radius:12px;background:#0b0c19}.secret b{color:#c4b5fd}.codex{max-height:72vh;overflow:auto}.timeline{margin-top:18px;border-left:1px solid #67e8f944;padding-left:16px;display:grid;gap:14px}.event strong{color:#67e8f9}.event p{margin:4px 0 0;color:#94a3b8;line-height:1.55;font-size:13px}@media(max-width:650px){.loreGrid{grid-template-columns:1fr 1fr}}\n</style>
-</head>
+<style>
+/* ART PASS */
+#hud{padding:18px}.pill{background:linear-gradient(135deg,#071426dd,#10182bdd);border-color:#67e8f933;box-shadow:0 8px 30px #0007, inset 0 0 18px #67e8f90a}.brand{color:#dff8ff;text-shadow:0 0 10px #67e8f9,0 0 28px #2563eb}.hp{height:11px;background:#02060d;border-color:#67e8f933;box-shadow:0 0 20px #000}.hp i{background:linear-gradient(90deg,#22d3ee,#60a5fa,#a78bfa);box-shadow:0 0 20px #38bdf8}.settingsBtn,.loreBtn{background:linear-gradient(145deg,#081729dd,#11152bdd);border-color:#67e8f933;box-shadow:0 0 20px #2563eb22,inset 0 0 15px #67e8f908}.panel{background:linear-gradient(145deg,#081426f5,#050914f7);border-color:#67e8f92b;box-shadow:0 30px 120px #000d,0 0 60px #2563eb18}.card{background:linear-gradient(145deg,#0c1b2d,#080e1b);border-color:#38bdf833;box-shadow:inset 0 0 28px #38bdf808}.card:hover{border-color:#67e8f9aa;box-shadow:0 0 25px #38bdf822,inset 0 0 30px #38bdf812}.overlay{background:linear-gradient(135deg,#02040bd9,#061326dd);backdrop-filter:blur(10px)}button{background:linear-gradient(135deg,#67e8f9,#60a5fa);box-shadow:0 0 25px #38bdf833}.sub{color:#9fb2ca}
+</style></head>
 <body>
 <canvas id="game"></canvas>
 <div class="rotate"><div class="panel"><div class="brand">VOID//RUN · MOBILE</div><h2>请横屏游玩</h2><div class="sub">为了获得完整视野、虚拟摇杆和更舒服的战斗空间，请将手机旋转到横屏。</div><div class="actions"><button id="rotateBtn">尝试进入横屏</button></div></div></div>
@@ -179,18 +182,49 @@ function update(dt){
   $('wave').textContent=wave;$('score').textContent=Math.floor(score);$('scrap').textContent=scrap;$('hpText').textContent=Math.max(0,Math.ceil(player.hp))+' / '+player.maxHp;$('hp').style.width=clamp(player.hp/player.maxHp*100,0,100)+'%';
 }
 function die(){running=false;let ending=choices.core?'CORE之眼':choices.trust?'回声同行者':choices.archive?'记录者':choices.seek&&secretFound?'断层潜行者':wave>=15?'深层回响':wave>=10?'镜中之门':wave>=5?'残响幸存者':'静默边界';$('finalWave').textContent=wave;$('finalScore').textContent=Math.floor(score);$('endingText').textContent=ending;if(score>best){best=Math.floor(score);localStorage.voidBest=best;$('best').textContent=best}$('dead').classList.remove('hidden')}
+const stars=Array.from({length:110},()=>({x:Math.random(),y:Math.random(),z:rnd(.15,1),s:rnd(.5,2)}));
+function glowCircle(x,y,r,c,a=1){ctx.save();ctx.globalAlpha=a;ctx.shadowBlur=r*.9;ctx.shadowColor=c;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore()}
+function polygon(x,y,r,n,rot=0){ctx.beginPath();for(let i=0;i<n;i++){let a=rot+i*Math.PI*2/n;let px=x+Math.cos(a)*r,py=y+Math.sin(a)*r;i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath()}
 function draw(){
-  ctx.save();if(shake>0){ctx.translate(rnd(-shake,shake),rnd(-shake,shake));shake*=.86;if(shake<.2)shake=0}
-  ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,H);
-  let g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'#0b1630');g.addColorStop(1,'#03050a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  ctx.globalAlpha=.18;ctx.strokeStyle='#67e8f9';ctx.lineWidth=1;let grid=70;for(let x=-grid;x<W+grid;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=-grid;y<H+grid;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.globalAlpha=1;
-  for(const d of drops){ctx.shadowBlur=15;ctx.shadowColor='#fbbf24';ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,7);ctx.fill();ctx.shadowBlur=0}
-  for(const p of particles){ctx.globalAlpha=clamp(p.life,0,1);ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(1,p.life*4),0,7);ctx.fill()}ctx.globalAlpha=1;
-  for(const b of bullets){ctx.fillStyle=b.enemy?'#f472b6':b.crit?'#fde68a':'#67e8f9';ctx.shadowBlur=10;ctx.shadowColor=ctx.fillStyle;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();ctx.shadowBlur=0}
-  for(const e of enemies){ctx.save();ctx.translate(e.x,e.y);ctx.rotate(Math.atan2(player.y-e.y,player.x-e.x));let c=e.type==='boss'?'#f472b6':e.type==='elite'?'#a78bfa':e.type==='tank'?'#fb923c':'#38bdf8';ctx.shadowBlur=e.type==='boss'?28:14;ctx.shadowColor=c;ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(e.r,0);ctx.lineTo(0,e.r);ctx.lineTo(-e.r,0);ctx.lineTo(0,-e.r);ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#05070d';ctx.beginPath();ctx.arc(0,0,e.r*.35,0,7);ctx.fill();ctx.restore();
-    if(e.type==='boss'){ctx.fillStyle='#ffffff18';ctx.fillRect(e.x-55,e.y-e.r-16,110,5);ctx.fillStyle='#f472b6';ctx.fillRect(e.x-55,e.y-e.r-16,110*clamp(e.hp/e.maxHp,0,1),5)}
+  ctx.save();
+  if(shake>0){ctx.translate(rnd(-shake,shake),rnd(-shake,shake));shake*=.86;if(shake<.2)shake=0}
+  const t=performance.now()/1000;
+  let bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#02040b');bg.addColorStop(.48,'#08152a');bg.addColorStop(1,'#100616');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  // 深空星尘
+  for(const s of stars){let x=(s.x*W+t*8*s.z)%W,y=s.y*H;ctx.globalAlpha=.18+.5*s.z;ctx.fillStyle='#9bdcff';ctx.fillRect(x,y,s.s,s.s)}
+  // 巨型虚空裂隙与环境光
+  let rg=ctx.createRadialGradient(W*.62,H*.43,20,W*.62,H*.43,Math.max(W,H)*.65);rg.addColorStop(0,'#2563eb28');rg.addColorStop(.35,'#7c3aed12');rg.addColorStop(1,'#0000');ctx.fillStyle=rg;ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.translate(W*.66,H*.43);ctx.rotate(t*.025);ctx.globalAlpha=.34;ctx.strokeStyle='#7dd3fc';ctx.lineWidth=2;
+  for(let k=0;k<7;k++){ctx.beginPath();ctx.ellipse(0,0,180+k*34,62+k*15,k*.32,0,Math.PI*2);ctx.stroke()}ctx.restore();
+  // 破碎平台
+  ctx.globalAlpha=.65;for(let i=0;i<18;i++){let px=((i*197)%W),py=((i*113+70)%H),w=70+(i%4)*35,h=28+(i%3)*18;ctx.save();ctx.translate(px,py);ctx.rotate((i%7)*.17);ctx.fillStyle=i%2?'#111d31':'#0b1425';ctx.strokeStyle='#29415d';ctx.lineWidth=1;ctx.fillRect(-w/2,-h/2,w,h);ctx.strokeRect(-w/2,-h/2,w,h);ctx.restore()}ctx.globalAlpha=1;
+  // 六边形战场网格
+  ctx.strokeStyle='#38bdf822';ctx.lineWidth=1;let grid=58;for(let y=-grid;y<H+grid;y+=grid*.86){for(let x=-grid;x<W+grid;x+=grid*1.5){let ox=((Math.round(y/(grid*.86))&1)?grid*.75:0);polygon(x+ox,y,grid*.5,6,Math.PI/6);ctx.stroke()}}
+  // 中央核心光圈
+  ctx.save();ctx.translate(player.x,player.y);ctx.rotate(-t*.6);ctx.globalAlpha=.16;ctx.strokeStyle='#67e8f9';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,42+Math.sin(t*4)*3,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(0,0,58,0,Math.PI*2);ctx.stroke();ctx.restore();
+  // 掉落物
+  for(const d of drops){let pulse=1+Math.sin(t*6+d.x)*.18;ctx.save();ctx.translate(d.x,d.y);ctx.rotate(t*1.8);ctx.shadowBlur=18;ctx.shadowColor='#fbbf24';ctx.fillStyle='#fbbf24';polygon(0,0,d.r*pulse,4,Math.PI/4);ctx.fill();ctx.fillStyle='#fff7c2';ctx.fillRect(-1,-d.r*.55,2,d.r*1.1);ctx.restore()}
+  // 粒子
+  for(const p of particles){ctx.globalAlpha=clamp(p.life,0,1);glowCircle(p.x,p.y,Math.max(1,p.life*5),p.c,.85)}ctx.globalAlpha=1;
+  // 子弹，带尾焰
+  for(const b of bullets){let c=b.enemy?'#fb4f9b':b.crit?'#ffe28a':'#62d9ff';let a=Math.atan2(b.vy,b.vx);ctx.save();ctx.translate(b.x,b.y);ctx.rotate(a);ctx.globalAlpha=.35;ctx.fillStyle=c;ctx.fillRect(-14,-2,16,4);ctx.globalAlpha=1;glowCircle(4,0,b.r,c,1);ctx.restore()}
+  // 敌人
+  for(const e of enemies){
+    ctx.save();ctx.translate(e.x,e.y);let a=Math.atan2(player.y-e.y,player.x-e.x),c=e.type==='boss'?'#ff3d86':e.type==='elite'?'#a78bfa':e.type==='tank'?'#ff9f43':'#43c9ff';ctx.rotate(a);
+    ctx.globalAlpha=.14;ctx.fillStyle=c;polygon(0,0,e.r*2.1,e.type==='boss'?10:6);ctx.fill();ctx.globalAlpha=1;
+    ctx.shadowBlur=e.type==='boss'?34:18;ctx.shadowColor=c;ctx.strokeStyle=c;ctx.lineWidth=2;ctx.fillStyle='#09111e';polygon(0,0,e.r,e.type==='boss'?8:e.type==='tank'?6:4,Math.PI/4);ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;ctx.fillStyle=c;polygon(0,0,e.r*.34,6,Math.PI/6);ctx.fill();
+    if(e.type==='elite'){ctx.strokeStyle='#d8b4fe';ctx.globalAlpha=.8;ctx.beginPath();ctx.arc(0,0,e.r*1.45,t*.9,t*.9+Math.PI*1.35);ctx.stroke()}
+    if(e.type==='boss'){for(let k=0;k<4;k++){ctx.rotate(Math.PI/2);ctx.strokeStyle='#ff6aa8';ctx.beginPath();ctx.moveTo(e.r*.9,0);ctx.lineTo(e.r*1.8,0);ctx.stroke()}}
+    ctx.restore();
+    if(e.type!=='boss'){ctx.fillStyle='#ffffff18';ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2,3);ctx.fillStyle=c;ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2*clamp(e.hp/(28+wave*5),0,1),3)}
+    if(e.type==='boss'){ctx.fillStyle='#ffffff18';ctx.fillRect(e.x-70,e.y-e.r-18,140,6);ctx.fillStyle='#ff3d86';ctx.fillRect(e.x-70,e.y-e.r-18,140*clamp(e.hp/e.maxHp,0,1),6);ctx.font='700 11px system-ui';ctx.textAlign='center';ctx.fillStyle='#ffd0e3';ctx.fillText('VOID WARDEN',e.x,e.y-e.r-25)}
   }
-  ctx.save();ctx.translate(player.x,player.y);ctx.globalAlpha=player.inv>0?.55:1;ctx.shadowBlur=25;ctx.shadowColor='#67e8f9';ctx.fillStyle='#e0f2fe';ctx.beginPath();ctx.arc(0,0,player.r,0,7);ctx.fill();ctx.fillStyle='#0ea5e9';ctx.beginPath();ctx.arc(0,0,5,0,7);ctx.fill();ctx.restore();
+  // 玩家：核心 + 方向翼
+  ctx.save();ctx.translate(player.x,player.y);let pa=Math.atan2(mouse.y-player.y,mouse.x-player.x);ctx.rotate(pa);ctx.globalAlpha=player.inv>0?.55:1;
+  ctx.shadowBlur=32;ctx.shadowColor='#5ee7ff';ctx.strokeStyle='#9eeaff';ctx.lineWidth=2;ctx.fillStyle='#081b2b';polygon(0,0,player.r*1.15,6,Math.PI/6);ctx.fill();ctx.stroke();glowCircle(0,0,5,'#e8fbff');ctx.fillStyle='#38bdf8';polygon(11,0,10,3);ctx.fill();ctx.globalAlpha=.7;ctx.strokeStyle='#38bdf8';ctx.beginPath();ctx.moveTo(-7,-8);ctx.lineTo(-18,-13);ctx.lineTo(-13,0);ctx.lineTo(-18,13);ctx.lineTo(-7,8);ctx.stroke();ctx.restore();
+  // 低空暗角
+  let vign=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);vign.addColorStop(0,'#0000');vign.addColorStop(1,'#000b');ctx.fillStyle=vign;ctx.fillRect(0,0,W,H);
   ctx.restore();
 }
 function loop(t){if(!running)return;let dt=Math.min(.033,(t-last)/1000);last=t;if(!paused)update(dt);draw();requestAnimationFrame(loop)}

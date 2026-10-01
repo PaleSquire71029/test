@@ -31,7 +31,7 @@ export const STORY={
  ]},
  comm15:{id:"comm15",wave:15,speaker:"ASTER",title:"门",text:"最后一个大型单位倒下。\n\n它留下的不是普通CORE。\n\n那枚核心接入终端后，地图上出现一扇门。\n\n门的另一侧没有标注地区名称。\n\n只有一句很短的提示：\n\n“已根据当前行动习惯生成入口。”\n\nAster问：\n\n“进去，还是现在回头？”",choices:[
  choice("enter","进去",{flags:{enterMirror:true},task:{mirror:"active"}}),
- choice("leave","带着现在的记录离开",{flags:{leaveMirror:true},task:{route:"done"}})
+ choice("wait","暂缓进入，在门外观察",{flags:{waitedAtGate:true},task:{route:"done"}})
  ]},
  r2_16:{id:"r2_16",wave:16,speaker:"SYSTEM",title:"镜原",text:"这里的敌人没有灰潮湾那么混乱。\n\n它们甚至显得有些熟悉。\n\n第一波、第二波、第三波……\n\n你很快发现一个细节：\n\n它们出现的位置，刚好避开了你最常停留的位置。\n\n像是有人提前看过你的战斗。",choices:[
  choice("stay_pattern","继续按照原来的习惯战斗",{flags:{keptHabit:true},task:{mirror:"active"}}),

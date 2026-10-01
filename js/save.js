@@ -1,6 +1,6 @@
-const KEY="voidrun-save-v4";
+const KEY="voidrun-save-v5";
 const D={
-  version:4,
+  version:5,
   createdAt:0,
   updatedAt:0,
   wave:1,
@@ -30,7 +30,9 @@ export function loadSave(){
   const raw=read(KEY)||read(KEY+"-backup");
   if(!raw)return clone(D);
   const s=merge(clone(D),raw);
-  s.version=4;
+  s.version=5;
+  if(!Array.isArray(s.upgrades))s.upgrades=[];
+  if(!s.player||typeof s.player!=="object"||Array.isArray(s.player))s.player=null;
   s.settings=merge(clone(D.settings),s.settings);
   return s
 }
@@ -53,13 +55,13 @@ export function saveLabel(s){
   return "WAVE "+(s.wave||1)+" · CORE "+(s.core||0)+" · "+when
 }
 export function makeExport(s){
-  const payload={format:"VOID//RUN SAVE",version:4,exportedAt:new Date().toISOString(),game:"VOID//RUN — 虚空回响",save:clone(s)};
+  const payload={format:"VOID//RUN SAVE",version:5,exportedAt:new Date().toISOString(),game:"VOID//RUN — 虚空回响",save:clone(s)};
   return JSON.stringify(payload,null,2)
 }
 export function parseImport(text){
   if(typeof text!=="string"||text.length>2_000_000)throw new Error("INVALID_SAVE_SIZE");const p=JSON.parse(text);
   const s=p&&p.save?p.save:p;
   if(!s||typeof s!=="object"||typeof s.wave!=="number"||!Number.isFinite(s.wave)||s.wave<1||s.wave>999)throw new Error("INVALID_SAVE");
-  return merge(clone(D),s)
+  const out=merge(clone(D),s);if(!Array.isArray(out.upgrades))out.upgrades=[];return out
 }
 export function saveKey(){return KEY}

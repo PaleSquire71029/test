@@ -84,7 +84,7 @@ export const STORY={
  final:{id:"final",wave:30,speaker:"ECHO","title":"阶段终点 · 回声协议","text:"“最后一个防御节点已被击破。”\n\n战场终于安静下来。\n\n你回头看着一路留下的战斗记录：\n灰潮湾的失控维护单位。\n潮汐母机发出的坐标。\n隐藏终端记录的战斗数据。\n镜原按照预测部署的防御系统。\n以及一个不断根据你行动调整自己的ECHO。\n\n现在你终于明白了VOID任务真正的意义。\n\nCORE不是单纯的能源。\n敌人也不是单纯的靶子。\n升级更不是凭空出现的力量。\n\n你每一次战斗、每一次回收、每一次选择，都会被系统记录，并成为下一轮战斗的依据。\n\n终端最后显示：\n\nNODE-01：灰潮湾，记录完成。\nNODE-02：镜原，记录完成。\nNODE-03：坐标锁定失败。\n\nAster：“所以这就是全部了吗？”\n\nECHO：“不是。”\n\n“当前地图任务完成。”\n“未知节点等待开启。”\n\n屏幕熄灭。\n\n这一次，你知道自己为什么要继续向前。",choices:[
  choice("accept_truth","保存完整行动记录",{ending:"truth",choices:{endingRoute:"phase1"},task:{protocol:"done",world:"done"}})
  ]}}
-export function initStory(save){save.choices??={};save.choiceLog??=[];save.flags??={};save.tasks??={};for(const k of Object.keys(TASKS))save.tasks[k]??="";return save}
+export function initStory(save){save.choices??={};save.choiceLog??=[];save.flags??={};save.tasks??={};if(save.storyVersion!==2){for(const k of Object.keys(save.flags))if(k.startsWith("seen_"))delete save.flags[k];delete save.flags.ending;save.choices={};save.choiceLog=[];for(const k of Object.keys(TASKS))save.tasks[k]="";save.storyVersion=2}for(const k of Object.keys(TASKS))save.tasks[k]??="";return save}
 function cond(save,c){if(!c)return true;if(c.flag)return c.equals===undefined?!!save.flags[c.flag]:!!save.flags[c.flag]===c.equals;if(c.choice)return save.choices[c.choice]===c.equals;if(c.task)return save.tasks[c.task]===c.equals;return true}
 export function canShow(save,node){return (node.conditions||[]).every(c=>cond(save,c))}
 export function markTask(save,id,status){if(TASKS[id])save.tasks[id]=status}

@@ -75,10 +75,21 @@ function upd(dt){
     if(b.life<=0||b.x<-50||b.x>W+50||b.y<-50||b.y>H+50)shots.splice(i,1)
   }
   for(const e of en){
-    let a=A(e,player);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.shot-=dt*1000;e.dash-=dt*1000;
-    if(e.type==="striker"&&e.dash<0){e.dash=1800;e.flash=260;e.x+=Math.cos(a)*90;e.y+=Math.sin(a)*90;burst(e.x,e.y,6)}
-    if(e.boss&&e.shot<0){e.shot=900;for(let j=0;j<10;j++){let aa=j*Math.PI/5+e.pattern*.12;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(aa)*180,vy:Math.sin(aa)*180,r:5,damage:12,life:3000});}e.pattern++}
-    if(e.type=="hunter"&&e.shot<0){e.shot=1100;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:5,damage:10,life:2500})}
+    let a=A(e,player),dist=D(e,player);e.shot-=dt*1000;e.dash-=dt*1000;
+    let mx=Math.cos(a),my=Math.sin(a);
+    if(e.boss){
+      const orbit=Math.sin(performance.now()/900+e.pattern)*.65;mx=Math.cos(a+orbit);my=Math.sin(a+orbit);
+      if(dist>250){e.x+=mx*e.speed*dt;e.y+=my*e.speed*dt}else{e.x-=mx*e.speed*.35*dt;e.y-=my*e.speed*.35*dt}
+      if(e.shot<0){e.shot=850;for(let j=0;j<12;j++){let aa=j*Math.PI/6+e.pattern*.16;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(aa)*190,vy:Math.sin(aa)*190,r:5,damage:12,life:3200})}e.pattern++}
+    }else if(e.type==="hunter"){
+      const dir=dist<250?-1:dist>340?1:0;e.x+=mx*e.speed*dir*dt;e.y+=my*e.speed*dir*dt;
+      if(e.shot<0){e.shot=1200;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*300,vy:Math.sin(a)*300,r:5,damage:10,life:2500})}
+    }else if(e.type==="striker"){
+      const orbit=Math.sin(performance.now()/350+e.x)*.5;e.x+=Math.cos(a+orbit)*e.speed*.7*dt;e.y+=Math.sin(a+orbit)*e.speed*.7*dt;
+      if(e.dash<0&&dist<520){e.dash=2100;e.flash=260;e.x+=mx*120;e.y+=my*120;burst(e.x,e.y,6)}
+    }else{
+      e.x+=mx*e.speed*dt;e.y+=my*e.speed*dt;
+    }
     if(D(e,player)<e.r+player.r)hit(e.boss?20:e.type==="striker"?12:8)
   }
   for(let i=shots.length-1;i>=0;i--){let b=shots[i];if(b.enemy&&D(b,player)<b.r+player.r){hit(b.damage);shots.splice(i,1)}}

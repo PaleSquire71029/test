@@ -71,7 +71,7 @@ function upd(dt){
     else if(wave>=30)finish();else{wave++;save.stats.waves++;upgrades()}
   }
   for(let i=shots.length-1;i>=0;i--){let b=shots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt*1000;
-    for(const e of [...en])if(!b.hit.includes(e)&&D(b,e)<b.r+e.r){b.hit.push(e);e.hp-=b.damage;save.stats.damage+=b.damage;burst(e.x,e.y,b.cr?7:3);if(e.hp<=0)kill(e);if(b.pierce)b.pierce--;else b.life=0}
+    if(!b.enemy)for(const e of [...en])if(!b.hit.includes(e)&&D(b,e)<b.r+e.r){b.hit.push(e);e.hp-=b.damage;save.stats.damage+=b.damage;burst(e.x,e.y,b.cr?7:3);if(e.hp<=0)kill(e);if(b.pierce)b.pierce--;else b.life=0}
     if(b.life<=0||b.x<-50||b.x>W+50||b.y<-50||b.y>H+50)shots.splice(i,1)
   }
   for(const e of en){

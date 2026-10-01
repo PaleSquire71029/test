@@ -134,9 +134,9 @@ function renderCharacter(){
   $("charSpeed").textContent=Math.round(player.speed);
   $("charCrit").textContent=Math.round(player.crit*100)+"%";
   const upgrades=Array.isArray(save.upgrades)?save.upgrades:[];
-  if(!Array.isArray(save.upgrades))save.upgrades=upgrades;
-  const ids=upgrades.length?upgrades:["暂无模块"];
-  $("loadout").innerHTML=ids.map(id=>"<span>"+id+"</span>").join("")+(upgrades.length?"":"<span>基础武装</span>");
+  save.upgrades=upgrades;
+  const loadout=$("loadout");
+  if(loadout)loadout.replaceChildren(...(upgrades.length?upgrades.map(id=>{const el=document.createElement("span");el.textContent=String(id);return el}):[Object.assign(document.createElement("span"),{textContent:"基础武装"})]));
 }
 function renderHUD(){
   if(!player)return;

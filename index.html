@@ -22,18 +22,40 @@ button{border:0;color:#031018;background:#67e8f9;font-weight:900;padding:13px 20
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
 #upgrade .panel{max-width:780px}#cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
 .card{background:#0b1220;border:1px solid #ffffff14;border-radius:16px;padding:18px;min-height:170px;text-align:left;color:#dbeafe;box-shadow:none}.card strong{display:block;font-size:16px;color:#fff;margin-bottom:7px}.card small{color:#7dd3fc;text-transform:uppercase;letter-spacing:.12em}.card span{display:block;color:#8ea0bb;line-height:1.55;margin-top:8px}
-#mobile{display:none;position:fixed;inset:0;pointer-events:none;z-index:5}.stick{position:absolute;width:120px;height:120px;border:1px solid #ffffff20;border-radius:50%;background:#ffffff08;pointer-events:auto}.stick b{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:#ffffff18;border:1px solid #ffffff28}.stick.left{left:22px;bottom:24px}.stick.right{right:22px;bottom:24px}.dash{position:absolute;right:168px;bottom:55px;width:70px;height:70px;border-radius:50%;border:1px solid #67e8f955;background:#67e8f911;color:#67e8f9;font-weight:900;pointer-events:auto}
+#mobile{display:none;position:fixed;inset:0;pointer-events:none;z-index:5}
+.touch #mobile{display:block}
+.stick{position:absolute;width:138px;height:138px;border:1px solid #ffffff20;border-radius:50%;background:radial-gradient(circle,#ffffff0d,#ffffff03);pointer-events:auto;box-shadow:inset 0 0 30px #67e8f90a,0 8px 35px #0005}
+.stick b{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px;border-radius:50%;background:#67e8f91c;border:1px solid #67e8f955;box-shadow:0 0 25px #67e8f922;transition:transform .05s}
+.stick.left{left:20px;bottom:22px}
+.dash{position:absolute;right:28px;bottom:35px;width:78px;height:78px;border-radius:50%;border:1px solid #67e8f955;background:#0b1728dd;color:#67e8f9;font-weight:900;pointer-events:auto;box-shadow:0 0 30px #67e8f91c;backdrop-filter:blur(8px)}
+.rotate{display:none;position:fixed;inset:0;z-index:30;background:#03050beF;place-items:center;text-align:center;padding:30px}
+.touch.portrait .rotate{display:grid}
+.rotate .panel{max-width:420px}
 .hidden{display:none!important}
-@media(max-width:700px){#mobile{display:block}.help{display:none}.panel{padding:22px}#cards{grid-template-columns:1fr}.card{min-height:0}.card:nth-child(n+2){display:none}.top{align-items:center}.brand{font-size:11px}.pill{padding:6px 8px}.bottom{padding-bottom:145px}}
+@media (pointer:coarse){
+  .help{display:none}.panel{padding:22px}
+  #cards{grid-template-columns:repeat(3,1fr)}
+  .card{min-height:0;padding:14px}
+  .top{align-items:center}.brand{font-size:11px}.pill{padding:6px 8px}
+  .bottom{padding-bottom:125px}
+}
+@media (pointer:coarse) and (orientation:landscape){
+  #hud{padding:10px 14px}.bottom{padding-bottom:0}
+  .hp{width:220px}
+}
+@media (pointer:coarse) and (orientation:portrait){
+  #cards{grid-template-columns:1fr}.card:nth-child(n+2){display:none}
+}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div class="rotate"><div class="panel"><div class="brand">VOID//RUN · MOBILE</div><h2>请横屏游玩</h2><div class="sub">为了获得完整视野、虚拟摇杆和更舒服的战斗空间，请将手机旋转到横屏。</div><div class="actions"><button id="rotateBtn">尝试进入横屏</button></div></div></div>
 <div id="hud">
   <div class="top"><div class="brand">VOID//RUN</div><div class="stats">
     <div class="pill">WAVE <b id="wave">1</b></div><div class="pill">SCORE <b id="score">0</b></div><div class="pill">SCRAP <b id="scrap">0</b></div>
   </div></div>
-  <div class="bottom"><div><div class="pill" style="margin-bottom:6px">CORE <b id="hpText">100 / 100</b></div><div class="hp"><i id="hp"></i></div></div><div class="help">WASD / 方向键移动 · 鼠标瞄准 · 点击射击 · Space 冲刺<br>手机：左摇杆移动 · 右侧按钮冲刺 · 自动瞄准最近敌人</div></div>
+  <div class="bottom"><div><div class="pill" style="margin-bottom:6px">CORE <b id="hpText">100 / 100</b></div><div class="hp"><i id="hp"></i></div></div><div class="help">WASD / 方向键移动 · 鼠标瞄准 · 点击射击 · Space 冲刺<br>手机横屏：左侧虚拟摇杆移动 · 右下冲刺 · 自动瞄准最近敌人 · 击中/受伤/升级有震动反馈</div></div>
 </div>
 <div id="start" class="overlay"><div class="panel">
   <div class="brand">ENDLESS MICRO-ROGUELITE</div><h1>虚空<span class="accent">回响</span></h1>
@@ -48,12 +70,19 @@ button{border:0;color:#031018;background:#67e8f9;font-weight:900;padding:13px 20
 const C=document.getElementById('game'),ctx=C.getContext('2d'),$=id=>document.getElementById(id);
 let W=innerWidth,H=innerHeight,D=devicePixelRatio||1;
 function resize(){W=innerWidth;H=innerHeight;C.width=W*D;C.height=H*D;C.style.width=W+'px';C.style.height=H+'px';ctx.setTransform(D,0,0,D,0,0)}addEventListener('resize',resize);resize();
+const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+if(isTouch)document.body.classList.add('touch');
+function syncOrientation(){if(isTouch)document.body.classList.toggle('portrait',innerHeight>innerWidth)}
+addEventListener('resize',syncOrientation);addEventListener('orientationchange',()=>setTimeout(syncOrientation,100));syncOrientation();
+$('rotateBtn').onclick=async()=>{try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();if(screen.orientation?.lock)await screen.orientation.lock('landscape')}catch(e){}syncOrientation()};
 
 const rnd=(a,b)=>Math.random()*(b-a)+a, clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
 let keys={},mouse={x:W/2,y:H/2,down:false},running=false,paused=false,last=0,spawn=0,waveTimer=0,wave=1,score=0,scrap=0,best=+localStorage.voidBest||0;
 $('best').textContent=best;
 const player={x:W/2,y:H/2,r:13,hp:100,maxHp:100,speed:235,fire:.16,cd:0,damage:18,bulletSpeed:650,shots:1,crit:.08,dash:0,dashCd:0,inv:0};
 let enemies=[],bullets=[],particles=[],drops=[],shake=0,moveTouch={x:0,y:0},drag=false;
+function haptic(ms=12){if(isTouch&&navigator.vibrate)navigator.vibrate(ms)}
+function hapticPattern(pattern){if(isTouch&&navigator.vibrate)navigator.vibrate(pattern)}
 
 const upgrades=[
 ['过载线圈','fire',-0.025,'射速 +'],['高压弹芯','damage',5,'子弹伤害 +'],['棱镜弹道','shots',1,'额外子弹 +'],['推进器','speed',25,'移动速度 +'],['纳米修复','heal',22,'立即恢复生命'],['扩容核心','maxHp',20,'最大生命 +'],['裂变弹','crit',.06,'暴击率 +'],['相位引擎','dash',-.35,'冲刺冷却 -'],['磁力场','magnet',55,'拾取范围 +'],['穿透弹头','pierce',1,'子弹额外穿透 +']
@@ -63,7 +92,7 @@ function chooseUpgrades(){
   paused=true;$('upgrade').classList.remove('hidden');const box=$('cards');box.innerHTML='';
   [...upgrades].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{
     const b=document.createElement('button');b.className='card';b.innerHTML='<small>UPGRADE</small><strong>'+u[0]+'</strong><span>'+u[3]+(u[1]==='fire'?'　当前 '+Math.round(1/player.fire*10)/10+' shots/s':'')+'</span>';
-    b.onclick=()=>{applyUpgrade(u);$('upgrade').classList.add('hidden');paused=false;};box.appendChild(b)
+    b.onclick=()=>{applyUpgrade(u);hapticPattern([12,30,24]);$('upgrade').classList.add('hidden');paused=false;};box.appendChild(b)
   });
 }
 function applyUpgrade(u){let [n,k,v]=u;if(k==='heal')player.hp=clamp(player.hp+v,0,player.maxHp);else if(k==='maxHp'){player.maxHp+=v;player.hp+=v}else if(k==='magnet')magnet+=v;else if(k==='pierce')pierce+=v;else player[k]+=v;if(k==='fire')player.fire=clamp(player.fire,.045,.4);if(k==='dash')player.dashCd=clamp(player.dashCd,0,4)}
@@ -87,23 +116,26 @@ function fire(){
   let ang=target?Math.atan2(target.y-player.y,target.x-player.x):Math.atan2(mouse.y-player.y,mouse.x-player.x);
   if(!target)ang=Math.atan2(mouse.y-player.y,mouse.x-player.x);
   for(let i=0;i<player.shots;i++){let spread=(i-(player.shots-1)/2)*.13;let a=ang+spread;let crit=Math.random()<player.crit;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*player.bulletSpeed,vy:Math.sin(a)*player.bulletSpeed,r:4,damage:player.damage*(crit?2.2:1),life:1.4,pierce:pierce,crit})}
-  burst(player.x+Math.cos(ang)*15,player.y+Math.sin(ang)*15,'#67e8f9',3)
+  burst(player.x+Math.cos(ang)*15,player.y+Math.sin(ang)*15,'#67e8f9',3);if(isTouch&&Math.random()<.22)haptic(5)
 }
-function dash(){if(player.dashCd>0||!running)return;let dx=moveTouch.x||(keys.w||keys.ArrowUp?0:keys.s||keys.ArrowDown?0:0),dy=moveTouch.y||0;
+function dash(){if(player.dashCd>0||!running){if(isTouch)haptic(8);return;}let dx=moveTouch.x||(keys.w||keys.ArrowUp?0:keys.s||keys.ArrowDown?0:0),dy=moveTouch.y||0;
   if(!dx&&!dy){dx=(keys.d?1:0)-(keys.a?1:0);dy=(keys.s?1:0)-(keys.w?1:0)}if(!dx&&!dy){dx=Math.cos(Math.atan2(mouse.y-player.y,mouse.x-player.x));dy=Math.sin(Math.atan2(mouse.y-player.y,mouse.x-player.x))}
-  let l=Math.hypot(dx,dy)||1;dx/=l;dy/=l;player.x=clamp(player.x+dx*125,20,W-20);player.y=clamp(player.y+dy*125,20,H-20);player.inv=.5;player.dashCd=2.5+player.dash;burst(player.x,player.y,'#a78bfa',18);shake=8}
+  let l=Math.hypot(dx,dy)||1;dx/=l;dy/=l;player.x=clamp(player.x+dx*125,20,W-20);player.y=clamp(player.y+dy*125,20,H-20);player.inv=.5;player.dashCd=2.5+player.dash;burst(player.x,player.y,'#a78bfa',18);shake=8;hapticPattern([18,25,30])}
 addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();dash()}});addEventListener('keyup',e=>keys[e.key]=false);
 addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});addEventListener('mousedown',()=>mouse.down=true);addEventListener('mouseup',()=>mouse.down=false);
 
 function bindStick(el,cb){el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);drag=true;move(e);});el.addEventListener('pointermove',e=>{if(drag)move(e)});el.addEventListener('pointerup',()=>{drag=false;cb(0,0)});function move(e){let r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,l=Math.hypot(dx,dy)||1,m=Math.min(1,l/45);cb(dx/l*m,dy/l*m);}}
-bindStick($('moveStick'),(x,y)=>{moveTouch.x=x;moveTouch.y=y});$('dashBtn').addEventListener('pointerdown',dash);
+bindStick($('moveStick'),(x,y)=>{moveTouch.x=x;moveTouch.y=y;const k=$('moveStick').querySelector('b');k.style.transform='translate('+x*34+'px,'+y*34+'px)'});
+$('moveStick').addEventListener('pointerup',()=>{$('moveStick').querySelector('b').style.transform='translate(0,0)'});
+$('moveStick').addEventListener('pointercancel',()=>{$('moveStick').querySelector('b').style.transform='translate(0,0)'});
+$('dashBtn').addEventListener('pointerdown',e=>{e.preventDefault();dash()});
 
 function burst(x,y,c,n=8){for(let i=0;i<n;i++){let a=rnd(0,Math.PI*2),s=rnd(30,180);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.25,.7),c})}}
 function kill(e){
   score+=e.type==='boss'?1000: e.type==='elite'?150:e.type==='tank'?80:30;scrap+=e.type==='boss'?10:e.type==='elite'?3:1;
   for(let i=0;i<(e.type==='boss'?18:6);i++)particles.push({x:e.x,y:e.y,vx:rnd(-160,160),vy:rnd(-160,160),life:rnd(.3,.9),c:e.type==='boss'?'#f472b6':'#67e8f9'});
   if(e.type!=='boss'&&Math.random()<.28)drops.push({x:e.x,y:e.y,r:6,vx:rnd(-20,20),vy:rnd(-20,20),life:12});
-  shake=Math.max(shake,e.type==='boss'?15:3)
+  shake=Math.max(shake,e.type==='boss'?15:3);hapticPattern(e.type==='boss'?[25,35,45]:e.type==='elite'?[14,20,20]:8)
 }
 function update(dt){
   player.cd-=dt;player.dashCd-=dt;player.inv-=dt;
@@ -121,10 +153,10 @@ function update(dt){
   }
   for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];let a=Math.atan2(player.y-e.y,player.x-e.x),d=dist(player.x,player.y,e.x,e.y);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.hit-=dt;
     if(e.type==='boss'){e.shoot-=dt;if(e.shoot<=0){e.shoot=2.2;for(let k=0;k<10;k++){let aa=k*Math.PI/5+performance.now()/5000;bullets.push({enemy:true,x:e.x,y:e.y,vx:Math.cos(aa)*150,vy:Math.sin(aa)*150,r:5,life:3,damage:12})}}}
-    if(d<e.r+player.r&&player.inv<=0){player.hp-=e.type==='boss'?22: e.type==='tank'?18:10;player.inv=.55;shake=9;burst(player.x,player.y,'#fb7185',7)}
+    if(d<e.r+player.r&&player.inv<=0){player.hp-=e.type==='boss'?22: e.type==='tank'?18:10;player.inv=.55;shake=9;burst(player.x,player.y,'#fb7185',7);hapticPattern([22,35,28])}
     if(e.type==='boss'&&e.hp<=0){enemies.splice(i,1)}
   }
-  for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];if(b.enemy&&dist(b.x,b.y,player.x,player.y)<b.r+player.r){if(player.inv<=0){player.hp-=b.damage;player.inv=.25;shake=5}bullets.splice(i,1)}}
+  for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];if(b.enemy&&dist(b.x,b.y,player.x,player.y)<b.r+player.r){if(player.inv<=0){player.hp-=b.damage;player.inv=.25;shake=5;haptic(18)}bullets.splice(i,1)}}
   for(let i=drops.length-1;i>=0;i--){let d=drops[i],a=Math.atan2(player.y-d.y,player.x-d.x),dd=dist(player.x,player.y,d.x,d.y);d.life-=dt;if(dd<magnet){d.vx+=Math.cos(a)*240*dt;d.vy+=Math.sin(a)*240*dt}d.x+=d.vx*dt;d.y+=d.vy*dt;if(dd<22){scrap+=2;score+=15;burst(d.x,d.y,'#fbbf24',5);drops.splice(i,1)}else if(d.life<0)drops.splice(i,1)}
   for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
   if(player.hp<=0)die();

@@ -68,4 +68,4 @@ export function canShow(save,node){return (node.conditions||[]).every(c=>cond(sa
 export function markTask(save,id,status){if(TASKS[id])save.tasks[id]=status}
 export function applyChoice(save,node,ch){const s=ch.set||{};if(s.choices)Object.assign(save.choices,s.choices);if(s.flags)Object.assign(save.flags,s.flags);if(s.task)for(const[k,v]of Object.entries(s.task))markTask(save,k,v);if(s.ending)save.flags.ending=s.ending;save.choiceLog.push({node:node.id,choice:ch.id,at:Date.now()});return s.ending||null}
 export function nodesAtWave(save,wave){return Object.values(STORY).filter(n=>n.wave===wave&&canShow(save,n))}
-export function getEnding(save,wave){if(save.flags.ending)return save.flags.ending;if(wave<15)return null;if(save.flags.miraFollowed&&save.flags.coreTruth)return"shadow";if(save.flags.evidenceSaved)return"archive";if(save.flags.asterTrusted)return"trust";return"survivor"}
+export function getEnding(save,wave){if(save.flags.ending)return save.flags.ending;if(wave<15)return null;return"truth"}

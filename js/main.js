@@ -98,6 +98,42 @@ function die(){run=0;$("deathReason").textContent="生命信号丢失。你到�
 function renderTasks(){if(!$("taskList"))return;const labels={active:"进行中",done:"已完成","":"未开始"};$("taskList").innerHTML=Object.entries(TASKS).map(([k,t])=>{const st=save.tasks[k]||"";return "<div class='loreItem'><b>"+t.title+" · "+labels[st]+"</b><p>"+t.desc+"</p></div>"}).join("")}
 function tasks(){pause=1;renderTasks();$("tasks").classList.remove("hidden")}
 function lore(){pause=1;$("lore").classList.remove("hidden");$("loreList").innerHTML=LORE.map(a=>"<div class='loreItem'><b>"+a[0]+"</b><p>"+a[1]+"</p></div>").join("")}
-function sync(){["vibrate","autoAim","autoFire","leftHand"].forEach(k=>$(k).checked=save.settings[k]);$("sensitivity").value=save.settings.sensitivity*100;$("sensValue").textContent=Math.round(save.settings.sensitivity*100)+"%";$("touch").classList.toggle("left",save.settings.leftHand)}
-$("newGame").onclick=start;$("tasksBtn").onclick=tasks;$("closeTasks").onclick=()=>{$("tasks").classList.add("hidden");pause=0};$("retry").onclick=start;$("continueGame").onclick=()=>{start();wave=Math.max(1,save.wave||1);next()};$("loreBtn").onclick=lore;$("closeLore").onclick=()=>{$("lore").classList.add("hidden");pause=0};$("settingsBtn").onclick=()=>{$("settings").classList.remove("hidden");pause=1;sync()};$("closeSettings").onclick=()=>{$("settings").classList.add("hidden");pause=0};$("deathMenu").onclick=()=>{$("death").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};$("endingMenu").onclick=()=>{$("ending").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};["vibrate","autoAim","autoFire","leftHand"].forEach(k=>$(k).onchange=()=>{save.settings[k]=$(k).checked;saveGame(save);sync()});$("sensitivity").oninput=e=>{save.settings.sensitivity=+e.target.value/100;saveGame(save);sync()};addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=1;if(e.key==" ")dash()});addEventListener("keyup",e=>keys[e.key.toLowerCase()]=0);c.onpointermove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};c.onpointerdown=e=>{mouse.down=1;mouse.x=e.clientX;mouse.y=e.clientY};addEventListener("pointerup",()=>mouse.down=0);
-function stick(el,type){let on=0,s={x:0,y:0};el.onpointerdown=e=>{on=1;s={x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId);el.classList.add("active")};el.onpointermove=e=>{if(!on)return;let a=(e.clientX-s.x)/52,b=(e.clientY-s.y)/52,l=Math.hypot(a,b);if(l>1){a/=l;b/=l}if(type=="m")move={x:a,y:b};else{aim={x:a,y:b};aim.active=l>.12}};el.onpointerup=()=>{on=0;el.classList.remove("active");if(type=="m")move={x:0,y:0};else aim.active=0}}stick($("moveStick"),"m");stick($("aimStick"),"a");$("dash").onclick=dash;sync();renderTasks();$("hud").style.display="none";$("touch").style.display="none";
+function renderCharacter(){
+  if(!player)return;
+  $("charRank").textContent="RANK "+String(player.level).padStart(2,"0");
+  $("charLevel").textContent="LEVEL "+player.level+" · XP "+Math.floor(player.xp)+"/"+player.level*100;
+  $("charHp").textContent=Math.ceil(player.hp)+" / "+player.maxHp;
+  $("charShield").textContent=Math.ceil(player.maxShield)+" · 回充";
+  $("charDamage").textContent=Math.round(player.damage);
+  $("charFire").textContent=Math.round(player.fireRate)+"ms";
+  $("charSpeed").textContent=Math.round(player.speed);
+  $("charCrit").textContent=Math.round(player.crit*100)+"%";
+  const ids=save.upgrades.length?save.upgrades:"暂无模块";
+  $("loadout").innerHTML=ids.map(id=>"<span>"+id+"</span>").join("")+(save.upgrades.length?"":"<span>基础武装</span>");
+}
+function renderSavePanel(){
+  $("saveInfo").textContent=(hasSaveLabel?saveLabel(save):"暂无存档")+"\n"+(save.checkpoint||"wave-1")+"\n击杀 "+save.stats.kills+" · 运行 "+save.stats.runs+" · 游戏时间 "+Math.floor(save.stats.playTime/60)+" 分钟";
+}
+function sync(){["vibrate","autoAim","autoFire","leftHand"].forEach(k=>$(k).checked=save.settings[k]);$("sensitivity").value=save.settings.sensitivity*100;$("sensValue").textContent=Math.round(save.settings.sensitivity*100)+"%";$("touch").classList.toggle("left",save.settings.leftHand);renderCharacter()}
+const hasSaveLabel=true;
+
+$("newGame").onclick=()=>start(true);
+$("continueGame").onclick=()=>start(false);
+$("retry").onclick=()=>start(false);
+$("tasksBtn").onclick=tasks;
+$("characterBtn").onclick=()=>{pause=1;renderCharacter();$("character").classList.remove("hidden")};
+$("closeCharacter").onclick=()=>{$("character").classList.add("hidden");pause=0};
+$("saveBtn").onclick=()=>{pause=1;renderSavePanel();$("savePanel").classList.remove("hidden")};
+$("closeSave").onclick=()=>{$("savePanel").classList.add("hidden");pause=0};
+$("manualSave").onclick=()=>{snapshot();saveGame(save);saveDirty=0;renderSavePanel();vib([15,25])};
+$("exportSave").onclick=()=>{snapshot();saveGame(save);const blob=new Blob([makeExport(save)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="voidrun-save-wave-"+wave+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderSavePanel()};
+$("importSave").onclick=()=>$("saveFile").click();
+$("saveFile").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const imported=parseImport(await file.text());Object.assign(save,imported);saveGame(save);alert("存档导入成功。");renderSavePanel();start(false)}catch{alert("存档文件无效或已损坏。")}e.target.value=""};
+$("clearSave").onclick=()=>{if(confirm("确定删除本机存档？导出的JSON不会受影响。")){clearSave();Object.assign(save,defaults());renderSavePanel()}};
+$("pauseBtn").onclick=()=>{if(!run)return;pause=!pause;$("pauseMenu").classList.toggle("hidden",!pause);$("touch").style.display=pause?"none":"block"};
+$("resumeBtn").onclick=()=>{pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="block"};
+$("pauseSaveBtn").onclick=()=>{snapshot();saveGame(save);run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
+$("pauseMenuBtn").onclick=()=>{run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
+$("skill").onclick=skill;
+$("closeTasks").onclick=()=>{$("tasks").classList.add("hidden");pause=0};$("continueGame").onclick=()=>{start();wave=Math.max(1,save.wave||1);next()};$("loreBtn").onclick=lore;$("closeLore").onclick=()=>{$("lore").classList.add("hidden");pause=0};$("settingsBtn").onclick=()=>{$("settings").classList.remove("hidden");pause=1;sync()};$("closeSettings").onclick=()=>{$("settings").classList.add("hidden");pause=0};$("deathMenu").onclick=()=>{$("death").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};$("endingMenu").onclick=()=>{$("ending").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};["vibrate","autoAim","autoFire","leftHand"].forEach(k=>$(k).onchange=()=>{save.settings[k]=$(k).checked;saveGame(save);sync()});$("sensitivity").oninput=e=>{save.settings.sensitivity=+e.target.value/100;saveGame(save);sync()};addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=1;if(e.key==" ")dash()});addEventListener("keyup",e=>keys[e.key.toLowerCase()]=0);c.onpointermove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};c.onpointerdown=e=>{mouse.down=1;mouse.x=e.clientX;mouse.y=e.clientY};addEventListener("pointerup",()=>mouse.down=0);
+function stick(el,type){let on=0,s={x:0,y:0};el.onpointerdown=e=>{on=1;s={x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId);el.classList.add("active")};el.onpointermove=e=>{if(!on)return;let a=(e.clientX-s.x)/52,b=(e.clientY-s.y)/52,l=Math.hypot(a,b);if(l>1){a/=l;b/=l}if(type=="m")move={x:a,y:b};else{aim={x:a,y:b};aim.active=l>.12}};el.onpointerup=()=>{on=0;el.classList.remove("active");if(type=="m")move={x:0,y:0};else aim.active=0}}stick($("moveStick"),"m");stick($("aimStick"),"a");$("dash").onclick=dash;sync();renderTasks();renderSavePanel();$("hud").style.display="none";$("touch").style.display="none";

@@ -59,7 +59,7 @@ export const STORY={
  choice("keep_record","保存这份战斗记录",{flags:{seraRecord:true},task:{archive:"done"}}),
  choice("delete_record","删除自己的记录",{flags:{selfRecordDeleted:true}})
  ]},
- r2_22:{id:"r2_22",wave:22,speaker:"ECHO","title":"VOID-01","text:`“你终于来到这里了。”\n\n“不要误会。ECHO不是控制敌人的程序。”\n\n“ECHO负责保存战场数据，并根据历史战斗结果生成下一轮防御单位。”\n\n“每一波敌人，都是上一轮战斗留下的数据产生的结果。”\n\n“你击败它们，它们就会学习。”\n\n“你升级装备，系统也会记录。”\n\n“你做出的选择，同样会被记录。”\n\n“所以这场战斗从来不只是清除敌人。”\n\n“你正在和一个会根据你的行动继续变化的系统战斗。”`,choices:[
+ r2_22:{id:"r2_22",wave:22,speaker:"ECHO","title":"VOID-01",text:`“你终于来到这里了。”\n\n“不要误会。ECHO不是控制敌人的程序。”\n\n“ECHO负责保存战场数据，并根据历史战斗结果生成下一轮防御单位。”\n\n“每一波敌人，都是上一轮战斗留下的数据产生的结果。”\n\n“你击败它们，它们就会学习。”\n\n“你升级装备，系统也会记录。”\n\n“你做出的选择，同样会被记录。”\n\n“所以这场战斗从来不只是清除敌人。”\n\n“你正在和一个会根据你的行动继续变化的系统战斗。”`,choices:[
  choice("accept_protocol","接受ECHO协议，继续深入",{flags:{echoAccepted:true},task:{protocol:"active"}}),
  choice("reject_protocol","拒绝ECHO读取自己的记录",{flags:{echoRejected:true},task:{protocol:"active"}})
  ]},
@@ -67,7 +67,7 @@ export const STORY={
  choice("recover_memory","尝试恢复旧战斗记录",{flags:{memoryRecovered:true}}),
  choice("stay_present","不追查过去，只完成当前任务",{flags:{memoryIgnored:true}})
  ]},
- r2_25:{id:"r2_25",wave:25,speaker:"ECHO","title":"镜原核心防御者","text:`“CORE权限验证开始。”\n\n巨大的防御单位启动。\n\n它拥有你一路升级过的武器参数。\n\nECHO解释：\n\n“这是根据VOID-01历史战斗数据生成的防御者。”\n\n“你越强，它就越接近你的战斗方式。”\n\n“击败它，你就能获得进入协议核心的最后权限。”`,choices:[
+ r2_25:{id:"r2_25",wave:25,speaker:"ECHO","title":"镜原核心防御者",text:`“CORE权限验证开始。”\n\n巨大的防御单位启动。\n\n它拥有你一路升级过的武器参数。\n\nECHO解释：\n\n“这是根据VOID-01历史战斗数据生成的防御者。”\n\n“你越强，它就越接近你的战斗方式。”\n\n“击败它，你就能获得进入协议核心的最后权限。”`,choices:[
  choice("break_core","击破防御者，夺取权限",{flags:{coreAccess:true},task:{protocol:"active"}}),
  choice("preserve_core","尽量保留防御者的数据",{flags:{preservedDefender:true},task:{archive:"done"}})
  ]},
@@ -75,13 +75,13 @@ export const STORY={
  choice("continue","继续完成最后任务",{flags:{finalRun:true},task:{protocol:"active"}}),
  choice("stop","保存记录，结束行动",{flags:{manualStop:true},task:{archive:"done"}})
  ]},
- r2_28:{id:"r2_28",wave:28,speaker:"ECHO","title":"第三地区坐标","text:`“协议核心并不属于镜原。”\n\n地图向更远处展开。\n\nNODE-03、NODE-04、NODE-05……\n\n这些坐标都在当前地图之外。\n\n“灰潮湾是事故节点。”\n“镜原是预测节点。”\n\n“下一个节点负责什么，你还没有权限知道。”\n\n这一次，没有人把它称作终点。`,choices:[
+ r2_28:{id:"r2_28",wave:28,speaker:"ECHO","title":"第三地区坐标",text:`“协议核心并不属于镜原。”\n\n地图向更远处展开。\n\nNODE-03、NODE-04、NODE-05……\n\n这些坐标都在当前地图之外。\n\n“灰潮湾是事故节点。”\n“镜原是预测节点。”\n\n“下一个节点负责什么，你还没有权限知道。”\n\n这一次，没有人把它称作终点。`,choices:[
  choice("save_coordinate","保存未知节点坐标",{flags:{thirdRegionHint:true},task:{world:"done"}})
  ]},
- r2_29:{id:"r2_29",wave:29,speaker:"Aster","title":"出发前","text:`“明天的任务会不会继续，我不知道。”\n\n“但至少现在，我们知道敌人为什么出现，也知道CORE为什么会落在战场上。”\n\n“它们不是为了给你刷经验。”\n\n“它们是ECHO用来测试、记录和学习的战斗单位。”\n\n“而你一路捡起来的每一个CORE，都在帮我们拼回这套系统的真相。”`,choices:[
+ r2_29:{id:"r2_29",wave:29,speaker:"Aster","title":"出发前",text:`“明天的任务会不会继续，我不知道。”\n\n“但至少现在，我们知道敌人为什么出现，也知道CORE为什么会落在战场上。”\n\n“它们不是为了给你刷经验。”\n\n“它们是ECHO用来测试、记录和学习的战斗单位。”\n\n“而你一路捡起来的每一个CORE，都在帮我们拼回这套系统的真相。”`,choices:[
  choice("keep_core","保留全部CORE记录",{flags:{carryRecord:true},task:{core:"done"}})
  ]},
- final:{id:"final",wave:30,speaker:"ECHO","title":"阶段终点 · 回声协议","text:`“最后一个防御节点已被击破。”\n\n战场终于安静下来。\n\n你回头看着一路留下的战斗记录：\n灰潮湾的失控维护单位。\n潮汐母机发出的坐标。\n隐藏终端记录的战斗数据。\n镜原按照预测部署的防御系统。\n以及一个不断根据你行动调整自己的ECHO。\n\n现在你终于明白了VOID任务真正的意义。\n\nCORE不是单纯的能源。\n敌人也不是单纯的靶子。\n升级更不是凭空出现的力量。\n\n你每一次战斗、每一次回收、每一次选择，都会被系统记录，并成为下一轮战斗的依据。\n\n终端最后显示：\n\nNODE-01：灰潮湾，记录完成。\nNODE-02：镜原，记录完成。\nNODE-03：坐标锁定失败。\n\nAster：“所以这就是全部了吗？”\n\nECHO：“不是。”\n\n“当前地图任务完成。”\n“未知节点等待开启。”\n\n屏幕熄灭。\n\n这一次，你知道自己为什么要继续向前。`,choices:[
+ final:{id:"final",wave:30,speaker:"ECHO","title":"阶段终点 · 回声协议",text:`“最后一个防御节点已被击破。”\n\n战场终于安静下来。\n\n你回头看着一路留下的战斗记录：\n灰潮湾的失控维护单位。\n潮汐母机发出的坐标。\n隐藏终端记录的战斗数据。\n镜原按照预测部署的防御系统。\n以及一个不断根据你行动调整自己的ECHO。\n\n现在你终于明白了VOID任务真正的意义。\n\nCORE不是单纯的能源。\n敌人也不是单纯的靶子。\n升级更不是凭空出现的力量。\n\n你每一次战斗、每一次回收、每一次选择，都会被系统记录，并成为下一轮战斗的依据。\n\n终端最后显示：\n\nNODE-01：灰潮湾，记录完成。\nNODE-02：镜原，记录完成。\nNODE-03：坐标锁定失败。\n\nAster：“所以这就是全部了吗？”\n\nECHO：“不是。”\n\n“当前地图任务完成。”\n“未知节点等待开启。”\n\n屏幕熄灭。\n\n这一次，你知道自己为什么要继续向前。`,choices:[
  choice("accept_truth","保存完整行动记录",{ending:"truth",choices:{endingRoute:"phase1"},task:{protocol:"done",world:"done"}})
  ]}}
 export function initStory(save){save.choices??={};save.choiceLog??=[];save.flags??={};save.tasks??={};if(save.storyVersion!==2){for(const k of Object.keys(save.flags))if(k.startsWith("seen_"))delete save.flags[k];delete save.flags.ending;save.choices={};save.choiceLog=[];for(const k of Object.keys(TASKS))save.tasks[k]="";save.storyVersion=2}for(const k of Object.keys(TASKS))save.tasks[k]??="";return save}

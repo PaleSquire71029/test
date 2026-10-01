@@ -22,7 +22,7 @@ function restorePlayer(){
 }
 function start(fresh=true){
   if(fresh){Object.assign(save,defaults());save.stats.runs=1;save.tasks.signal="active";secret=false;found=false}
-  else{secret=!!save.flags.secretUnlocked;found=!!save.flags.secretFound}
+  else{save.stats.runs++;secret=!!save.flags.secretUnlocked;found=!!save.flags.secretFound}
   restorePlayer();en=[];shots=[];loot=[];fx=[];wave=fresh?1:Math.max(1,save.wave||1);spawn=0;wait=0;dashOK=1;dashT=0;skillT=0;run=1;pause=0;delete save.flags.ending;save.wave=wave;saveGame(save);
   for(const q of document.querySelectorAll(".screen,.panel"))q.classList.add("hidden");
   $("hud").style.display="block";$("touch").style.display="block";sync();renderCharacter();next()
@@ -147,7 +147,7 @@ function renderSavePanel(){
 function sync(){["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].forEach(k=>$(k).checked=!!save.settings[k]);$("sensitivity").value=save.settings.sensitivity*100;$("sensValue").textContent=Math.round(save.settings.sensitivity*100)+"%";$("touch").classList.toggle("left",save.settings.leftHand);renderCharacter()}
 const hasSaveLabel=true;
 
-$("newGame").onclick=()=>{start(true);if(save.settings.showHints)$("help").classList.remove("hidden")};
+$("newGame").onclick=()=>{start(true);if(save.settings.showHints){pause=1;$("help").classList.remove("hidden")}};
 $("helpBtn").onclick=()=>{pause=1;$("help").classList.remove("hidden")};$("closeHelp").onclick=()=>{$("help").classList.add("hidden");pause=0};
 $("continueGame").onclick=()=>start(false);
 $("retry").onclick=()=>start(false);

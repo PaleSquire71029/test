@@ -23,3 +23,15 @@
 .saveActions .dangerBtn{border-color:#673244;color:#ff9ab1}
 .saveTip{font-size:12px!important;margin-top:14px}
 @media(max-width:650px){#statusBars{left:12px;top:54px;width:135px}.hudBtn{right:12px;top:6px}.characterGrid{grid-template-columns:1fr}.portrait{min-height:115px}.saveActions{grid-template-columns:1fr}.skillBtn{right:76px;bottom:34px}.action{bottom:34px}}
+
+#objective{display:flex;align-items:center;gap:9px;margin-top:10px;max-width:620px;padding:7px 10px;border-left:2px solid var(--accent);background:linear-gradient(90deg,#09111dcc,transparent);color:#b7c3d7}
+#objectiveTag{font:700 9px "Space Mono";letter-spacing:.16em;color:var(--accent)}
+#objectiveText{font-size:11px}
+.bossBar{position:absolute;top:18px;left:50%;transform:translateX(-50%);width:min(520px,55vw);z-index:6;padding:7px 10px 8px;border:1px solid #5c2d45;background:#0b0d17dd;backdrop-filter:blur(10px);border-radius:8px;box-shadow:0 10px 30px #0008}
+.bossBar>div{display:flex;justify-content:space-between;margin-bottom:5px;font:700 9px "Space Mono";color:#ff9ab4}
+.bossBar>i{display:block;height:5px;border-radius:4px;background:linear-gradient(90deg,#ff3d72,#ff9d7b);width:100%;transition:width .12s}
+.helpGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.helpGrid>div{padding:14px;border:1px solid #1f2d44;border-radius:12px;background:#0b1220}.helpGrid b{color:var(--accent);font:700 12px "Space Mono"}.helpGrid p{margin:8px 0 0!important;font-size:13px;line-height:1.9!important}.helpNote{padding:12px;border-left:2px solid #6ce7ff66;background:#0a111d}
+.menuButtons button{transition:transform .15s,border-color .15s,background .15s}.menuButtons button:hover{transform:translateY(-2px);background:#152238}
+.panel{scrollbar-width:thin;scrollbar-color:#31405d transparent}
+@media(max-width:650px){#objective{margin-top:7px;padding:6px 8px;max-width:calc(100vw - 24px)}#objectiveText{font-size:10px}.bossBar{top:48px;width:calc(100vw - 72px)}.helpGrid{grid-template-columns:1fr}.helpGrid p{font-size:12px!important}.panel{max-height:calc(100dvh - 24px)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

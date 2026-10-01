@@ -37,12 +37,57 @@ function enemy(){
   en.push({x:X,y:Y,r:type=="tank"?22:type=="striker"?17:14,type,hp,maxHp:hp,speed:type=="tank"?55:type=="hunter"?120:type=="striker"?150:78,shot:R(400,1500),dash:R(900,1800),flash:0})
 }
 function boss(){let hp=500+wave*70;en.push({x:W/2,y:-60,r:42,type:"boss",boss:1,hp,maxHp:hp,speed:45,shot:700,pattern:0})}
-function fire(){let now=performance.now();if(now-player.last<player.fireRate)return;let t=null,best=1e9;if(save.settings.autoAim)for(const e of en){let q=D(player,e);if(q<best)best=q,t=e}let a=t?A(player,t):save.settings.autoAim?0:Math.atan2(aim.y,aim.x);if(!t&&!save.settings.autoAim&&!aim.active)a=Math.atan2(mouse.y-player.y,mouse.x-player.x);let cr=Math.random()<player.crit;shots.push({x:player.x+Math.cos(a)*18,y:player.y+Math.sin(a)*18,vx:Math.cos(a)*650,vy:Math.sin(a)*650,r:4,damage:player.damage*(cr?2:1),pierce:player.pierce,hit:[],life:900,cr});player.last=now;vib(7)}
+function fire(){
+  let now=performance.now();if(now-player.last<player.fireRate)return;
+  let t=null,best=1e9;if(save.settings.autoAim)for(const e of en){let q=D(player,e);if(q<best)best=q,t=e}
+  let a=t?A(player,t):save.settings.autoAim?0:Math.atan2(aim.y,aim.x);if(!t&&!save.settings.autoAim&&!aim.active)a=Math.atan2(mouse.y-player.y,mouse.x-player.x);
+  let cr=Math.random()<player.crit;shots.push({x:player.x+Math.cos(a)*18,y:player.y+Math.sin(a)*18,vx:Math.cos(a)*680,vy:Math.sin(a)*680,r:4,damage:player.damage*(cr?2:1),pierce:player.pierce,hit:[],life:900,cr});
+  player.last=now;save.stats.shots++;vib(7)
+}
+function skill(){
+  if(!player||player.energy<35||skillT>0)return;
+  player.energy-=35;skillT=900;shake=10;vib([15,30,50]);burst(player.x,player.y,30);
+  for(const e of [...en]){let q=D(player,e);if(q<155){e.hp-=player.skillPower;burst(e.x,e.y,8);if(e.hp<=0)kill(e)}}
+}
 function dash(){if(!dashOK)return;let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*170));player.y=Math.max(18,Math.min(H-18,player.y+q.y*170));player.invuln=380;dashOK=0;dashT=player.dashCooldown;shake=6;vib([18,25,30]);burst(player.x,player.y,18)}
 function hit(n){if(player.invuln>0)return;player.invuln=450;save.stats.damageTaken+=n;if(player.shield){let z=Math.min(player.shield,n);player.shield-=z;n-=z}player.hp-=n;shake=8;vib([20,30]);burst(player.x,player.y,8);if(player.hp<=0)die()}
-function kill(e){save.stats.kills++;save.core+=e.boss?25:e.type=="tank"?4:1;for(let i=0;i<(e.boss?12:3);i++)loot.push({x:e.x+R(-8,8),y:e.y+R(-8,8),v:R(20,90)});burst(e.x,e.y,e.boss?30:10);en.splice(en.indexOf(e),1);saveGame(save)}
-function upd(dt){if(!run||pause)return;dashT-=dt*1000;if(dashT<=0)dashOK=1;let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*player.speed*dt));player.y=Math.max(18,Math.min(H-18,player.y+q.y*player.speed*dt));if(save.settings.autoFire||mouse.down||aim.active)fire();if(spawn>0){wait-=dt*1000;if(wait<=0){enemy();spawn--;wait=R(250,600)}}else if(!en.length){if(bossLive){bossLive=0;if(wave>=30){const ns=nodesAtWave(save,30).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)comm(ns[0]);else finish()}else{wave++;upgrades()}}else if(wave>=30){finish()}else{wave++;upgrades()}}for(let i=shots.length-1;i>=0;i--){let b=shots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt*1000;for(const e of [...en])if(!b.hit.includes(e)&&D(b,e)<b.r+e.r){b.hit.push(e);e.hp-=b.damage;burst(e.x,e.y,b.cr?7:3);if(e.hp<=0)kill(e);if(b.pierce)b.pierce--;else b.life=0}if(b.life<=0||b.x<-50||b.x>W+50||b.y<-50||b.y>H+50)shots.splice(i,1)}for(const e of en){let a=A(e,player);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.shot-=dt*1000;if(e.boss&&e.shot<0){e.shot=700;for(let j=0;j<8;j++){let a=j*Math.PI/4;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,r:5,damage:12,life:3000})}}if(e.type=="hunter"&&e.shot<0){e.shot=1100;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:5,damage:10,life:2500})}if(D(e,player)<e.r+player.r)hit(e.boss?20:8)}for(let i=shots.length-1;i>=0;i--){let b=shots[i];if(b.enemy&&D(b,player)<b.r+player.r){hit(b.damage);shots.splice(i,1)}}for(let i=loot.length-1;i>=0;i--){let z=loot[i],q=D(z,player);if(q<player.magnet){let a=A(z,player);z.v+=300*dt;z.x+=Math.cos(a)*z.v*dt;z.y+=Math.sin(a)*z.v*dt}if(q<18){save.core++;loot.splice(i,1)}}for(let i=fx.length-1;i>=0;i--){let p=fx[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt*1000;if(p.life<0)fx.splice(i,1)}if(player.shield<30)player.shield=Math.min(30,player.shield+dt*2);$("hp").textContent="HP "+Math.max(0,Math.ceil(player.hp))+(player.shield? " +"+Math.ceil(player.shield):"");$("core").textContent="CORE "+save.core}
-function burst(x,y,n){for(let i=0;i<n;i++)fx.push({x,y,vx:R(-100,100),vy:R(-100,100),life:R(250,650),r:R(1,3)})}
+function kill(e){save.stats.kills++;let gain=e.boss?25:e.type=="tank"?4:e.type=="striker"?3:1;save.core+=gain;player.xp+=e.boss?40:5;if(player.xp>=player.level*100){player.xp-=player.level*100;player.level++;player.maxHp+=8;player.hp=player.maxHp;player.maxEnergy+=8;player.energy=player.maxEnergy;vib([20,35,60])}for(let i=0;i<(e.boss?12:3);i++)loot.push({x:e.x+R(-8,8),y:e.y+R(-8,8),v:R(20,90)});burst(e.x,e.y,e.boss?30:10);en.splice(en.indexOf(e),1);saveDirty=1}
+function upd(dt){
+  if(!run||pause)return;
+  player.invuln=Math.max(0,player.invuln-dt*1000);dashT-=dt*1000;skillT-=dt*1000;if(dashT<=0)dashOK=1;
+  player.energy=Math.min(player.maxEnergy,player.energy+player.energyRegen*dt);
+  let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));
+  player.x=Math.max(18,Math.min(W-18,player.x+q.x*player.speed*dt));player.y=Math.max(18,Math.min(H-18,player.y+q.y*player.speed*dt));
+  if(save.settings.autoFire||mouse.down||aim.active)fire();
+  if(spawn>0){wait-=dt*1000;if(wait<=0){enemy();spawn--;wait=R(250,600)}}
+  else if(!en.length){
+    if(bossLive){bossLive=0;if(wave>=30){const ns=nodesAtWave(save,30).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)comm(ns[0]);else finish()}else{wave++;save.stats.waves++;upgrades()}}
+    else if(wave>=30)finish();else{wave++;save.stats.waves++;upgrades()}
+  }
+  for(let i=shots.length-1;i>=0;i--){let b=shots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt*1000;
+    for(const e of [...en])if(!b.hit.includes(e)&&D(b,e)<b.r+e.r){b.hit.push(e);e.hp-=b.damage;save.stats.damage+=b.damage;burst(e.x,e.y,b.cr?7:3);if(e.hp<=0)kill(e);if(b.pierce)b.pierce--;else b.life=0}
+    if(b.life<=0||b.x<-50||b.x>W+50||b.y<-50||b.y>H+50)shots.splice(i,1)
+  }
+  for(const e of en){
+    let a=A(e,player);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.shot-=dt*1000;e.dash-=dt*1000;
+    if(e.type==="striker"&&e.dash<0){e.dash=1800;e.flash=260;e.x+=Math.cos(a)*90;e.y+=Math.sin(a)*90;burst(e.x,e.y,6)}
+    if(e.boss&&e.shot<0){e.shot=900;for(let j=0;j<10;j++){let aa=j*Math.PI/5+e.pattern*.12;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(aa)*180,vy:Math.sin(aa)*180,r:5,damage:12,life:3000});}e.pattern++}
+    if(e.type=="hunter"&&e.shot<0){e.shot=1100;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:5,damage:10,life:2500})}
+    if(D(e,player)<e.r+player.r)hit(e.boss?20:e.type==="striker"?12:8)
+  }
+  for(let i=shots.length-1;i>=0;i--){let b=shots[i];if(b.enemy&&D(b,player)<b.r+player.r){hit(b.damage);shots.splice(i,1)}}
+  for(let i=loot.length-1;i>=0;i--){let z=loot[i],q=D(z,player);if(q<player.magnet){let a=A(z,player);z.v+=300*dt;z.x+=Math.cos(a)*z.v*dt;z.y+=Math.sin(a)*z.v*dt}if(q<18){save.core++;loot.splice(i,1);saveDirty=1}}
+  for(let i=fx.length-1;i>=0;i--){let p=fx[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt*1000;if(p.life<0)fx.splice(i,1)}
+  if(player.shield<player.maxShield)player.shield=Math.min(player.maxShield,player.shield+dt*2);
+  save.stats.playTime+=dt;
+  $("hp").textContent="HP "+Math.max(0,Math.ceil(player.hp))+(player.shield?" +"+Math.ceil(player.shield):"");
+  $("core").textContent="CORE "+save.core;
+  $("hpBar").style.width=Math.max(0,player.hp/player.maxHp*100)+"%";
+  $("energyBar").style.width=Math.max(0,player.energy/player.maxEnergy*100)+"%";
+  $("dashState").textContent=dashOK?"READY":Math.ceil(Math.max(0,dashT)/100)/10+"s";
+  $("skillState").textContent=skillT>0?Math.ceil(skillT/100)/10+"s":Math.floor(player.energy)+"/35";
+  if(saveDirty&&Math.random()<.04){snapshot();saveGame(save);saveDirty=0}
+}function burst(x,y,n){for(let i=0;i<n;i++)fx.push({x,y,vx:R(-100,100),vy:R(-100,100),life:R(250,650),r:R(1,3)})}
 function draw(){x.fillStyle="#050711";x.fillRect(0,0,W,H);let g=x.createRadialGradient(W/2,H/2,10,W/2,H/2,Math.max(W,H)*.7);g.addColorStop(0,"#111d33");g.addColorStop(1,"#04060d");x.fillStyle=g;x.fillRect(0,0,W,H);x.strokeStyle="#142039";for(let a=-40;a<W+40;a+=48){x.beginPath();x.moveTo(a,0);x.lineTo(a,H);x.stroke()}for(let a=-40;a<H+40;a+=48){x.beginPath();x.moveTo(0,a);x.lineTo(W,a);x.stroke()}for(const z of loot){x.fillStyle="#bd8cff";x.beginPath();x.arc(z.x,z.y,4,0,7);x.fill()}for(const b of shots){x.fillStyle=b.enemy?"#ff668a":b.cr?"#fff2a6":"#6ce7ff";x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.fill()}for(const e of en){x.fillStyle=e.boss?"#ff668a":e.type=="tank"?"#c48cff":e.type=="hunter"?"#ffb86b":"#6ce7ff";x.beginPath();x.arc(e.x,e.y,e.r,0,7);x.fill();x.fillStyle="#111";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2,3);x.fillStyle="#7dffb2";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2*Math.max(0,e.hp/e.maxHp),3)}if(player){x.shadowBlur=18;x.shadowColor="#6ce7ff";x.fillStyle="#e9fbff";x.beginPath();x.arc(player.x,player.y,player.r,0,7);x.fill();x.shadowBlur=0}for(const p of fx){x.globalAlpha=p.life/650;x.fillStyle="#8defff";x.fillRect(p.x,p.y,p.r,p.r)}x.globalAlpha=1}
 function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;upd(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 function upgrades(){pause=1;let box=$("upgradeChoices");box.innerHTML="";[...UPGRADES].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{let b=document.createElement("button");b.innerHTML="<b>"+u[1]+"</b><small>"+u[2]+"</small>";b.onclick=()=>{u[3](player);save.upgrades.push(u[0]);saveGame(save);$("upgrade").classList.add("hidden");pause=0;next()};box.appendChild(b)});$("upgradeWave").textContent="WAVE "+wave;$("upgrade").classList.remove("hidden")}

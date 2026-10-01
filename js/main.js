@@ -37,18 +37,30 @@ function next(){
   spawn=wave%5?Math.min(38,6+wave):0;wait=0;bossLive=0;
   const r=wave<=15?REGIONS.r1:REGIONS.r2;save.wave=wave;snapshot();persist();
   $("region").textContent=r.name+" · "+r.subtitle;$("wave").textContent="WAVE "+wave;
-  $("objectiveText").textContent=wave%5?(wave<=15?"清除灰潮湾区域并回收 CORE。":"穿越镜原城区并回收 CORE。"):"警告：高能目标接近。";
+  let objective=wave%5?(wave<=15?"清除区域内敌群。":"穿过镜原城区。"):"高能目标接近。";
+  if(save.flags.route==="fast"&&wave<=15)objective="沿红色信标推进。";
+  if(save.flags.route==="side"&&wave<=15)objective="寻找主路线之外的入口。";
+  if(wave>=7&&wave<15&&!save.flags.watchedAdaptation&&!save.flags.changedAdaptation)objective="注意敌人的移动方式。";
+  if(wave>=16&&wave<25)objective=save.flags.changedHabit?"不要重复刚才的路线。":"观察敌人如何布置位置。";
+  if(wave>=25)objective="击破前方防御单位。";
+  $("objectiveText").textContent=objective;
   if(wave%5===0){boss();bossLive=1}
   const ns=nodesAtWave(save,wave).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)setTimeout(()=>comm(ns[0]),120);
-  if(wave>=7&&!secret&&Math.random()<.3)secretRoom();renderCharacter()
+  const secretChance=save.flags.route==="side"?.58:save.flags.route==="fast"?.16:.3;
+  if(wave>=7&&!secret&&Math.random()<secretChance)secretRoom();renderCharacter()
 }
 function enemy(){
   let s=Math.floor(Math.random()*4),m=35,X=s<2?R(0,W):s==2?-m:W+m,Y=s<2?(s?-m:H+m):R(0,H);
   let roll=Math.random(),type=wave>=10&&roll<.14?"striker":wave>=6&&roll<.34?"tank":wave>=3&&roll<.62?"hunter":"drone";
+  if(save.flags.route==="fast"&&wave<=15&&Math.random()<.22)type="striker";
+  if(save.flags.route==="side"&&wave<=15&&Math.random()<.28)type="hunter";
+  if(save.flags.changedHabit&&wave>=16&&Math.random()<.2)type="striker";
+  if(save.flags.resistedObservation&&wave>=20&&Math.random()<.18)type="tank";
   let hp=type=="tank"?90+wave*10:type=="hunter"?34+wave*5:type=="striker"?48+wave*6:26+wave*4;
+  if(!save.flags["seen_"+type]){save.flags["seen_"+type]=1;save.flags["fragment_"+type]=1}
   en.push({x:X,y:Y,r:type=="tank"?22:type=="striker"?17:14,type,hp,maxHp:hp,speed:type=="tank"?55:type=="hunter"?120:type=="striker"?150:78,shot:R(400,1500),dash:R(900,1800),flash:0})
 }
-function boss(){let hp=500+wave*70;en.push({x:W/2,y:-60,r:42,type:"boss",boss:1,hp,maxHp:hp,speed:45,shot:700,pattern:0})}
+function boss(){let hp=500+wave*70;en.push({x:W/2,y:-60,r:42,type:"boss",boss:1,hp,maxHp:hp,speed:45,shot:700,pattern:0,adaptive:!save.flags.unlearnedEcho})}
 function fire(){
   let now=performance.now();if(now-player.last<player.fireRate)return;
   let t=null,best=1e9;if(save.settings.autoAim)for(const e of en){let q=D(player,e);if(q<best)best=q,t=e}
@@ -63,7 +75,7 @@ function skill(){
 }
 function dash(){if(!dashOK)return;let dx=move.x||((keys.d?1:0)-(keys.a?1:0)),dy=move.y||((keys.s?1:0)-(keys.w?1:0));let q=N(dx||((aim.active?aim.x:0)),dy||((aim.active?aim.y:-1)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*170));player.y=Math.max(18,Math.min(H-18,player.y+q.y*170));player.invuln=380;dashOK=0;dashT=player.dashCooldown;shake=6;vib([18,25,30]);burst(player.x,player.y,18)}
 function hit(n){if(player.invuln>0)return;player.invuln=450;save.stats.damageTaken+=n;if(player.shield){let z=Math.min(player.shield,n);player.shield-=z;n-=z}player.hp-=n;shake=8;vib([20,30]);burst(player.x,player.y,8);if(player.hp<=0)die()}
-function kill(e){save.stats.kills++;let gain=e.boss?25:e.type=="tank"?4:e.type=="striker"?3:1;save.core+=gain;player.xp+=e.boss?40:5;if(player.xp>=player.level*100){player.xp-=player.level*100;player.level++;player.maxHp+=8;player.hp=player.maxHp;player.maxEnergy+=8;player.energy=player.maxEnergy;vib([20,35,60])}for(let i=0;i<(e.boss?12:3);i++)loot.push({x:e.x+R(-8,8),y:e.y+R(-8,8),v:R(20,90)});burst(e.x,e.y,e.boss?30:10);en.splice(en.indexOf(e),1);saveDirty=1}
+function kill(e){save.stats.kills++;if(e.boss){save.flags["boss_"+wave]=1;if(wave===25)save.flags.fragment_boss=1}let gain=e.boss?25:e.type=="tank"?4:e.type=="striker"?3:1;save.core+=gain;player.xp+=e.boss?40:5;if(player.xp>=player.level*100){player.xp-=player.level*100;player.level++;player.maxHp+=8;player.hp=player.maxHp;player.maxEnergy+=8;player.energy=player.maxEnergy;vib([20,35,60])}for(let i=0;i<(e.boss?12:3);i++)loot.push({x:e.x+R(-8,8),y:e.y+R(-8,8),v:R(20,90)});burst(e.x,e.y,e.boss?30:10);en.splice(en.indexOf(e),1);saveDirty=1}
 function upd(dt){
   if(!run||pause)return;
   player.invuln=Math.max(0,player.invuln-dt*1000);dashT-=dt*1000;skillT-=dt*1000;if(dashT<=0)dashOK=1;
@@ -84,7 +96,7 @@ function upd(dt){
     let a=A(e,player),dist=D(e,player);e.shot-=dt*1000;e.dash-=dt*1000;
     let mx=Math.cos(a),my=Math.sin(a);
     if(e.boss){
-      const orbit=Math.sin(performance.now()/900+e.pattern)*.65;mx=Math.cos(a+orbit);my=Math.sin(a+orbit);
+      const orbit=e.adaptive?Math.sin(performance.now()/900+e.pattern)*.65:Math.sin(performance.now()/520+e.pattern)*.25;mx=Math.cos(a+orbit);my=Math.sin(a+orbit);
       if(dist>250){e.x+=mx*e.speed*dt;e.y+=my*e.speed*dt}else{e.x-=mx*e.speed*.35*dt;e.y-=my*e.speed*.35*dt}
       if(e.shot<0){e.shot=850;for(let j=0;j<12;j++){let aa=j*Math.PI/6+e.pattern*.16;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(aa)*190,vy:Math.sin(aa)*190,r:5,damage:12,life:3200})}e.pattern++}
     }else if(e.type==="hunter"){
@@ -115,14 +127,14 @@ function draw(){
   const low=save.settings.lowFx;
 for(const z of loot){x.fillStyle="#bd8cff";x.beginPath();x.arc(z.x,z.y,4,0,7);x.fill()}for(const b of shots){x.fillStyle=b.enemy?"#ff668a":b.cr?"#fff2a6":"#6ce7ff";x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.fill()}for(const e of en){x.fillStyle=e.boss?"#ff668a":e.type=="tank"?"#c48cff":e.type=="striker"?"#ff4fa3":e.type=="hunter"?"#ffb86b":"#6ce7ff";x.beginPath();x.arc(e.x,e.y,e.r,0,7);x.fill();x.fillStyle="#111";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2,3);x.fillStyle="#7dffb2";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2*Math.max(0,e.hp/e.maxHp),3)}if(player){if(player.invuln>0)x.globalAlpha=.55+.45*Math.sin(performance.now()/45);x.shadowBlur=18;x.shadowColor="#6ce7ff";x.fillStyle="#e9fbff";x.beginPath();x.arc(player.x,player.y,player.r,0,7);x.fill();x.shadowBlur=0;x.globalAlpha=1}for(const p of fx){if(!low){x.globalAlpha=p.life/650;x.fillStyle="#8defff";x.fillRect(p.x,p.y,p.r,p.r)}}x.globalAlpha=1;if(shaken)x.restore()}
 function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;upd(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
-function upgrades(){pause=1;let box=$("upgradeChoices");box.innerHTML="";[...UPGRADES].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{let b=document.createElement("button");b.innerHTML="<b>"+u[1]+"</b><small>"+u[2]+"</small>";b.onclick=()=>{u[3](player);save.upgrades.push(u[0]);persist();$("upgrade").classList.add("hidden");pause=0;next()};box.appendChild(b)});$("upgradeWave").textContent="WAVE "+wave;$("upgrade").classList.remove("hidden")}
-function comm(node){pause=1;if(node.id==="comm2")save.tasks.signal="active";if(node.id==="comm4")save.tasks.aster="active";if(node.id==="comm6"||node.id==="comm8")save.tasks.mira="active";if(node.id==="comm10"||node.id==="comm12"||node.id==="comm14"||node.id==="r2_16"||node.id==="r2_27"||node.id==="r2_29"||node.id==="final")save.tasks.protocol="active";save.flags["seen_"+node.id]=1;persist();$("dialogue").classList.remove("hidden");$("speaker").textContent=node.speaker;$("commId").textContent=node.id.toUpperCase();$("dialogueText").textContent=node.text;let box=$("choices");box.innerHTML="";const opts=node.choices.filter(ch=>(ch.conditions||[]).every(c=>canShow(save,{conditions:[c]})));if(!opts.length){box.innerHTML="<p>当前状态下没有可用回应。</p>"}opts.forEach(ch=>{let b=document.createElement("button");b.textContent=ch.label;b.onclick=()=>{const ending=applyChoice(save,node,ch);persist();renderTasks();box.innerHTML="<p>选择已记录。你的经历将进入下一阶段。</p>";if(ending){setTimeout(()=>finish(),250)}};box.appendChild(b)});$("closeDialogue").onclick=()=>{$("dialogue").classList.add("hidden");pause=0;if(node.id==="final"&&!save.flags.ending)save.flags.ending=getEnding(save,wave);persist();if(node.id==="final")finish()}}function secretRoom(){secret=1;save.flags.secretUnlocked=1;persist();pause=1;$("secret").classList.remove("hidden");$("secretText").textContent=found?"CORE已接入。":"房间里只有一台没有型号的终端：是否接入CORE？"}
-$("takeSecret").onclick=()=>{found=1;save.flags.secretFound=1;save.flags.coreTruth=1;save.tasks.core="done";persist();$("secretText").textContent="接入成功。你获得了一段无法解释的坐标。";$("takeSecret").disabled=1;vib([15,30,45])};$("leaveSecret").onclick=()=>{$("secret").classList.add("hidden");pause=0};
+function upgrades(){pause=1;let box=$("upgradeChoices");box.innerHTML="";[...UPGRADES].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{let b=document.createElement("button");b.innerHTML="<b>"+u[1]+"</b><small>"+u[2]+"</small>";b.onclick=()=>{u[3](player);save.upgrades.push(u[0]);save.flags.upgradeCount=(save.flags.upgradeCount||0)+1;save.flags.lastUpgrade=u[0];if(save.flags.upgradeCount===1)save.flags.fragment_upgrade=1;if(u[0]==="speed"||u[0]==="dash")save.flags.mobileBuild=1;if(u[0]==="power"||u[0]==="firerate"||u[0]==="caliber")save.flags.fireBuild=1;persist();$("upgrade").classList.add("hidden");pause=0;next()};box.appendChild(b)});$("upgradeWave").textContent="WAVE "+wave;$("upgrade").classList.remove("hidden")}
+function comm(node){pause=1;if(node.id==="comm2")save.tasks.signal="active";if(node.id==="comm4")save.tasks.aster="active";if(node.id==="comm6"||node.id==="comm8")save.tasks.mira="active";if(node.id==="comm10"||node.id==="comm12"||node.id==="comm14"||node.id==="r2_16"||node.id==="r2_27"||node.id==="r2_29"||node.id==="final")save.tasks.protocol="active";save.flags["seen_"+node.id]=1;persist();$("dialogue").classList.remove("hidden");$("speaker").textContent=node.speaker;$("commId").textContent=node.id.toUpperCase();$("dialogueText").textContent=node.text;let box=$("choices");box.innerHTML="";const opts=node.choices.filter(ch=>(ch.conditions||[]).every(c=>canShow(save,{conditions:[c]})));if(!opts.length){box.innerHTML="<p>当前状态下没有可用回应。</p>"}opts.forEach(ch=>{let b=document.createElement("button");b.textContent=ch.label;b.onclick=()=>{const ending=applyChoice(save,node,ch);persist();renderTasks();box.innerHTML="<p>选择已记录。你的经历将进入下一阶段。</p>";if(ending){setTimeout(()=>finish(),250)}};box.appendChild(b)});$("closeDialogue").onclick=()=>{$("dialogue").classList.add("hidden");pause=0;if(node.id==="final"&&!save.flags.ending)save.flags.ending=getEnding(save,wave);persist();if(node.id==="final")finish()}}function secretRoom(){secret=1;save.flags.secretUnlocked=1;save.flags.fragment_room=1;persist();pause=1;$("secret").classList.remove("hidden");$("secretText").textContent=found?"终端仍在等待。":"房间里只有一台没有型号的终端。CORE似乎能让它启动。"}
+$("takeSecret").onclick=()=>{found=1;save.flags.secretFound=1;save.flags.coreTruth=1;save.flags.fragment_coordinate=1;save.tasks.core="done";persist();$("secretText").textContent="终端亮起了一秒。没有坐标，只有一条新的路线。";$("takeSecret").disabled=1;vib([15,30,45])};$("leaveSecret").onclick=()=>{$("secret").classList.add("hidden");pause=0};
 function finish(){snapshot();run=0;const k=getEnding(save,wave)||"survivor";save.flags.ending=k;const e=ENDINGS[k]||ENDINGS.survivor;$("death").classList.add("hidden");$("endingTitle").textContent=e[0];$("endingText").textContent=e[1];$("ending").classList.remove("hidden");$("touch").style.display="none";persist()}
 function die(){snapshot();run=0;$("deathReason").textContent="生命信号丢失。你到达 WAVE "+wave+"，回收 CORE "+save.core+"。";$("death").classList.remove("hidden");$("touch").style.display="none";persist()}
 function renderTasks(){if(!$("taskList"))return;const labels={active:"进行中",done:"已完成","":"未开始"};$("taskList").innerHTML=Object.entries(TASKS).map(([k,t])=>{const st=save.tasks[k]||"";return "<div class='loreItem'><b>"+t.title+" · "+labels[st]+"</b><p>"+t.desc+"</p></div>"}).join("")}
 function tasks(){pause=1;renderTasks();$("tasks").classList.remove("hidden")}
-function lore(){pause=1;$("lore").classList.remove("hidden");$("loreList").innerHTML=LORE.map(a=>"<div class='loreItem'><b>"+a[0]+"</b><p>"+a[1]+"</p></div>").join("")}
+function lore(){pause=1;$("lore").classList.remove("hidden");const foundFragments=[["fragment_drone","敌方单位","它们会改变路线。"],["fragment_hunter","追踪单位","它们会等待你改变方向。"],["fragment_tank","重型单位","它们会封锁你已经使用过的位置。"],["fragment_striker","突击单位","它们会在你犹豫时靠近。"],["fragment_upgrade","第一次升级","你的第一次强化被记录了。"],["fragment_room","隐藏房间","房间似乎一直在等一个合适的CORE。"],["fragment_coordinate","终端残留","它没有给出答案，只改变了你的路线。"],["fragment_boss","防御者","它会重复你已经使用过的东西。"]];const unlocked=foundFragments.filter(a=>save.flags[a[0]]);$("loreList").innerHTML=unlocked.length?unlocked.map(a=>"<div class='loreItem'><b>"+a[1]+"</b><p>"+a[2]+"</p></div>").join(""):"<div class='loreItem'><b>暂无记录</b><p>战斗中发现的异常会在这里留下碎片。</p></div>"}
 function renderCharacter(){
   if(!player)return;
   $("charRank").textContent="RANK "+String(player.level).padStart(2,"0");

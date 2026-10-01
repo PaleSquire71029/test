@@ -39,7 +39,7 @@ export const STORY={
  choice("trust_gear","继续使用现有装备",{flags:{sameTechAccepted:true},task:{protocol:"active"}}),
  choice("disable_aim","暂时关闭自动瞄准进行验证",{flags:{aimTested:true},task:{protocol:"active"}})
  ]},
- comm12:{id:"comm12",wave:12,speaker:"SYSTEM","title:"地图冲突",text:`“警告：区域坐标发生变化。”\n\n你打开地图。\n\n敌人实际出现的位置，与任务地图标记的位置完全不同。\n\nAster确认：\n\n“不是地图错了。”\n\n“是灰潮湾正在被另一个地区的地图覆盖。”\n\n“那个地区叫镜原。”\n\n“而且镜原正在把你的战斗数据当成实时测试数据。”`,choices:[
+ comm12:{id:"comm12",wave:12,speaker:"SYSTEM",title:"地图冲突",text:`“警告：区域坐标发生变化。”\n\n你打开地图。\n\n敌人实际出现的位置，与任务地图标记的位置完全不同。\n\nAster确认：\n\n“不是地图错了。”\n\n“是灰潮湾正在被另一个地区的地图覆盖。”\n\n“那个地区叫镜原。”\n\n“而且镜原正在把你的战斗数据当成实时测试数据。”`,choices:[
  choice("record_conflict","保存地图冲突记录",{flags:{mapConflict:true},task:{archive:"done"}}),
  choice("push_forward","先突破区域封锁",{flags:{forcedAdvance:true}})
  ]},
@@ -47,7 +47,7 @@ export const STORY={
  choice("enter_mirror","使用CORE开启镜原入口",{flags:{mirrorEntry:true},task:{region2:"active",core:"done"}}),
  choice("stay_grey","拒绝进入，只保存灰潮湾数据",{flags:{refusedMirror:true},task:{archive:"done"}})
  ]},
- r2_16:{id:"r2_16",wave:16,speaker:"SYSTEM","title:"镜原欢迎协议",text:`“身份确认：VOID-01。”\n\n“权限：异常回收单位。”\n\n你刚踏入镜原，街区里的防御系统就把你标记成了敌对目标。\n\n但最奇怪的不是这一点。\n\n屏幕上显示的敌方配置，与你刚才在灰潮湾遇到的单位完全相同。\n\n区别只有一个：\n\n镜原的敌人没有失控。\n\n它们正在按照命令执行。`,choices:[
+ r2_16:{id:"r2_16",wave:16,speaker:"SYSTEM",title:"镜原欢迎协议",text:`“身份确认：VOID-01。”\n\n“权限：异常回收单位。”\n\n你刚踏入镜原，街区里的防御系统就把你标记成了敌对目标。\n\n但最奇怪的不是这一点。\n\n屏幕上显示的敌方配置，与你刚才在灰潮湾遇到的单位完全相同。\n\n区别只有一个：\n\n镜原的敌人没有失控。\n\n它们正在按照命令执行。`,choices:[
  choice("observe","记录镜原的敌方配置",{flags:{mirrorObserved:true},task:{region2:"active"}}),
  choice("fight_through","直接突破封锁",{flags:{mirrorAssault:true},task:{region2:"active"}})
  ]},

@@ -59,9 +59,11 @@ export const STORY={
   choice("publish_truth","留下完整真相，即使它没有英雄",{flags:{truthKept:true},task:{archive:"done"}}),
   choice("protect_people","隐藏部分细节，优先保护仍然活着的人",{flags:{peopleProtected:true}})
  ]},
- final:{id:"final",wave:15,speaker:"ECHO",title:"回声协议",text:"“你终于看到了完整记录。”\n\n“不同的人，会从这里带走不同的东西。”\n“有人记住林舟，有人记住那43秒，有人记住自己曾经选择相信，也有人记住自己曾经沉默。”\n\n“但记录不会替你判断。”\n“它只把发生过的事情留在那里。”\n\n“所以最后的问题只有一个：”\n\n“当真相不再需要你相信，它仍然需要你负责吗？”",choices:[
-  choice("accept_truth","接受记录",{ending:"truth",choices:{endingRoute:"accepted"},task:{protocol:"done"}})
- ]}}
+ final1:{id:"final1",wave:15,speaker:"ECHO",title:"终章 · 汇流",text:"“十五轮之后，所有被分开的记录开始重新排列。\n\n屏幕上出现三条时间线。\n\n一条来自Aster：她相信自己的时间戳，却逐渐发现自己的判断也可能有偏差。\n一条来自Mira：她追着被删除的地点，却发现‘被删除’本身就是一种权力。\n还有一条属于你：你曾经选择追问、沉默、保存，或者继续前进。\n\n它们最终指向同一个时间点：事故发生前十七分钟。\n\n没有哪条路线拥有全部真相。”",choices:[choice("continue","继续查看完整记录",{task:{protocol:"active"}})]},
+ final2:{id:"final2",wave:15,speaker:"CORE",title:"终章 · 四十三秒",text:"“第一份证据：被删除的43秒。\n\n画面没有出现凶手。\n只有几个人在事故前后做出的普通操作。\n\n有人认为删掉无关画面可以节省存储。\n有人发现异常，却认为应该交给上级处理。\n有人知道记录不完整，却选择先完成任务。\n\n每一个决定单独看，都像是可以理解的。\n\n当它们连在一起，事故才真正形成。\n\n你终于看见：灾难不一定从恶意开始。”",choices:[choice("continue","继续查看幸存者记录",{task:{protocol:"active"}})]},
+ final3:{id:"final3",wave:15,speaker:"CORE",title:"终章 · 被删除的人",text:"“第二份证据：林舟。\n\n完整档案显示，他不是英雄，也不是叛徒。\n他曾经犯错，也曾经试图纠正错误。\n\n最后一次操作，他把原始档案复制到了无人拥有权限的存储区。\n\n随后，他被标记为‘主动离场’。\n\n没有人知道是谁改的。\n\n真正改变他的不是某一次审判，而是记录里逐渐没有人再提起他的名字。\n\n一个人第二次消失，是从记忆里消失。”",choices:[choice("continue","继续查看最后记录",{task:{protocol:"active"}})]},
+ final4:{id:"final4",wave:15,speaker:"SYSTEM",title:"终章 · 你也在记录里",text:"“第三份证据：观察者。\n\n系统展开你的选择记录。\n\n你相信过Aster。\n你怀疑过系统。\n你追过Mira的信号。\n你也曾经为了继续前进而放弃追问。\n\n这些选择没有被评价。\n\n系统只是告诉你：\n你无法要求历史诚实，却要求自己的选择被隐藏。\n\n从现在开始，你也是这份记录的一部分。”",choices:[choice("continue","面对最终问题",{task:{protocol:"active"}})]},
+ final5:{id:"final5",wave:15,speaker:"ECHO",title:"终章 · 回声协议",text:"“现在，所有路线汇合。\n\nAster的证词、Mira找到的名字、林舟留下的档案、被删除的43秒，以及你的选择，被放进同一份记录。\n\n它们互相矛盾，也互相补充。\n没有英雄。没有唯一的恶人。也没有一个选择可以抹掉其他选择。\n\n你可以继续争论谁应该负责。\n但在争论之前，先把发生过的事情留下来。\n\n当真相不再需要你相信，它仍然需要你负责吗？”",choices:[choice("accept_truth","接受记录",{ending:"truth",choices:{endingRoute:"accepted"},task:{protocol:"done"}})]}}
 export function initStory(save){save.choices??={};save.choiceLog??=[];save.flags??={};save.tasks??={};for(const k of Object.keys(TASKS))save.tasks[k]??="";return save}
 function cond(save,c){if(!c)return true;if(c.flag)return c.equals===undefined?!!save.flags[c.flag]:!!save.flags[c.flag]===c.equals;if(c.choice)return save.choices[c.choice]===c.equals;if(c.task)return save.tasks[c.task]===c.equals;return true}
 export function canShow(save,node){return (node.conditions||[]).every(c=>cond(save,c))}

@@ -13,7 +13,7 @@ function snapshot(){
 function restorePlayer(){
   player=basePlayer();
   if(save.player)Object.assign(player,save.player);
-  player.x=W/2;player.y=H/2;player.last=0;player.invuln=700;
+  player.x=W/2;player.y=H/2;player.last=0;player.invuln=700;if(player.hp<=0){player.hp=player.maxHp;player.shield=player.maxShield;player.energy=player.maxEnergy}
 }
 function start(fresh=true){
   if(fresh){Object.assign(save,defaults());save.stats.runs=1;save.tasks.signal="active";secret=false;found=false}

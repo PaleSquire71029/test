@@ -148,7 +148,7 @@ function sync(){["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].
 const hasSaveLabel=true;
 let saveErrorShown=false;
 function persist(){
-  try{persist();saveErrorShown=false;return true}
+  try{saveGame(save);saveErrorShown=false;return true}
   catch(err){
     console.error("VOID//RUN save failed",err);
     if(!saveErrorShown){

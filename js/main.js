@@ -1,4 +1,4 @@
-import{UPGRADES,LORE,ENDINGS,REGIONS}from"./data.js?v=695e9d2d";import{loadSave,saveGame,defaults,makeExport,parseImport,clearSave,saveLabel}from"./save.js?v=695e9d2d";import{TASKS,STORY,initStory,applyChoice,nodesAtWave,getEnding,canShow}from"./story.js?v=695e9d2d";
+import{UPGRADES,LORE,ENDINGS,REGIONS}from"./data.js?v=60c6455e";import{loadSave,saveGame,defaults,makeExport,parseImport,clearSave,saveLabel}from"./save.js?v=60c6455e";import{TASKS,STORY,initStory,applyChoice,nodesAtWave,getEnding,canShow}from"./story.js?v=60c6455e";
 const $=id=>document.getElementById(id),c=$("game"),x=c.getContext("2d");let W,H,d=1,last=0,run=0,pause=0,wave=1,spawn=0,wait=0,shake=0,bossLive=0,player,en=[],shots=[],loot=[],fx=[],keys={},mouse={x:0,y:0,down:0},move={x:0,y:0},aim={x:1,y:0,active:0},dashOK=1,dashT=0,skillT=0,saveDirty=0,hudClock=0,bgCanvas,bgCtx,bgW=0,bgH=0;const save=initStory(loadSave());let secret=!!save.flags.secretUnlocked,found=!!save.flags.secretFound;
 function rebuildBackground(){
   bgCanvas=document.createElement("canvas");bgCanvas.width=Math.max(1,Math.ceil(W));bgCanvas.height=Math.max(1,Math.ceil(H));bgCtx=bgCanvas.getContext("2d");

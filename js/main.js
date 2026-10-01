@@ -1,14 +1,45 @@
-import{UPGRADES,LORE,ENDINGS,REGIONS}from"./data.js";import{loadSave,saveGame}from"./save.js";import{TASKS,STORY,initStory,applyChoice,nodesAtWave,getEnding,canShow}from"./story.js";
-const $=id=>document.getElementById(id),c=$("game"),x=c.getContext("2d");let W,H,d=1,last=0,run=0,pause=0,wave=1,spawn=0,wait=0,shake=0,bossLive=0,player,en=[],shots=[],loot=[],fx=[],keys={},mouse={x:0,y:0,down:0},move={x:0,y:0},aim={x:1,y:0,active:0},dashOK=1,dashT=0;const save=initStory(loadSave());let secret=!!save.flags.secretUnlocked,found=!!save.flags.secretFound;
+import{UPGRADES,LORE,ENDINGS,REGIONS}from"./data.js";import{loadSave,saveGame,defaults,makeExport,parseImport,clearSave,saveLabel}from"./save.js";import{TASKS,STORY,initStory,applyChoice,nodesAtWave,getEnding,canShow}from"./story.js";
+const $=id=>document.getElementById(id),c=$("game"),x=c.getContext("2d");let W,H,d=1,last=0,run=0,pause=0,wave=1,spawn=0,wait=0,shake=0,bossLive=0,player,en=[],shots=[],loot=[],fx=[],keys={},mouse={x:0,y:0,down:0},move={x:0,y:0},aim={x:1,y:0,active:0},dashOK=1,dashT=0,skillT=0,saveDirty=0;const save=initStory(loadSave());let secret=!!save.flags.secretUnlocked,found=!!save.flags.secretFound;
 function resize(){W=innerWidth;H=innerHeight;d=Math.min(devicePixelRatio||1,2);c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0)}addEventListener("resize",resize);resize();
 const vib=p=>save.settings.vibrate&&navigator.vibrate&&navigator.vibrate(p),R=(a,b)=>a+Math.random()*(b-a),N=(a,b)=>{let l=Math.hypot(a,b)||1;return{x:a/l,y:b/l}},D=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),A=(a,b)=>Math.atan2(b.y-a.y,b.x-a.x);
-function start(){player={x:W/2,y:H/2,r:15,hp:100,maxHp:100,shield:0,speed:230,damage:18,fireRate:210,last:0,pierce:0,crit:.08,dashCooldown:1800,magnet:70};en=[];shots=[];loot=[];fx=[];wave=1;spawn=0;wait=0;dashOK=1;run=1;pause=0;save.stats.runs++;save.wave=1;save.core=0;save.upgrades=[];delete save.flags.ending;save.tasks.signal="active";saveGame(save);for(const q of document.querySelectorAll(".screen,.panel"))q.classList.add("hidden");$("hud").style.display="block";$("touch").style.display="block";next()}
-function next(){spawn=wave%5?6+wave*2:0;wait=0;bossLive=0;const r=wave<=15?REGIONS.r1:REGIONS.r2;save.wave=wave;saveGame(save);$("region").textContent=r.name+" · "+r.subtitle;$("wave").textContent="WAVE "+wave;$("objective").textContent=wave%5?(wave<=15?"清除灰潮湾区域并回收CORE。":"穿越镜原城区并回收CORE。"):"警告：高能目标接近。";if(wave%5){}else{boss();bossLive=1}const ns=nodesAtWave(save,wave).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)setTimeout(()=>comm(ns[0]),120);if(wave>=7&&!secret&&Math.random()<.3)secretRoom()}
-function enemy(){let s=Math.floor(Math.random()*4),m=35,X=s<2?R(0,W):s==2?-m:W+m,Y=s<2?(s?-m:H+m):R(0,H),type=wave>=6&&Math.random()<.2?"tank":wave>=3&&Math.random()<.3?"hunter":"drone",hp=type=="tank"?90+wave*10:type=="hunter"?34+wave*5:26+wave*4;en.push({x:X,y:Y,r:type=="tank"?22:14,type,hp,maxHp:hp,speed:type=="tank"?55:type=="hunter"?120:78,shot:R(400,1500)})}
-function boss(){let hp=500+wave*70;en.push({x:W/2,y:-60,r:42,type:"boss",boss:1,hp,maxHp:hp,speed:45,shot:700})}
+function basePlayer(){
+  return{x:W/2,y:H/2,r:15,hp:100,maxHp:100,shield:0,maxShield:30,energy:100,maxEnergy:100,energyRegen:12,speed:230,damage:18,fireRate:210,last:0,pierce:0,crit:.08,dashCooldown:1800,magnet:70,level:1,xp:0,invuln:0,skillPower:70}
+}
+function snapshot(){
+  if(!player)return;
+  save.player={hp:player.hp,maxHp:player.maxHp,shield:player.shield,maxShield:player.maxShield,energy:player.energy,maxEnergy:player.maxEnergy,energyRegen:player.energyRegen,speed:player.speed,damage:player.damage,fireRate:player.fireRate,pierce:player.pierce,crit:player.crit,dashCooldown:player.dashCooldown,magnet:player.magnet,level:player.level,xp:player.xp,skillPower:player.skillPower};
+  save.checkpoint="wave-"+wave;
+}
+function restorePlayer(){
+  player=basePlayer();
+  if(save.player)Object.assign(player,save.player);
+  player.x=W/2;player.y=H/2;player.last=0;player.invuln=700;
+}
+function start(fresh=true){
+  if(fresh){Object.assign(save,defaults());save.stats.runs=1;save.tasks.signal="active"}
+  restorePlayer();en=[];shots=[];loot=[];fx=[];wave=fresh?1:Math.max(1,save.wave||1);spawn=0;wait=0;dashOK=1;dashT=0;skillT=0;run=1;pause=0;delete save.flags.ending;save.wave=wave;saveGame(save);
+  for(const q of document.querySelectorAll(".screen,.panel"))q.classList.add("hidden");
+  $("hud").style.display="block";$("touch").style.display="block";sync();renderCharacter();next()
+}
+function next(){
+  spawn=wave%5?6+wave*2:0;wait=0;bossLive=0;
+  const r=wave<=15?REGIONS.r1:REGIONS.r2;save.wave=wave;snapshot();saveGame(save);
+  $("region").textContent=r.name+" · "+r.subtitle;$("wave").textContent="WAVE "+wave;
+  $("objective").textContent=wave%5?(wave<=15?"清除灰潮湾区域并回收CORE。":"穿越镜原城区并回收CORE。"):"警告：高能目标接近。";
+  if(!wave%5){}else{if(wave%5===0){boss();bossLive=1}}
+  const ns=nodesAtWave(save,wave).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)setTimeout(()=>comm(ns[0]),120);
+  if(wave>=7&&!secret&&Math.random()<.3)secretRoom();renderCharacter()
+}
+function enemy(){
+  let s=Math.floor(Math.random()*4),m=35,X=s<2?R(0,W):s==2?-m:W+m,Y=s<2?(s?-m:H+m):R(0,H);
+  let roll=Math.random(),type=wave>=10&&roll<.14?"striker":wave>=6&&roll<.34?"tank":wave>=3&&roll<.62?"hunter":"drone";
+  let hp=type=="tank"?90+wave*10:type=="hunter"?34+wave*5:type=="striker"?48+wave*6:26+wave*4;
+  en.push({x:X,y:Y,r:type=="tank"?22:type=="striker"?17:14,type,hp,maxHp:hp,speed:type=="tank"?55:type=="hunter"?120:type=="striker"?150:78,shot:R(400,1500),dash:R(900,1800),flash:0})
+}
+function boss(){let hp=500+wave*70;en.push({x:W/2,y:-60,r:42,type:"boss",boss:1,hp,maxHp:hp,speed:45,shot:700,pattern:0})}
 function fire(){let now=performance.now();if(now-player.last<player.fireRate)return;let t=null,best=1e9;if(save.settings.autoAim)for(const e of en){let q=D(player,e);if(q<best)best=q,t=e}let a=t?A(player,t):save.settings.autoAim?0:Math.atan2(aim.y,aim.x);if(!t&&!save.settings.autoAim&&!aim.active)a=Math.atan2(mouse.y-player.y,mouse.x-player.x);let cr=Math.random()<player.crit;shots.push({x:player.x+Math.cos(a)*18,y:player.y+Math.sin(a)*18,vx:Math.cos(a)*650,vy:Math.sin(a)*650,r:4,damage:player.damage*(cr?2:1),pierce:player.pierce,hit:[],life:900,cr});player.last=now;vib(7)}
-function dash(){if(!dashOK)return;let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*150));player.y=Math.max(18,Math.min(H-18,player.y+q.y*150));dashOK=0;dashT=player.dashCooldown;shake=6;vib([18,25,30]);burst(player.x,player.y,15)}
-function hit(n){if(player.shield){let s=Math.min(player.shield,n);player.shield-=s;n-=s}player.hp-=n;shake=8;vib([20,30]);burst(player.x,player.y,8);if(player.hp<=0)die()}
+function dash(){if(!dashOK)return;let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*170));player.y=Math.max(18,Math.min(H-18,player.y+q.y*170));player.invuln=380;dashOK=0;dashT=player.dashCooldown;shake=6;vib([18,25,30]);burst(player.x,player.y,18)}
+function hit(n){if(player.invuln>0)return;player.invuln=450;save.stats.damageTaken+=n;if(player.shield){let z=Math.min(player.shield,n);player.shield-=z;n-=z}player.hp-=n;shake=8;vib([20,30]);burst(player.x,player.y,8);if(player.hp<=0)die()}
 function kill(e){save.stats.kills++;save.core+=e.boss?25:e.type=="tank"?4:1;for(let i=0;i<(e.boss?12:3);i++)loot.push({x:e.x+R(-8,8),y:e.y+R(-8,8),v:R(20,90)});burst(e.x,e.y,e.boss?30:10);en.splice(en.indexOf(e),1);saveGame(save)}
 function upd(dt){if(!run||pause)return;dashT-=dt*1000;if(dashT<=0)dashOK=1;let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*player.speed*dt));player.y=Math.max(18,Math.min(H-18,player.y+q.y*player.speed*dt));if(save.settings.autoFire||mouse.down||aim.active)fire();if(spawn>0){wait-=dt*1000;if(wait<=0){enemy();spawn--;wait=R(250,600)}}else if(!en.length){if(bossLive){bossLive=0;if(wave>=30){const ns=nodesAtWave(save,30).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)comm(ns[0]);else finish()}else{wave++;upgrades()}}else if(wave>=30){finish()}else{wave++;upgrades()}}for(let i=shots.length-1;i>=0;i--){let b=shots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt*1000;for(const e of [...en])if(!b.hit.includes(e)&&D(b,e)<b.r+e.r){b.hit.push(e);e.hp-=b.damage;burst(e.x,e.y,b.cr?7:3);if(e.hp<=0)kill(e);if(b.pierce)b.pierce--;else b.life=0}if(b.life<=0||b.x<-50||b.x>W+50||b.y<-50||b.y>H+50)shots.splice(i,1)}for(const e of en){let a=A(e,player);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.shot-=dt*1000;if(e.boss&&e.shot<0){e.shot=700;for(let j=0;j<8;j++){let a=j*Math.PI/4;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,r:5,damage:12,life:3000})}}if(e.type=="hunter"&&e.shot<0){e.shot=1100;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,r:5,damage:10,life:2500})}if(D(e,player)<e.r+player.r)hit(e.boss?20:8)}for(let i=shots.length-1;i>=0;i--){let b=shots[i];if(b.enemy&&D(b,player)<b.r+player.r){hit(b.damage);shots.splice(i,1)}}for(let i=loot.length-1;i>=0;i--){let z=loot[i],q=D(z,player);if(q<player.magnet){let a=A(z,player);z.v+=300*dt;z.x+=Math.cos(a)*z.v*dt;z.y+=Math.sin(a)*z.v*dt}if(q<18){save.core++;loot.splice(i,1)}}for(let i=fx.length-1;i>=0;i--){let p=fx[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt*1000;if(p.life<0)fx.splice(i,1)}if(player.shield<30)player.shield=Math.min(30,player.shield+dt*2);$("hp").textContent="HP "+Math.max(0,Math.ceil(player.hp))+(player.shield? " +"+Math.ceil(player.shield):"");$("core").textContent="CORE "+save.core}
 function burst(x,y,n){for(let i=0;i<n;i++)fx.push({x,y,vx:R(-100,100),vy:R(-100,100),life:R(250,650),r:R(1,3)})}

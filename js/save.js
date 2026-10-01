@@ -1,1 +1,59 @@
-const KEY="voidrun-save-v3";const D={wave:1,core:0,choices:{},choiceLog:[],flags:{},tasks:{},stats:{kills:0,runs:0},upgrades:[],settings:{vibrate:true,autoAim:true,autoFire:true,leftHand:false,sensitivity:1}};export function loadSave(){try{return Object.assign(structuredClone(D),JSON.parse(localStorage.getItem(KEY)||"{}"))}catch{return structuredClone(D)}}export function saveGame(s){localStorage.setItem(KEY,JSON.stringify(s))}export function hasSave(){return !!localStorage.getItem(KEY)}
+const KEY="voidrun-save-v4";
+const D={
+  version:4,
+  createdAt:0,
+  updatedAt:0,
+  wave:1,
+  core:0,
+  choices:{},
+  choiceLog:[],
+  flags:{},
+  tasks:{},
+  stats:{kills:0,runs:0,shots:0,damage:0,damageTaken:0,waves:0,playTime:0},
+  upgrades:[],
+  player:null,
+  settings:{vibrate:true,autoAim:true,autoFire:true,leftHand:false,sensitivity:1},
+  checkpoint:"wave-1"
+};
+function clone(v){return typeof structuredClone==="function"?structuredClone(v):JSON.parse(JSON.stringify(v))}
+export function defaults(){return clone(D)}
+function merge(base,src){
+  if(!src||typeof src!=="object")return base;
+  for(const k of Object.keys(src)){
+    if(src[k]&&typeof src[k]==="object"&&!Array.isArray(src[k])&&base[k]&&typeof base[k]==="object")merge(base[k],src[k]);
+    else if(src[k]!==undefined)base[k]=src[k];
+  }
+  return base
+}
+export function loadSave(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(!raw)return clone(D);
+    const s=merge(clone(D),raw);
+    s.version=4;
+    s.settings=merge(clone(D.settings),s.settings);
+    return s
+  }catch{return clone(D)}
+}
+export function saveGame(s){
+  if(!s.createdAt)s.createdAt=Date.now();
+  s.updatedAt=Date.now();
+  localStorage.setItem(KEY,JSON.stringify(s))
+}
+export function hasSave(){return !!localStorage.getItem(KEY)}
+export function clearSave(){localStorage.removeItem(KEY)}
+export function saveLabel(s){
+  const when=s.updatedAt?new Date(s.updatedAt).toLocaleString("zh-CN",{hour12:false}):"无记录";
+  return "WAVE "+(s.wave||1)+" · CORE "+(s.core||0)+" · "+when
+}
+export function makeExport(s){
+  const payload={format:"VOID//RUN SAVE",version:4,exportedAt:new Date().toISOString(),game:"VOID//RUN — 虚空回响",save:clone(s)};
+  return JSON.stringify(payload,null,2)
+}
+export function parseImport(text){
+  const p=JSON.parse(text);
+  const s=p&&p.save?p.save:p;
+  if(!s||typeof s!=="object"||typeof s.wave!=="number")throw new Error("INVALID_SAVE");
+  return merge(clone(D),s)
+}
+export function saveKey(){return KEY}

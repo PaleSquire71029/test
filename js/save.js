@@ -12,7 +12,7 @@ const D={
   stats:{kills:0,runs:0,shots:0,damage:0,damageTaken:0,waves:0,playTime:0},
   upgrades:[],
   player:null,
-  settings:{vibrate:true,autoAim:true,autoFire:true,leftHand:false,sensitivity:1},
+  settings:{vibrate:true,autoAim:true,autoFire:true,leftHand:false,sensitivity:1,lowFx:false,showHints:true},
   checkpoint:"wave-1"
 };
 function clone(v){return typeof structuredClone==="function"?structuredClone(v):JSON.parse(JSON.stringify(v))}
@@ -38,7 +38,7 @@ export function loadSave(){
 export function saveGame(s){
   if(!s.createdAt)s.createdAt=Date.now();
   s.updatedAt=Date.now();
-  localStorage.setItem(KEY,JSON.stringify(s))
+  const raw=JSON.stringify(s);try{localStorage.setItem(KEY+"-backup",localStorage.getItem(KEY)||"")}catch{};localStorage.setItem(KEY,raw)
 }
 export function hasSave(){return !!localStorage.getItem(KEY)}
 export function clearSave(){localStorage.removeItem(KEY)}
@@ -51,7 +51,7 @@ export function makeExport(s){
   return JSON.stringify(payload,null,2)
 }
 export function parseImport(text){
-  const p=JSON.parse(text);
+  if(typeof text!=="string"||text.length>2_000_000)throw new Error("INVALID_SAVE_SIZE");const p=JSON.parse(text);
   const s=p&&p.save?p.save:p;
   if(!s||typeof s!=="object"||typeof s.wave!=="number")throw new Error("INVALID_SAVE");
   return merge(clone(D),s)

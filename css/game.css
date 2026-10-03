@@ -193,3 +193,26 @@ body.dialogue-open #miniMap,body.dialogue-open #questGuide{opacity:0!important;p
  #miniMap,#questGuide{display:none!important}
 }
 body.game-running #miniMap{display:block}body.game-running #questGuide{display:flex}
+/* mobile-layout-fix-03 */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  #miniMap{left:18px!important;top:12px!important;width:132px!important;height:132px!important;z-index:80!important}
+  #quest{left:18px!important;top:154px!important;width:270px!important;min-height:52px!important}
+  .brand{left:18px!important;top:10px!important}
+  .region{top:10px!important}
+  #hud header button{right:18px!important;top:10px!important;width:44px!important;height:44px!important}
+  #questGuide{top:58px!important;z-index:75!important}
+  #combat{top:11%!important;z-index:70!important}
+  #interact{bottom:24%!important;z-index:70!important}
+  .player-card{left:18px!important;bottom:16px!important;z-index:70!important}
+  .mobile-controls-layer{z-index:100!important;pointer-events:none!important}
+  .mobile-controls-layer #joy{left:max(20px,env(safe-area-inset-left) + 12px)!important;bottom:max(18px,env(safe-area-inset-bottom) + 8px)!important;width:124px!important;height:124px!important}
+  .mobile-controls-layer .mobile-actions{right:max(20px,env(safe-area-inset-right) + 12px)!important;bottom:max(18px,env(safe-area-inset-bottom) + 8px)!important;gap:10px!important}
+  .mobile-controls-layer .mobile-actions button{width:58px!important;height:58px!important;font-size:12px!important}
+  .mobile-controls-layer .mobile-actions button:first-child{width:78px!important;height:78px!important;font-size:16px!important}
+  .mobile-controls-layer .mobile-actions button:last-child{display:none!important}
+  .mobile-controls-layer .mobile-actions button:last-child.ready{display:block!important}
+}
+body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGuide,body.dialogue-open #mobileControls{opacity:0!important;pointer-events:none!important}
+#dialogue{z-index:400!important}
+#dialogue .dialogue-box{max-height:min(30vh,220px);overflow:auto}
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){#dialogue{padding:12px 18px!important}#dialogue .dialogue-box{width:min(900px,92vw)!important;min-height:118px!important;padding:18px 24px 16px 94px!important}}

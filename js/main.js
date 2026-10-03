@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 
 const state={
  started:false,hp:820,maxHp:820,stamina:100,time:6.7,coins:126,wood:0,ore:0,herbs:3,
- quest:0,kills:0,enemy:null,dialogue:false,interacting:null,settings:{low:false},
+ quest:0,kills:0,enemy:null,dialogue:false,menuOpen:false,interacting:null,settings:{low:false},
  bag:["旅者短剑","野外地图","晨雾草 ×3"],equipment:{weapon:"旅者短剑",power:95},
  chestsOpened:0,level:7,xp:0,nextXp:240,defeatedBoss:false,echoes:0,combo:0,comboTimer:0
 };
@@ -170,8 +170,9 @@ $("startBtn")?.addEventListener("click",async()=>{
    $("mobileControls")?.classList.remove("hidden");
    syncMobileUI();loadGame();notify("欢迎来到晨雾谷");focusQuest();
  });
- $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
- $("closeMenu")?.addEventListener("click",()=>$("menu")?.classList.add("hidden"));
+ $("menuBtn")?.addEventListener("click",()=>{state.menuOpen=true;$("menu")?.classList.remove("hidden");document.body.classList.add("menu-open");renderTab("map")});
+ $("closeMenu")?.addEventListener("click",()=>{state.menuOpen=false;$("menu")?.classList.add("hidden");document.body.classList.remove("menu-open")});
+ $("menu")?.addEventListener("click",e=>{if(e.target===$("menu")){$("closeMenu")?.click()}});
  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
  }));
@@ -223,11 +224,20 @@ function nextDialogue(){
 
 function renderTab(tab){
  const box=$("tabContent");if(!box)return;
- if(tab==="map")box.innerHTML='<div class="tab-body"><h3>晨雾谷</h3><div class="map-box" style="height:280px"><span class="map-pin" style="left:42%;top:38%"></span><span class="map-pin" style="left:69%;top:68%"></span><span class="map-pin" style="left:51%;top:49%"></span></div><div class="stat-row"><span>已探索区域</span><b>'+Math.round(exploredPercent())+'%</b></div><div class="stat-row"><span>当前位置</span><b>'+zoneAt(player.x,player.y)+'</b></div><p style="opacity:.65;line-height:1.7">穿过森林、村庄与湖畔，寻找散落在大陆上的回声。</p></div>';
- if(tab==="bag")box.innerHTML='<div class="tab-body"><h3>旅行者背包</h3>'+state.bag.map(x=>'<div class="item"><strong>'+x+'</strong><span class="tag">持有</span></div>').join("")+'<div class="stat-row"><span>金币</span><b>'+state.coins+'</b></div><div class="stat-row"><span>木材</span><b>'+state.wood+'</b></div><div class="stat-row"><span>矿石</span><b>'+state.ore+'</b></div></div>';
- if(tab==="quests")box.innerHTML='<div class="tab-body"><h3>任务记录</h3><div class="quest-row"><div><b>'+questTitle()+'</b><small>'+questHint()+'</small></div><span class="tag">进行中</span></div><div class="quest-row"><div><b>探索未知地标</b><small>发现旧灯塔、藤蔓遗迹与潮汐祭坛</small></div><span class="tag">'+landmarks.filter(l=>l.type!=="stone").length+'处</span></div></div>';
- if(tab==="settings")box.innerHTML='<div class="tab-body settings"><h3>设置</h3><label>低画质模式 <input type="checkbox" id="lowToggle" '+(state.settings.low?"checked":"")+'></label><label>屏幕震动 <input type="checkbox" id="vibToggle" checked></label><p style="opacity:.6;line-height:1.7">2D Canvas 模式不依赖 3D 引擎，适合移动设备运行。</p></div>';
+ if(tab==="map"){
+   box.innerHTML='<section class="menu-page"><div class="page-head"><small>WORLD MAP</small><h3>晨雾谷</h3><p>探索范围与当前任务目标。</p></div><div class="map-overview"><div class="map-grid"></div><span class="map-pin" style="left:42%;top:38%"></span><span class="map-pin" style="left:69%;top:68%"></span><span class="map-pin" style="left:51%;top:49%"></span></div><div class="info-grid"><div><small>区域</small><b>'+zoneAt(player.x,player.y)+'</b></div><div><small>探索度</small><b>'+Math.round(exploredPercent())+'%</b></div><div><small>任务目标</small><b>'+questTitle()+'</b></div></div></section>';
+ }
+ if(tab==="quests"){
+   box.innerHTML='<section class="menu-page"><div class="page-head"><small>QUESTS</small><h3>任务</h3><p>选择正在进行的任务，目标会同步到地图与场景。</p></div><div class="quest-list"><div class="quest-card active"><div><small>当前任务</small><h4>'+questTitle()+'</h4><p>'+questHint()+'</p></div><span class="tag">追踪中</span></div><div class="quest-card"><div><small>探索记录</small><h4>未知地标</h4><p>发现旧灯塔、藤蔓遗迹与潮汐祭坛</p></div><span class="tag">'+landmarks.filter(l=>l.type!=="stone").length+'处</span></div></div></section>';
+ }
+ if(tab==="bag"){
+   box.innerHTML='<section class="menu-page"><div class="page-head"><small>INVENTORY</small><h3>背包</h3><p>旅途中获得的道具与资源。</p></div><div class="inventory-grid">'+state.bag.map(x=>'<div class="inventory-item"><b>'+x+'</b><span>持有</span></div>').join("")+'</div><div class="resource-strip"><span>金币 <b>'+state.coins+'</b></span><span>木材 <b>'+state.wood+'</b></span><span>矿石 <b>'+state.ore+'</b></span><span>草药 <b>'+state.herbs+'</b></span></div></section>';
+ }
+ if(tab==="settings"){
+   box.innerHTML='<section class="menu-page"><div class="page-head"><small>SETTINGS</small><h3>设置</h3><p>调整设备适配与画面表现。</p></div><div class="settings-card"><label><span><b>低画质模式</b><small>减少特效与绘制负担</small></span><input type="checkbox" id="lowToggle" '+(state.settings.low?"checked":"")+'></label><label><span><b>屏幕震动</b><small>互动与战斗反馈</small></span><input type="checkbox" id="vibToggle" checked></label></div></section>';
+ }
  $("lowToggle")?.addEventListener("change",e=>state.settings.low=e.target.checked);
+ $("vibToggle")?.addEventListener("change",e=>state.settings.vibration=e.target.checked);
 }
 function exploredPercent(){
  const d=Math.hypot(player.x-980,player.y-860);
@@ -266,34 +276,55 @@ function questTarget(){
 }
 function updateQuestGuide(){
  const guide=$("questGuide"),arrow=guide?.querySelector(".guide-arrow"),label=$("guideDistance"),target=questTarget();
- if(!guide||!arrow||!label||!state.started||state.dialogue||!target){guide?.classList.add("hidden");return}
+ if(!guide||!arrow||!label||!state.started||state.dialogue||state.menuOpen||!target){guide?.classList.add("hidden");return}
  const dx=target.x-player.x,dy=target.y-player.y,d=Math.hypot(dx,dy);
- const angle=Math.atan2(dy,dx)+Math.PI/2;
+ if(d<90){guide.classList.add("hidden");return}
+ const p=worldToScreen(target.x,target.y);
+ const onScreen=p.x>44&&p.x<W-44&&p.y>44&&p.y<H-44;
+ if(onScreen){guide.classList.add("hidden");return}
+ const angle=Math.atan2(dy,dx);
  arrow.style.transform="rotate("+angle+"rad)";
- label.textContent=d<100?"目标就在附近":Math.round(d)+"m";
+ const meters=d/5;
+ label.textContent=meters>=1000?("目标 · "+(meters/1000).toFixed(1)+" km"):("目标 · "+Math.max(1,Math.round(meters))+" m");
  guide.classList.remove("hidden");
 }
-function drawMiniMap(){
- const c=$("miniMapCanvas");if(!c||!state.started||state.dialogue)return;
- const m=c.getContext("2d"),mw=c.width,mh=c.height,sx=mw/world.w,sy=mh/world.h;
- m.clearRect(0,0,mw,mh);
- m.fillStyle="#78966f";m.fillRect(0,0,mw,mh);
- m.fillStyle="#6e8f69";m.fillRect(0,0,950*sx,mh);
- m.fillStyle="#809c73";m.fillRect(2050*sx,0,950*sx,900*sy);
- m.fillStyle="#73937d";m.fillRect(1700*sx,1250*sy,1300*sx,950*sy);
- m.fillStyle="#397386";m.beginPath();m.ellipse(2320*sx,1770*sy,620*sx,480*sy,0,0,Math.PI*2);m.fill();
- m.strokeStyle="#c0a679";m.lineWidth=7;m.beginPath();m.moveTo(0,1050*sy);m.quadraticCurveTo(1300*sx,960*sy,3000*sx,1100*sy);m.stroke();
- m.strokeStyle="#d3bc91";m.lineWidth=5;m.beginPath();m.moveTo(1180*sx,0);m.quadraticCurveTo(1250*sx,650*sy,1180*sx,mh);m.stroke();
- // landmarks / camps / chests
- for(const n of npcs){m.fillStyle="#e7b85b";m.beginPath();m.arc(n.x*sx,n.y*sy,2.8,0,Math.PI*2);m.fill()}
- for(const f of campfires){m.fillStyle="#f3c65f";m.beginPath();m.arc(f.x*sx,f.y*sy,2.6,0,Math.PI*2);m.fill()}
- for(const ch of chests.filter(x=>!x.opened)){m.fillStyle="#d6a25d";m.fillRect(ch.x*sx-2,ch.y*sy-2,4,4)}
+function drawQuestWorldMarker(){
  const target=questTarget();
- if(target){m.strokeStyle="#f0cf75";m.lineWidth=2;m.beginPath();m.arc(target.x*sx,target.y*sy,5,0,Math.PI*2);m.stroke()}
- m.fillStyle="#fff";m.beginPath();m.arc(player.x*sx,player.y*sy,3.8,0,Math.PI*2);m.fill();
- m.strokeStyle="#fff8";m.lineWidth=1;m.stroke();
+ if(!target||state.dialogue||state.menuOpen)return;
+ const p=worldToScreen(target.x,target.y),inside=p.x>-30&&p.x<W+30&&p.y>-30&&p.y<H+30;
+ if(!inside)return;
+ const pulse=8+Math.sin(performance.now()/260)*2;
+ ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);
+ ctx.strokeStyle="#f0cf75";ctx.lineWidth=2;ctx.globalAlpha=.95;ctx.strokeRect(-pulse/2,-pulse/2,pulse,pulse);
+ ctx.globalAlpha=.35;ctx.strokeRect(-pulse*1.5/2,-pulse*1.5/2,pulse*1.5,pulse*1.5);
+ ctx.restore();
 }
-function worldToScreen(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
+function drawMiniMap(){
+ const c=$("miniMapCanvas");if(!c||!state.started||state.dialogue||state.menuOpen)return;
+ const m=c.getContext("2d"),mw=c.width,mh=c.height,scale=.15,ox=player.x,oy=player.y;
+ m.clearRect(0,0,mw,mh);
+ m.fillStyle="#718c72";m.fillRect(0,0,mw,mh);
+ const toX=x=>mw/2+(x-ox)*scale,toY=y=>mh/2+(y-oy)*scale;
+ // local terrain blocks
+ for(const z of zones){
+   const x=toX(z.x),y=toY(z.y),w=z.w*scale,h=z.h*scale;
+   m.globalAlpha=.7;m.fillStyle=z.c;m.fillRect(x,y,w,h);
+ }
+ m.globalAlpha=1;
+ // lake
+ m.fillStyle="#3a7180";m.beginPath();m.ellipse(toX(2320),toY(1770),620*scale,480*scale,0,0,Math.PI*2);m.fill();
+ // roads
+ m.strokeStyle="#c5a879";m.lineWidth=3;m.beginPath();m.moveTo(toX(0),toY(roadY(0)));for(let x=0;x<=world.w;x+=80)m.lineTo(toX(x),toY(roadY(x)));m.stroke();
+ m.strokeStyle="#d5be91";m.lineWidth=2;m.beginPath();m.moveTo(toX(roadX(0)),toY(0));for(let y=0;y<=world.h;y+=80)m.lineTo(toX(roadX(y)),toY(y));m.stroke();
+ // points of interest
+ for(const l of landmarks){if(l.type==="stone")continue;const x=toX(l.x),y=toY(l.y);if(x<-8||x>mw+8||y<-8||y>mh+8)continue;m.fillStyle=l.name===questTarget()?.name?"#f0cf75":"#d8d4b8";m.beginPath();m.arc(x,y,2.4,0,Math.PI*2);m.fill()}
+ for(const n of npcs){const x=toX(n.x),y=toY(n.y);if(x>=0&&x<=mw&&y>=0&&y<=mh){m.fillStyle="#e7b85b";m.beginPath();m.arc(x,y,2.1,0,Math.PI*2);m.fill()}}
+ for(const f of campfires){const x=toX(f.x),y=toY(f.y);if(x>=0&&x<=mw&&y>=0&&y<=mh){m.fillStyle="#f3c65f";m.beginPath();m.arc(x,y,2.3,0,Math.PI*2);m.fill()}}
+ const target=questTarget();
+ if(target){const x=toX(target.x),y=toY(target.y);if(x>=0&&x<=mw&&y>=0&&y<=mh){m.strokeStyle="#f0cf75";m.lineWidth=1.5;m.beginPath();m.arc(x,y,5,0,Math.PI*2);m.stroke()}}
+ // player and facing
+ m.save();m.translate(mw/2,mh/2);m.rotate(player.dir);m.fillStyle="#fff";m.beginPath();m.moveTo(0,-6);m.lineTo(4,5);m.lineTo(0,3);m.lineTo(-4,5);m.closePath();m.fill();m.restore();
+}function worldToScreen(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
 function screenToWorld(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
 
 function drawBackground(){
@@ -518,7 +549,7 @@ function recoverFromObstacle(){
  }
 }
 function move(){
- if(!state.started||state.dialogue)return;
+ if(!state.started||state.dialogue||state.menuOpen)return;
  recoverFromObstacle();
  let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
@@ -544,7 +575,7 @@ function gainXp(v){
  }
 }
 function attack(){
- if(!state.started||state.dialogue||player.attack>0)return;
+ if(!state.started||state.dialogue||state.menuOpen||player.attack>0)return;
  let target=null,best=90;
  for(const e of enemies)if(!e.dead){const d=dist(player,e);if(d<best){best=d;target=e}}
  if(!target){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
@@ -571,7 +602,7 @@ function skill(){
 }
 
 function dash(){
- if(!state.started||state.dialogue||player.stamina<22)return;
+ if(!state.started||state.dialogue||state.menuOpen||player.stamina<22)return;
  let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0);
  if(!dx&&!dy){dx=Math.cos(player.dir);dy=Math.sin(player.dir)}
  const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
@@ -746,7 +777,7 @@ function render(){
  ];
  list.sort((a,b)=>a.y-b.y);for(const o of list)o.fn();
  drawParticles();drawCombatFeedback();drawAtmosphere();
- updateQuestGuide();drawMiniMap();
+ drawQuestWorldMarker();updateQuestGuide();drawMiniMap();
 
 }
 
@@ -763,7 +794,7 @@ addEventListener("keydown",e=>{
  const k=e.key.toLowerCase();keys[k]=true;
  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k))e.preventDefault();
  if(k==="e")interact();if(k==="q")skill();if(k==="k")saveGame();if(k===" "){attack()}
- if(k==="escape"){$("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");state.dialogue=false;document.body.classList.remove("dialogue-open")}
+ if(k==="escape"){$("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");state.dialogue=false;state.menuOpen=false;document.body.classList.remove("dialogue-open","menu-open")}
 });
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 

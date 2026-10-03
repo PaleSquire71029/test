@@ -1020,12 +1020,32 @@ addEventListener("resize",()=>{if(state.started&&(innerWidth<=900||matchMedia("(
 function syncMobileUI(){
  const touch=matchMedia("(pointer:coarse)").matches;
  const landscape=matchMedia("(orientation: landscape)").matches;
- const playable=state.started&&touch&&landscape;
  const controls=$("mobileControls");
+ const hud=$("hud");
+ const start=$("start");
  const rotate=$("rotateHint");
+
+ /* Mobile has two mutually exclusive states:
+    portrait = entry screen only
+    landscape = actual game only after pressing Enter World */
+ if(touch&& !landscape && state.started){
+  saveGame();
+  state.started=false;
+  state.dialogue=false;
+  state.menuOpen=false;
+  document.body.classList.remove("game-running","landscape-game");
+ }
+
+ const playable=state.started&&(!touch||landscape);
+ const entry=!state.started;
+
+ if(start)start.classList.toggle("hidden",!entry);
+ if(hud)hud.classList.toggle("hidden",!playable);
  if(controls)controls.classList.toggle("hidden",!playable);
- if(rotate)rotate.classList.toggle("show",state.started&&touch&&!landscape);
- document.body.classList.toggle("landscape-game",playable);
+ if(rotate)rotate.classList.remove("show");
+
+ document.body.classList.toggle("game-running",playable);
+ document.body.classList.toggle("landscape-game",playable&&touch&&landscape);
 }
 addEventListener("resize",syncMobileUI);
 addEventListener("orientationchange",()=>setTimeout(syncMobileUI,120));

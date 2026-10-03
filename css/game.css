@@ -164,7 +164,7 @@
 .mobile-controls-layer{z-index:100}
 body.dialogue-open .mobile-controls-layer{pointer-events:none!important;opacity:0!important}
 body.dialogue-open #miniMap,body.dialogue-open #questGuide{opacity:0!important;pointer-events:none!important}
-#miniMap{
+#miniMap{display:none;
  position:fixed;right:20px;top:76px;width:180px;height:180px;z-index:45;
  border:1px solid #ffffff3d;border-radius:12px;overflow:hidden;
  background:rgba(8,18,22,.66);backdrop-filter:blur(8px);
@@ -192,3 +192,4 @@ body.dialogue-open #miniMap,body.dialogue-open #questGuide{opacity:0!important;p
 @media(hover:none) and (pointer:coarse) and (orientation:portrait){
  #miniMap,#questGuide{display:none!important}
 }
+body.game-running #miniMap{display:block}body.game-running #questGuide{display:flex}

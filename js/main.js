@@ -763,7 +763,7 @@ addEventListener("keydown",e=>{
  const k=e.key.toLowerCase();keys[k]=true;
  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k))e.preventDefault();
  if(k==="e")interact();if(k==="q")skill();if(k==="k")saveGame();if(k===" "){attack()}
- if(k==="escape"){$("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");state.dialogue=false}
+ if(k==="escape"){$("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");state.dialogue=false;document.body.classList.remove("dialogue-open")}
 });
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 

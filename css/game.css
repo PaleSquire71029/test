@@ -216,3 +216,9 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
 #dialogue{z-index:400!important}
 #dialogue .dialogue-box{max-height:min(30vh,220px);overflow:auto}
 @media (hover:none) and (pointer:coarse) and (orientation:landscape){#dialogue{padding:12px 18px!important}#dialogue .dialogue-box{width:min(900px,92vw)!important;min-height:118px!important;padding:18px 24px 16px 94px!important}}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .brand{display:none!important}
+  .player-card{bottom:154px!important;left:18px!important;width:190px!important}
+  #quest{top:154px!important}
+}

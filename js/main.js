@@ -341,7 +341,7 @@ function questHint(){
  return"回到晨雾谷，向艾琳报告发现";
 }
 function updateQuestUI(){
- $("questTitle").textContent=questTitle();$("questHint").textContent=questHint();
+ $("questTitle").textContent=questTitle();$("questHint").textContent=questHint();syncProgressHUD();
 }
 
 function focusQuest(){
@@ -848,6 +848,13 @@ function loadGame(){
   updateHP();updateQuestUI();notify("已恢复上次旅程");
  }catch(e){}
 }
+
+function syncProgressHUD(){
+  setHudText("coins",state.coins);
+  setHudText("xpText",state.xp+" / "+state.nextXp);
+  setHudText("levelText","Lv. "+state.level);
+}
+
 function updateClock(dt){
  state.time=(state.time+dt*.22)%24;
  const hh=Math.floor(state.time),mm=Math.floor((state.time-hh)*60);
@@ -886,7 +893,7 @@ function loop(t){
  const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
  move();updateEnemies(dt);updateBoss(dt);updateParticles(dt);updateCamera();
  player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);state.comboTimer=Math.max(0,state.comboTimer-dt);if(state.comboTimer<=0)state.combo=0;
- updateClock(dt);updateInteraction();syncInteractButton();render();
+ updateClock(dt);syncProgressHUD();updateInteraction();syncInteractButton();render();
  requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

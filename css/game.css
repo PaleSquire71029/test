@@ -1056,3 +1056,27 @@ body.game-running #rotateHint{display:none!important}
   #hud .quick-nav{right:12px!important;top:8px!important}
   #hud .quick-nav button{width:38px!important;height:38px!important}
 }
+
+/* landscape-hud-final-02 */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  #hud{visibility:visible!important;display:block!important;opacity:1!important}
+  #hud .quick-nav{display:flex!important;visibility:visible!important;opacity:1!important}
+  #hud .quick-nav button{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important}
+  #hud .brand,#hud .region,#hud #quest,#hud .player-card,#hud .hud-resources{visibility:visible!important;opacity:1!important}
+  #hud #quest{top:74px!important;left:18px!important;z-index:80!important}
+  #questGuide{left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;z-index:82!important;pointer-events:none!important}
+  #toast{left:50%!important;top:17%!important;transform:translateX(-50%)!important;z-index:110!important;max-width:min(420px,45vw)!important;white-space:nowrap!important}
+  #hud #hint{display:none!important}
+  #hud #interact{left:50%!important;bottom:31%!important;transform:translateX(-50%)!important;z-index:84!important}
+  #hud #combat{left:50%!important;transform:translateX(-50%)!important;z-index:84!important}
+  #hud .player-card{left:18px!important;bottom:18px!important}
+  #hud .hud-resources{left:18px!important;bottom:78px!important;top:auto!important}
+  #hud .quick-nav{right:18px!important;top:10px!important;z-index:90!important}
+  #hud .quick-nav button span{display:none!important}
+  #hud .quick-nav .nav-icon{display:block!important;visibility:visible!important;opacity:1!important}
+}
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  #hud{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  #questGuide,#toast{visibility:hidden!important}
+}

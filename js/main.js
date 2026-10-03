@@ -231,7 +231,10 @@ function setupUI(){
  $("inventoryBtn")?.addEventListener("click",()=>openFullPanel("inventoryPanel"));
  $("questBtn")?.addEventListener("click",()=>openFullPanel("questPanel"));
  document.querySelectorAll("[data-close-panel]").forEach(b=>b.addEventListener("click",()=>closeFullPanel(b.dataset.closePanel)));
- $("menuBtn")?.addEventListener("click",()=>{\n  ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));\n  state.menuOpen=true;$("menu")?.classList.remove("hidden");document.body.classList.add("menu-open");renderTab("map");\n});
+ $("menuBtn")?.addEventListener("click",()=>{
+  ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));
+  state.menuOpen=true;$("menu")?.classList.remove("hidden");document.body.classList.add("menu-open");renderTab("map");
+});
  $("closeMenu")?.addEventListener("click",()=>{state.menuOpen=false;$("menu")?.classList.add("hidden");document.body.classList.remove("menu-open")});
  $("menu")?.addEventListener("click",e=>{if(e.target===$("menu")){$("closeMenu")?.click()}});
  document.querySelectorAll(".menu-nav button").forEach(b=>b.addEventListener("click",()=>{
@@ -921,7 +924,11 @@ addEventListener("keydown",e=>{
  const k=e.key.toLowerCase();keys[k]=true;
  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k))e.preventDefault();
  if(k==="e")interact();if(k==="q")skill();if(k==="k")saveGame();if(k===" "){attack()}
- if(k==="escape"){\n  $("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");\n  ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));\n  state.dialogue=false;state.menuOpen=false;document.body.classList.remove("dialogue-open","menu-open");\n}
+ if(k==="escape"){
+  $("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");
+  ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));
+  state.dialogue=false;state.menuOpen=false;document.body.classList.remove("dialogue-open","menu-open");
+}
 });
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 

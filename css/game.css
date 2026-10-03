@@ -953,83 +953,52 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
 /* responsive-pass-01 */
 html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-bottom:max(24px,env(safe-area-inset-bottom))!important}.menu-shell{width:100%;height:100%;min-width:0;min-height:0}.menu-content,.menu-page,.full-title,.inventory-screen,.quest-screen{min-width:0}.inventory-big-grid,.inventory-grid,.info-grid{min-width:0}.inventory-big-grid .inventory-item,.inventory-item,.quest-card,.info-grid>div{min-width:0}.inventory-big-grid .inventory-item b,.inventory-item b,.quest-card p,.page-head p{overflow-wrap:anywhere}
 @media (min-width:701px) and (max-width:1100px){.full-panel-inner{padding-left:5vw!important;padding-right:5vw!important}.character-screen{grid-template-columns:minmax(0,1fr) minmax(280px,.75fr)!important}.character-info{padding-left:2vw!important;padding-right:3vw!important}.inventory-big-grid{grid-template-columns:repeat(4,minmax(100px,1fr))!important}.menu-shell{grid-template-columns:150px minmax(0,1fr)!important}.menu-content{padding-left:28px!important;padding-right:28px!important}}
+/* responsive-game-layout: single authoritative touch layout */
 @media (hover:none) and (pointer:coarse) and (orientation:portrait){
-#rotateHint,#rotateHint.show{display:none!important}#hud,#mobileControls{visibility:visible!important}
-.brand{left:max(12px,env(safe-area-inset-left) + 8px)!important;top:max(10px,env(safe-area-inset-top) + 6px)!important}.brand b{font-size:14px!important}.brand span{font-size:10px!important}
-#hud .region{top:max(10px,env(safe-area-inset-top) + 6px)!important;left:auto!important;right:12px!important;transform:none!important;min-width:0!important;padding:5px 8px!important;font-size:9px!important}.region small{display:none}
-.quick-nav{top:auto!important;right:max(10px,env(safe-area-inset-right) + 6px)!important;bottom:max(150px,env(safe-area-inset-bottom) + 142px)!important;gap:2px!important}.quick-nav button{width:34px!important;height:34px!important}.quick-nav button span{display:none!important}.quick-nav .nav-icon{transform:scale(.78)}
-#hud #quest{top:max(60px,env(safe-area-inset-top) + 52px)!important;left:max(10px,env(safe-area-inset-left) + 6px)!important;width:min(62vw,270px)!important;min-width:0!important;max-width:62vw!important;padding:8px 12px 9px 32px!important}#hud #quest b,#hud #quest span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#hud #quest b{font-size:11px!important}#hud #quest span{font-size:8px!important}#hud #quest:before{left:8px;width:13px;height:13px}#hud #quest:after{left:11px;width:6px;height:6px}
-.hud-resources{left:max(10px,env(safe-area-inset-left) + 6px)!important;top:max(126px,env(safe-area-inset-top) + 118px)!important;gap:3px!important;font-size:8px!important;max-width:58vw!important}.hud-resources span{padding:3px 5px!important}.hud-resources span:nth-child(2){display:none}
-#miniMap{display:none!important}#questGuide{top:max(116px,env(safe-area-inset-top) + 108px)!important}#combat{top:18%!important;width:min(70vw,250px)!important}#toast{top:20%!important;max-width:82vw!important;text-align:center}#interact{bottom:28%!important;max-width:70vw!important}
-#hud .player-card{left:max(10px,env(safe-area-inset-left) + 6px)!important;bottom:max(142px,env(safe-area-inset-bottom) + 132px)!important;width:min(245px,58vw)!important;min-height:58px!important;grid-template-columns:43px minmax(0,1fr)!important;grid-template-rows:22px 13px!important;column-gap:7px!important;padding:6px 8px 7px 6px!important}#hud .player-card .avatar{width:40px!important;height:40px!important}#hud .player-card>div:nth-child(2){gap:5px!important}#hud .player-card>div:nth-child(2) b{font-size:11px!important}#hud .player-card>div:nth-child(2) span{font-size:8px!important}#hud .player-card .hp{height:10px!important}#hud .player-card>small{right:8px!important;bottom:8px!important;font-size:7px!important}
-.mobile-controls-layer{z-index:100!important}.mobile-controls-layer #joy{left:max(12px,env(safe-area-inset-left) + 8px)!important;bottom:max(12px,env(safe-area-inset-bottom) + 8px)!important;width:min(112px,29vw)!important;height:min(112px,29vw)!important}.mobile-controls-layer #joy i{width:46px!important;height:46px!important;margin:-23px!important}
-.mobile-controls-layer .mobile-actions{right:max(10px,env(safe-area-inset-right) + 7px)!important;bottom:max(10px,env(safe-area-inset-bottom) + 7px)!important;display:grid!important;grid-template-columns:repeat(2,minmax(48px,58px))!important;grid-template-rows:repeat(2,58px)!important;gap:7px!important;align-items:center!important;justify-items:center!important}.mobile-controls-layer .mobile-actions button,.mobile-controls-layer .mobile-actions button:first-child{width:58px!important;height:58px!important;margin:0!important;font-size:11px!important}.mobile-controls-layer .mobile-actions button:first-child{width:68px!important;height:68px!important;grid-column:1/3!important;grid-row:1!important;align-self:start!important;margin-top:-24px!important}.mobile-controls-layer .mobile-actions button:nth-child(2){grid-column:1;grid-row:2}.mobile-controls-layer .mobile-actions button:nth-child(3){grid-column:2;grid-row:2}.mobile-controls-layer .mobile-actions button:last-child{position:absolute!important;right:68px!important;bottom:132px!important;width:48px!important;height:48px!important;font-size:10px!important;margin:0!important}
-.full-panel-inner{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;padding:max(58px,env(safe-area-inset-top) + 50px) 16px max(24px,env(safe-area-inset-bottom) + 20px)!important}.full-close{right:max(10px,env(safe-area-inset-right) + 7px)!important;top:max(8px,env(safe-area-inset-top) + 5px)!important;width:38px!important;height:38px!important;font-size:25px!important}
-.character-screen{display:flex!important;flex-direction:column!important;gap:0!important;height:auto!important;min-height:100%!important}.character-art{flex:0 0 42vh!important;height:42vh!important;min-height:250px}.character-stage{inset:4% 5% 0!important}.traveler-figure{height:min(37vh,330px)!important;max-width:65vw}.stage-ring{width:min(58vw,280px)!important;height:min(58vw,280px)!important}.stage-shadow{bottom:5%!important;width:45vw!important}.character-info{flex:1!important;height:auto!important;padding:24px 8px 30px!important;border-left:0!important;border-top:1px solid #fff1!important;justify-content:flex-start!important}.character-info h2{font-size:32px!important;margin:4px 0!important}.stat-list{margin-top:20px!important;max-width:none!important}.stat-list div{padding:12px 2px!important}.equipment-show{max-width:none!important;margin-top:14px!important}
-.inventory-screen,.quest-screen{height:auto!important;min-height:100%!important;padding:0 2px 30px!important}.full-title{margin-bottom:18px!important}.full-title h2{font-size:32px!important;margin:4px 0!important}.full-title p{font-size:10px!important}.inventory-categories{overflow-x:auto!important;scrollbar-width:none;white-space:nowrap;margin-bottom:16px!important}.inventory-categories::-webkit-scrollbar{display:none}.inventory-categories button{padding:9px 14px!important;flex:0 0 auto}.inventory-big-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.inventory-big-grid .inventory-item{min-height:112px!important;padding:10px!important}.inventory-big-grid .inventory-item b{margin-top:60px!important;font-size:11px!important}.quest-focus{max-width:none!important;margin:20px 0 0!important;padding:18px 0 20px 16px!important}.quest-focus h3{font-size:24px!important}.quest-screen:after{font-size:48px!important;top:115px!important;right:4px!important}.quest-history{max-width:none!important}
-#menu.overlay{overflow:hidden!important}.menu-shell{grid-template-columns:1fr!important;grid-template-rows:auto auto minmax(0,1fr)!important;overflow:hidden!important}.menu-topbar{grid-column:1!important;padding:max(10px,env(safe-area-inset-top) + 6px) 14px 8px!important;min-height:60px}.menu-topbar h2{font-size:21px!important}.menu-topbar .close{width:36px!important;height:36px!important;font-size:22px!important}.menu-nav{grid-column:1!important;grid-row:2!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3px!important;padding:5px!important;overflow:hidden!important}.menu-nav button{padding:8px 2px!important;text-align:center!important;align-items:center!important;gap:2px!important}.menu-nav button span{font-size:11px!important}.menu-nav button small{display:none!important}.menu-nav button.active:before{left:18%!important;right:18%!important;top:auto!important;bottom:2px!important;width:auto!important;height:2px!important}.menu-content{grid-column:1!important;grid-row:3!important;overflow-y:auto!important;overflow-x:hidden!important;padding:16px 12px max(24px,env(safe-area-inset-bottom) + 14px)!important}.page-head h3{font-size:26px!important}.page-head p{font-size:10px!important;line-height:1.6}.map-overview{height:38vh!important;min-height:210px!important}.info-grid{grid-template-columns:1fr!important;gap:6px!important}.info-grid>div{padding:10px 12px!important}.quest-card{padding:14px!important;gap:8px!important;align-items:flex-start!important}.quest-card h4{font-size:15px!important}.quest-card p{font-size:10px!important}.inventory-grid{grid-template-columns:1fr 1fr!important}.inventory-grid .inventory-item{padding:12px!important}.resource-strip span{font-size:9px!important;padding:8px 10px!important}.settings-card label{padding:14px!important}
-#dialogue{padding:0 8px max(8px,env(safe-area-inset-bottom) + 6px)!important;align-items:flex-end!important}#dialogue .dialogue-box{width:100%!important;max-width:none!important;min-height:0!important;max-height:45dvh!important;padding:54px 14px 56px!important;border-radius:12px 12px 4px 4px!important;overflow:auto!important}#dialogue .dialogue-box:before{left:14px!important;top:12px!important;width:40px!important;height:40px!important}#dialogue .dialogue-box h2{font-size:19px!important;margin:3px 0 6px!important}#dialogue .dialogue-box p{font-size:12px!important;line-height:1.7!important;margin:0!important}#dialogue .dialogue-box button{right:12px!important;bottom:10px!important;padding:7px 16px!important}
-}
-@media (hover:none) and (pointer:coarse) and (orientation:portrait) and (max-width:380px){.brand{display:none!important}.mobile-controls-layer #joy{width:96px!important;height:96px!important}.mobile-controls-layer #joy i{width:40px!important;height:40px!important;margin:-20px!important}.mobile-controls-layer .mobile-actions{grid-template-columns:repeat(2,50px)!important;grid-template-rows:repeat(2,50px)!important}.mobile-controls-layer .mobile-actions button,.mobile-controls-layer .mobile-actions button:first-child{width:50px!important;height:50px!important}.mobile-controls-layer .mobile-actions button:first-child{width:60px!important;height:60px!important;margin-top:-20px!important}.mobile-controls-layer .mobile-actions button:last-child{right:58px!important;bottom:112px!important}#hud .player-card{width:215px!important;bottom:128px!important}#hud #quest{width:58vw!important;max-width:58vw!important}}
-@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:420px){.mobile-controls-layer #joy{width:100px!important;height:100px!important}.mobile-controls-layer #joy i{width:44px!important;height:44px!important;margin:-22px!important}.mobile-controls-layer .mobile-actions{gap:6px!important}.mobile-controls-layer .mobile-actions button{width:52px!important;height:52px!important}.mobile-controls-layer .mobile-actions button:first-child{width:68px!important;height:68px!important}.mobile-controls-layer .mobile-actions button:last-child{bottom:58px!important}#hud .player-card{bottom:126px!important;width:220px!important}#hud #quest{top:132px!important;width:230px!important}}
-
-/* landscape-only-final-01: the game is designed for landscape play */
-#mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-#rotateHint{display:none!important;visibility:hidden!important;pointer-events:none!important}
-body.game-running #mobileControls{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important}
-body.game-running #mobileControls .mobile-actions,body.game-running #mobileControls #joy{pointer-events:auto!important}
-body.game-running #rotateHint{display:none!important}
-
-@media (hover:none) and (pointer:coarse) and (orientation:portrait){
-  #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-  #hud{visibility:hidden!important;pointer-events:none!important}
-  body.game-running #rotateHint{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:1000!important}
-}
-
-@media (hover:none) and (pointer:coarse) and (orientation:landscape){
-  html,body,#game,#worldCanvas{width:100vw!important;height:100dvh!important;min-width:0!important;min-height:0!important;overflow:hidden!important}
-  #hud{visibility:visible!important;overflow:hidden!important}
-  #mobileControls{display:block!important;visibility:visible!important;opacity:1!important}
+  #start{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+  #hud,#mobileControls,#miniMap,#questGuide,#toast{
+    display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important
+  }
   #rotateHint{display:none!important}
-
-  /* top HUD: four stable zones, no collision */
-  #hud .brand{left:18px!important;top:12px!important}
-  #hud .region{top:12px!important;left:50%!important;transform:translateX(-50%)!important;max-width:32vw!important;white-space:nowrap!important}
-  #hud .quick-nav{position:fixed!important;right:18px!important;top:10px!important;display:flex!important;gap:7px!important;z-index:90!important}
-  #hud .quick-nav button{width:42px!important;height:42px!important;padding:0!important}
-  #hud .quick-nav button span{display:none!important}
-  #hud #quest{left:18px!important;top:68px!important;width:min(300px,32vw)!important;min-width:220px!important;max-width:32vw!important;padding:9px 14px!important}
-  #hud #quest b,#hud #quest span{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-
-  /* bottom HUD stays inside the safe center corridor */
-  #hud .player-card{left:18px!important;bottom:20px!important;width:210px!important;min-height:54px!important;z-index:70!important}
-  #hud .hud-resources{left:18px!important;bottom:82px!important;top:auto!important;z-index:71!important;display:flex!important}
-  #hud .hud-resources span{display:inline-flex!important}
-  #hud #interact{left:50%!important;bottom:23%!important;max-width:260px!important;z-index:75!important}
-  #hud #combat{left:50%!important;top:13%!important;width:min(280px,34vw)!important;z-index:75!important}
+}
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  #hud{position:fixed!important;inset:0!important;z-index:20!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important;overflow:hidden!important}
+  #hud header{position:absolute!important;inset:0!important;pointer-events:none!important}
+  #hud .brand{position:fixed!important;left:max(18px,env(safe-area-inset-left) + 10px)!important;top:max(12px,env(safe-area-inset-top) + 8px)!important;z-index:100!important;display:flex!important}
+  #hud .region{position:fixed!important;left:50%!important;top:max(10px,env(safe-area-inset-top) + 6px)!important;transform:translateX(-50%)!important;z-index:100!important}
+  #hud .quick-nav{position:fixed!important;right:max(18px,env(safe-area-inset-right) + 10px)!important;top:max(8px,env(safe-area-inset-top) + 4px)!important;display:flex!important;align-items:flex-start!important;gap:3px!important;z-index:160!important;pointer-events:auto!important}
+  #hud .quick-nav button{position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;width:52px!important;height:58px!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;color:#f5ecd8!important;overflow:visible!important}
+  #hud .quick-nav .nav-icon{display:block!important;width:30px!important;height:30px!important;margin:0!important;opacity:1!important;visibility:visible!important}
+  #hud .quick-nav button span{position:static!important;display:block!important;margin-top:4px!important;transform:none!important;opacity:.92!important;visibility:visible!important;font:11px "Noto Serif SC",serif!important;letter-spacing:.06em!important;color:#f5ecd8!important;text-shadow:0 2px 7px #000!important;white-space:nowrap!important}
+  #hud .quick-nav #menuBtn .nav-icon{width:28px!important;height:28px!important}
+  #hud #quest{position:fixed!important;left:max(18px,env(safe-area-inset-left) + 10px)!important;top:72px!important;width:min(300px,32vw)!important;min-width:240px!important;max-width:300px!important;z-index:110!important;pointer-events:none!important}
+  #questGuide{position:fixed!important;left:calc(max(18px,env(safe-area-inset-left) + 10px) + min(300px,32vw) + 14px)!important;top:76px!important;right:auto!important;z-index:115!important;display:flex!important;align-items:center!important;gap:7px!important;padding:7px 10px!important;transform:none!important;pointer-events:none!important;border-radius:5px!important;background:rgba(9,18,22,.68)!important;border:1px solid rgba(226,199,123,.24)!important;box-shadow:0 5px 18px rgba(0,0,0,.2)!important;backdrop-filter:blur(5px)!important}
+  #questGuide .guide-arrow{flex:0 0 auto!important;font-size:20px!important}
+  #questGuide span{white-space:nowrap!important;font-size:10px!important}
+  #hud .hud-resources{position:fixed!important;left:max(18px,env(safe-area-inset-left) + 10px)!important;top:142px!important;bottom:auto!important;z-index:110!important}
+  #hud .player-card{position:fixed!important;left:max(18px,env(safe-area-inset-left) + 10px)!important;bottom:154px!important;width:238px!important;min-height:62px!important;z-index:110!important}
+  #miniMap{position:fixed!important;right:max(18px,env(safe-area-inset-right) + 10px)!important;top:82px!important;left:auto!important;width:116px!important;height:116px!important;z-index:105!important;display:block!important;pointer-events:none!important}
+  #hud #combat{position:fixed!important;left:50%!important;top:17%!important;transform:translateX(-50%)!important;z-index:130!important}
+  #hud #interact{position:fixed!important;left:50%!important;bottom:27%!important;transform:translateX(-50%)!important;z-index:130!important}
+  #hud #crosshair{z-index:130!important}
   #hud #hint{display:none!important}
-
-  /* right-hand controls: deliberate 2+1 combat cluster */
-  #mobileControls .mobile-actions{position:fixed!important;right:max(18px,env(safe-area-inset-right) + 12px)!important;bottom:max(18px,env(safe-area-inset-bottom) + 10px)!important;width:190px!important;height:150px!important;display:block!important;z-index:120!important}
-  #mobileControls .mobile-actions button{position:absolute!important;display:grid!important;place-items:center!important;width:58px!important;height:58px!important;margin:0!important;border-radius:50%!important}
-  #mobileControls #attackBtn{right:0!important;bottom:0!important;width:78px!important;height:78px!important;font-size:16px!important}
-  #mobileControls #dashBtn{right:86px!important;bottom:4px!important}
-  #mobileControls #skillBtn{right:14px!important;bottom:88px!important}
-  #mobileControls #interactBtn{right:92px!important;bottom:76px!important;width:48px!important;height:48px!important;font-size:10px!important}
-
-  /* left-hand joystick */
-  #mobileControls #joy{position:fixed!important;left:max(22px,env(safe-area-inset-left) + 12px)!important;bottom:max(20px,env(safe-area-inset-bottom) + 10px)!important;width:126px!important;height:126px!important;margin:0!important;z-index:120!important}
+  #mobileControls{position:fixed!important;inset:0!important;z-index:200!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important}
+  #mobileControls #joy{position:fixed!important;left:max(22px,env(safe-area-inset-left) + 12px)!important;bottom:max(18px,env(safe-area-inset-bottom) + 10px)!important;width:126px!important;height:126px!important;margin:0!important;z-index:201!important;pointer-events:auto!important}
   #mobileControls #joy i{width:52px!important;height:52px!important;margin:-26px!important}
-
-  /* full-screen game panels remain horizontal and never become a portrait card */
-  .full-panel-inner{width:100vw!important;min-width:0!important;height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;padding:64px max(28px,5vw) 30px!important}
-  .character-screen{display:grid!important;grid-template-columns:minmax(300px,.9fr) minmax(360px,1.1fr)!important;grid-template-rows:1fr!important;height:calc(100dvh - 94px)!important;min-height:0!important;align-items:stretch!important}
-  .character-art{height:auto!important;min-height:0!important;flex:none!important}
-  .character-info{height:auto!important;min-width:0!important;padding:26px 34px!important;border-left:1px solid #14232a18!important;border-top:0!important;overflow:auto!important}
+  #mobileControls .mobile-actions{position:fixed!important;right:max(20px,env(safe-area-inset-right) + 12px)!important;bottom:max(18px,env(safe-area-inset-bottom) + 10px)!important;width:188px!important;height:154px!important;margin:0!important;z-index:201!important;pointer-events:none!important}
+  #mobileControls .mobile-actions button{position:absolute!important;display:grid!important;place-items:center!important;width:58px!important;height:58px!important;margin:0!important;border-radius:50%!important;pointer-events:auto!important}
+  #mobileControls #attackBtn{right:0!important;bottom:0!important;width:78px!important;height:78px!important;font-size:16px!important}
+  #mobileControls #dashBtn{right:88px!important;bottom:4px!important}
+  #mobileControls #skillBtn{right:14px!important;bottom:90px!important}
+  #mobileControls #interactBtn{right:94px!important;bottom:78px!important;width:48px!important;height:48px!important;font-size:10px!important}
+  .full-panel-inner{width:100vw!important;min-width:0!important;height:100dvh!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:64px max(28px,5vw) 28px!important}
+  .character-screen{display:grid!important;grid-template-columns:minmax(280px,.9fr) minmax(340px,1.1fr)!important;grid-template-rows:1fr!important;height:calc(100dvh - 92px)!important;min-height:0!important;align-items:stretch!important}
+  .character-art{height:auto!important;min-height:0!important}
+  .character-info{height:auto!important;min-width:0!important;overflow:auto!important;padding:24px 30px!important;border-left:1px solid #14232a18!important;border-top:0!important}
   .traveler-figure{height:min(68dvh,520px)!important;max-width:100%!important}
-  .inventory-screen,.quest-screen{height:auto!important;min-height:calc(100dvh - 94px)!important;padding:0!important}
-  .inventory-big-grid{grid-template-columns:repeat(4,minmax(130px,1fr))!important;gap:12px!important}
-  .inventory-big-grid .inventory-item{min-height:150px!important}
+  .inventory-screen,.quest-screen{height:auto!important;min-height:calc(100dvh - 92px)!important;padding:0!important}
+  .inventory-big-grid{grid-template-columns:repeat(4,minmax(120px,1fr))!important;gap:12px!important}
+  .inventory-big-grid .inventory-item{min-height:140px!important}
   #menu.overlay{align-items:stretch!important;justify-content:stretch!important}
   #menu .menu-shell{width:100vw!important;height:100dvh!important;min-height:0!important;grid-template-columns:170px minmax(0,1fr)!important;grid-template-rows:1fr!important}
   #menu .menu-topbar{grid-column:1!important;grid-row:1!important;padding:24px 18px!important;min-height:0!important}
@@ -1037,133 +1006,21 @@ body.game-running #rotateHint{display:none!important}
   #menu .menu-nav button{padding:14px 12px!important;text-align:left!important;align-items:flex-start!important}
   #menu .menu-nav button span{font-size:13px!important}
   #menu .menu-nav button small{display:block!important;font-size:8px!important}
-  #menu .menu-content{grid-column:2!important;grid-row:1!important;padding:30px 38px 30px 28px!important;min-width:0!important;overflow:auto!important}
-  #menu .map-overview{height:46vh!important;min-height:240px!important}
-  #dialogue .dialogue-box{max-width:900px!important;width:min(900px,calc(100vw - 80px))!important;max-height:42dvh!important}
+  #menu .menu-content{grid-column:2!important;grid-row:1!important;min-width:0!important;overflow:auto!important;padding:30px 38px 30px 28px!important}
+  #dialogue .dialogue-box{width:min(900px,calc(100vw - 80px))!important;max-height:42dvh!important}
 }
-
 @media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:420px){
-  #hud .quest{top:62px!important}
-  #hud .player-card{bottom:12px!important}
-  #hud .hud-resources{bottom:70px!important}
+  #hud #quest{top:62px!important}
+  #hud .hud-resources{top:126px!important}
+  #hud .player-card{bottom:132px!important;width:220px!important}
+  #questGuide{top:66px!important}
+  #miniMap{top:72px!important;width:104px!important;height:104px!important}
   #mobileControls #joy{width:104px!important;height:104px!important}
   #mobileControls #joy i{width:44px!important;height:44px!important;margin:-22px!important}
   #mobileControls .mobile-actions{right:14px!important;bottom:12px!important;width:170px!important;height:126px!important}
+  #mobileControls .mobile-actions button{width:52px!important;height:52px!important}
   #mobileControls #attackBtn{width:68px!important;height:68px!important}
   #mobileControls #dashBtn{right:76px!important}
-  #mobileControls #skillBtn{right:8px!important;bottom:76px!important}
-  #mobileControls #interactBtn{right:78px!important;bottom:66px!important;width:44px!important;height:44px!important}
-  #hud .quick-nav{right:12px!important;top:8px!important}
-  #hud .quick-nav button{width:38px!important;height:38px!important}
-}
-
-/* landscape-hud-final-02 */
-@media (hover:none) and (pointer:coarse) and (orientation:landscape){
-  #hud{visibility:visible!important;display:block!important;opacity:1!important}
-  #hud .quick-nav{display:flex!important;visibility:visible!important;opacity:1!important}
-  #hud .quick-nav button{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important}
-  #hud .brand,#hud .region,#hud #quest,#hud .player-card,#hud .hud-resources{visibility:visible!important;opacity:1!important}
-  #hud #quest{top:74px!important;left:18px!important;z-index:80!important}
-  #questGuide{left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;z-index:82!important;pointer-events:none!important}
-  #toast{left:50%!important;top:17%!important;transform:translateX(-50%)!important;z-index:110!important;max-width:min(420px,45vw)!important;white-space:nowrap!important}
-  #hud #hint{display:none!important}
-  #hud #interact{left:50%!important;bottom:31%!important;transform:translateX(-50%)!important;z-index:84!important}
-  #hud #combat{left:50%!important;transform:translateX(-50%)!important;z-index:84!important}
-  #hud .player-card{left:18px!important;bottom:18px!important}
-  #hud .hud-resources{left:18px!important;bottom:78px!important;top:auto!important}
-  #hud .quick-nav{right:18px!important;top:10px!important;z-index:90!important}
-  #hud .quick-nav button span{display:none!important}
-  #hud .quick-nav .nav-icon{display:block!important;visibility:visible!important;opacity:1!important}
-}
-@media (hover:none) and (pointer:coarse) and (orientation:portrait){
-  #hud{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-  #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-  #questGuide,#toast{visibility:hidden!important}
-}
-
-/* hud-rebuild-01: authoritative landscape gameplay HUD
-   Keep one spatial layout instead of stacking contradictory responsive patches. */
-@media (hover:none) and (pointer:coarse) and (orientation:landscape){
-  #hud{position:fixed!important;inset:0!important;z-index:20!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important;overflow:hidden!important}
-  #hud header{position:absolute!important;inset:0!important;pointer-events:none!important}
-  #hud .brand{display:flex!important;left:22px!important;top:16px!important}
-  #hud .region{top:14px!important;left:50%!important;transform:translateX(-50%)!important;z-index:10!important}
-  #hud .quick-nav{
-    position:fixed!important;right:20px!important;top:12px!important;
-    display:flex!important;align-items:flex-start!important;gap:5px!important;
-    z-index:160!important;pointer-events:auto!important;
-  }
-  #hud .quick-nav button{
-    position:relative!important;display:flex!important;flex-direction:column!important;
-    align-items:center!important;justify-content:flex-start!important;
-    width:52px!important;height:62px!important;padding:0!important;
-    border:0!important;border-radius:0!important;background:transparent!important;
-    color:#f5ecd8!important;overflow:visible!important;
-  }
-  #hud .quick-nav .nav-icon{
-    display:block!important;visibility:visible!important;opacity:1!important;
-    width:30px!important;height:30px!important;margin:0!important;
-  }
-  #hud .quick-nav button span{
-    position:static!important;display:block!important;visibility:visible!important;
-    opacity:.9!important;transform:none!important;margin-top:5px!important;
-    font:11px "Noto Serif SC",serif!important;letter-spacing:.08em!important;
-    color:#f4ead4!important;text-shadow:0 2px 7px #000!important;
-  }
-  #hud .quick-nav button:hover .nav-icon{transform:translateY(-2px)!important}
-  #hud #menuBtn .nav-icon{width:30px!important;height:30px!important}
-  #hud #quest{
-    left:22px!important;top:72px!important;
-    width:300px!important;min-width:0!important;max-width:34vw!important;
-    padding:11px 16px 12px 40px!important;z-index:120!important;
-  }
-  #hud .hud-resources{
-    left:22px!important;top:146px!important;bottom:auto!important;z-index:121!important;
-  }
-  #hud .player-card{
-    left:22px!important;bottom:20px!important;
-    width:238px!important;min-height:62px!important;z-index:120!important;
-  }
-  /* Quest guidance lives in the upper-left objective lane, never over the player. */
-  #questGuide{
-    left:340px!important;right:auto!important;top:74px!important;
-    transform:none!important;z-index:125!important;
-    display:flex!important;flex-direction:row!important;align-items:center!important;
-    gap:7px!important;padding:7px 10px!important;border-radius:4px!important;
-    background:rgba(12,20,22,.62)!important;border:1px solid rgba(226,199,123,.22)!important;
-    backdrop-filter:blur(5px)!important;
-  }
-  #questGuide .guide-arrow{font-size:22px!important}
-  #questGuide span{font-size:10px!important}
-  #toast{
-    left:50%!important;right:auto!important;top:16px!important;
-    transform:translateX(-50%)!important;z-index:300!important;
-    max-width:42vw!important;white-space:nowrap!important;
-  }
-  #miniMap{
-    left:auto!important;right:22px!important;top:86px!important;
-    width:116px!important;height:116px!important;z-index:115!important;
-  }
-  #hud #combat{
-    top:17%!important;left:50%!important;transform:translateX(-50%)!important;
-    z-index:130!important;
-  }
-  #hud #interact{
-    left:50%!important;bottom:29%!important;transform:translateX(-50%)!important;
-    z-index:130!important;
-  }
-  #hud #crosshair{z-index:130!important}
-  #hud #hint{display:none!important}
-  /* Controls occupy only the bottom corners; the HUD never sits above them. */
-  #mobileControls{z-index:200!important}
-}
-@media (hover:none) and (pointer:coarse) and (orientation:portrait){
-  #hud{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-  #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-  #questGuide,#toast,#miniMap{display:none!important;visibility:hidden!important}
-  body.game-running #rotateHint{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
-}
-/* Portrait is an entry screen, not a gameplay layout. */
-@media (hover:none) and (pointer:coarse) and (orientation:portrait){
-  body:not(.game-running) #start{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+  #mobileControls #skillBtn{right:8px!important;bottom:74px!important}
+  #mobileControls #interactBtn{right:78px!important;bottom:64px!important;width:44px!important;height:44px!important}
 }

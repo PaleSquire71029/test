@@ -173,7 +173,7 @@ $("startBtn")?.addEventListener("click",async()=>{
  $("menuBtn")?.addEventListener("click",()=>{state.menuOpen=true;$("menu")?.classList.remove("hidden");document.body.classList.add("menu-open");renderTab("map")});
  $("closeMenu")?.addEventListener("click",()=>{state.menuOpen=false;$("menu")?.classList.add("hidden");document.body.classList.remove("menu-open")});
  $("menu")?.addEventListener("click",e=>{if(e.target===$("menu")){$("closeMenu")?.click()}});
- document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+ document.querySelectorAll(".menu-nav button").forEach(b=>b.addEventListener("click",()=>{
    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
  }));
  $("dialogueNext")?.addEventListener("click",nextDialogue);

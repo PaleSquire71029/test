@@ -706,6 +706,7 @@ function skill(){
  emit(player.x,player.y,"#79c8d4",35);
  for(const e of enemies)if(!e.dead&&dist(player,e)<105){e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");if(e.hp<=0){e.dead=true;state.kills++;state.coins+=18;playNumberPop($("coins"));}
  if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");updateQuestUI()}
+ }
 }
 
 function dash(){

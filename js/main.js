@@ -310,7 +310,14 @@ function nextDialogue(){
  dialogueQueue.shift();
  if(!dialogueQueue.length){
    state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue").classList.add("hidden");
-   if(state.quest===0){state.quest=1;notify("任务更新：清理森林中的威胁");updateQuestUI();}
+   if(state.quest===0){
+     state.quest=1;notify("任务更新：清理森林中的威胁");updateQuestUI();
+   }else if(state.quest===3){
+     state.quest=4;state.coins+=120;state.bag.push("晨雾谷徽记");
+     playRewardFx("晨雾谷徽记","完成晨雾谷调查 · +120 金币");
+     notify("任务完成：晨雾谷的回声");
+     updateQuestUI();saveGame();
+   }
  }else renderDialogue();
 }
 
@@ -682,10 +689,11 @@ function attack(){
  if(!state.started||state.dialogue||state.menuOpen||player.attack>0)return;
  let target=null,best=90;
  for(const e of enemies)if(!e.dead){const d=dist(player,e);if(d<best){best=d;target=e}}
- if(!target){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
+ const bossInRange=!!(boss&&boss.active&&!boss.dead&&dist(player,boss)<115);
+ if(!target&&!bossInRange){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
  state.combo=state.comboTimer>0?Math.min(state.combo+1,5):1;state.comboTimer=.9;
  const damage=Math.floor(state.equipment.power*(1+Math.max(0,state.combo-1)*.12));
- if(boss&&boss.active&&!boss.dead&&dist(player,boss)<115){
+ if(bossInRange){
    boss.hp-=damage;boss.hit=.15;player.attack=.32;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
    if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;playNumberPop($("coins"));gainXp(520);state.bag.push("古龙核心");playRewardFx("古龙核心","击败暮岩古龙 · +600 金币");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
    return;

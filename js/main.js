@@ -170,6 +170,10 @@ $("startBtn")?.addEventListener("click",async()=>{
    $("mobileControls")?.classList.remove("hidden");
    syncMobileUI();loadGame();notify("欢迎来到晨雾谷");focusQuest();
  });
+ $("characterBtn")?.addEventListener("click",()=>openFullPanel("characterPanel"));
+ $("inventoryBtn")?.addEventListener("click",()=>openFullPanel("inventoryPanel"));
+ $("questBtn")?.addEventListener("click",()=>openFullPanel("questPanel"));
+ document.querySelectorAll("[data-close-panel]").forEach(b=>b.addEventListener("click",()=>closeFullPanel(b.dataset.closePanel)));
  $("menuBtn")?.addEventListener("click",()=>{state.menuOpen=true;$("menu")?.classList.remove("hidden");document.body.classList.add("menu-open");renderTab("map")});
  $("closeMenu")?.addEventListener("click",()=>{state.menuOpen=false;$("menu")?.classList.add("hidden");document.body.classList.remove("menu-open")});
  $("menu")?.addEventListener("click",e=>{if(e.target===$("menu")){$("closeMenu")?.click()}});
@@ -180,6 +184,23 @@ $("startBtn")?.addEventListener("click",async()=>{
  $("attackBtn")?.addEventListener("click",attack);
  $("dashBtn")?.addEventListener("click",dash);
  $("skillBtn")?.addEventListener("click",skill);
+}
+
+function openFullPanel(id){
+ state.menuOpen=true;
+ document.body.classList.add("menu-open");
+ ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));
+ $(id)?.classList.remove("hidden");
+ if(id==="inventoryPanel")renderInventoryPanel();
+ if(id==="questPanel"){ $("questPanelTitle").textContent=questTitle();$("questPanelHint").textContent=questHint(); }
+ if(id==="characterPanel"){$("charPower").textContent=state.equipment.power}
+}
+function closeFullPanel(id){
+ $(id)?.classList.add("hidden");state.menuOpen=false;document.body.classList.remove("menu-open");
+}
+function renderInventoryPanel(){
+ const box=$("inventoryPanelGrid");if(!box)return;
+ box.innerHTML=state.bag.map((x,i)=>'<div class="inventory-item"><b>'+x+'</b><span>'+((i===0)?'装备 · '+state.equipment.power+' 攻击':'持有')+'</span></div>').join("");
 }
 setupUI();
 
@@ -361,12 +382,23 @@ function drawTree(t){
  ctx.restore();
 }
 function drawRock(r){
- const s=worldToScreen(r.x,r.y);if(s.x<-40||s.x>W+40||s.y<-40||s.y>H+40)return;
- ctx.save();ctx.translate(s.x,s.y);ctx.rotate(r.rot);ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,7*r.s,18*r.s,7*r.s,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#777b76";ctx.beginPath();ctx.moveTo(-16*r.s,5*r.s);ctx.lineTo(-8*r.s,-11*r.s);ctx.lineTo(8*r.s,-15*r.s);ctx.lineTo(18*r.s,-1*r.s);ctx.lineTo(8*r.s,10*r.s);ctx.closePath();ctx.fill();
- ctx.fillStyle="#969b91";ctx.beginPath();ctx.moveTo(-8*r.s,-11*r.s);ctx.lineTo(8*r.s,-15*r.s);ctx.lineTo(2*r.s,-2*r.s);ctx.lineTo(-9*r.s,-2*r.s);ctx.closePath();ctx.fill();ctx.restore();
-}
-function drawResource(r){
+ const s=worldToScreen(r.x,r.y);if(s.x<-50||s.x>W+50||s.y<-50||s.y>H+50)return;
+ const q=r.s;
+ ctx.save();ctx.translate(s.x,s.y);
+ // shadow stays on the ground; it never rotates with the stone
+ ctx.fillStyle="#15251d55";ctx.beginPath();ctx.ellipse(3,9*q,22*q,7*q,0,0,Math.PI*2);ctx.fill();
+ ctx.translate(0,-5*q);
+ const rot=r.rot*.35;ctx.rotate(rot);
+ // grounded low-poly silhouette
+ ctx.fillStyle="#5b625f";ctx.beginPath();ctx.moveTo(-18*q,7*q);ctx.lineTo(-14*q,-8*q);ctx.lineTo(-4*q,-17*q);ctx.lineTo(10*q,-14*q);ctx.lineTo(18*q,-2*q);ctx.lineTo(12*q,9*q);ctx.lineTo(-3*q,13*q);ctx.closePath();ctx.fill();
+ // warm top plane
+ ctx.fillStyle="#9ca095";ctx.beginPath();ctx.moveTo(-14*q,-8*q);ctx.lineTo(-4*q,-17*q);ctx.lineTo(10*q,-14*q);ctx.lineTo(3*q,-3*q);ctx.lineTo(-8*q,1*q);ctx.closePath();ctx.fill();
+ // cool side plane
+ ctx.fillStyle="#707772";ctx.beginPath();ctx.moveTo(10*q,-14*q);ctx.lineTo(18*q,-2*q);ctx.lineTo(12*q,9*q);ctx.lineTo(3*q,-3*q);ctx.closePath();ctx.fill();
+ // small chipped highlight
+ ctx.fillStyle="#c0c2b4";ctx.globalAlpha=.48;ctx.beginPath();ctx.moveTo(-5*q,-13*q);ctx.lineTo(3*q,-12*q);ctx.lineTo(0,-8*q);ctx.lineTo(-8*q,-9*q);ctx.closePath();ctx.fill();
+ ctx.restore();
+}function drawResource(r){
  if(r.taken)return;
  const s=worldToScreen(r.x,r.y);if(s.x<-30||s.x>W+30||s.y<-30||s.y>H+30)return;
  const pulse=1+Math.sin(performance.now()/500+r.phase)*.12;

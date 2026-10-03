@@ -69,7 +69,7 @@ body.dialogue-open #miniMap,body.dialogue-open #questGuide{opacity:0!important;p
 #questGuide .guide-arrow{font-size:28px;line-height:1;filter:drop-shadow(0 0 7px #e6c46d);transition:transform .12s}
 #questGuide span{font:10px sans-serif;background:#07131a99;padding:3px 8px;border-radius:99px}
 
-body.game-running #miniMap{display:block}body.game-running #questGuide{display:flex}
+body.game-running #miniMap:not(.hidden){display:block}body.game-running #questGuide:not(.hidden){display:flex}
 /* mobile-layout-fix-03 */
 
 body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGuide,body.dialogue-open #mobileControls{opacity:0!important;pointer-events:none!important}
@@ -322,7 +322,24 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
 .map-overview{box-shadow:0 16px 44px rgba(28,49,44,.16)!important;border-color:rgba(255,255,255,.7)!important}
 .info-grid>div,.quest-card,.inventory-item,.settings-card{box-shadow:0 8px 22px rgba(20,35,42,.06)}
 
-/* responsive-pass-01 */
+/* containment-fix-01: every game layer owns its own viewport; hidden always wins */
+.full-panel{
+  position:fixed!important;
+  inset:0!important;
+  z-index:300!important;
+  width:100vw!important;
+  height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  display:block;
+  overflow:hidden!important;
+  isolation:isolate;
+}
+.full-panel.hidden{display:none!important}
+#hud.hidden,#mobileControls.hidden,#questGuide.hidden,#miniMap.hidden{display:none!important}
+#hud:not(.hidden),#mobileControls:not(.hidden){display:block!important}
+.full-panel-inner{position:relative!important;z-index:1!important;width:100%;height:100%;margin:0;box-sizing:border-box}
+\n/* responsive-pass-01 */
 html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-bottom:max(24px,env(safe-area-inset-bottom))!important}.menu-shell{width:100%;height:100%;min-width:0;min-height:0}.menu-content,.menu-page,.full-title,.inventory-screen,.quest-screen{min-width:0}.inventory-big-grid,.inventory-grid,.info-grid{min-width:0}.inventory-big-grid .inventory-item,.inventory-item,.quest-card,.info-grid>div{min-width:0}.inventory-big-grid .inventory-item b,.inventory-item b,.quest-card p,.page-head p{overflow-wrap:anywhere}
 
 /* responsive-game-layout: single authoritative touch layout */
@@ -350,7 +367,7 @@ html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-botto
 }
 
 @media (hover:none) and (pointer:coarse) and (orientation:landscape){
-  #hud{
+  #hud:not(.hidden){
     position:fixed!important;
     inset:0!important;
     z-index:20!important;
@@ -504,7 +521,7 @@ html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-botto
   #hud #hint{display:none!important}
 
   /* mobile controls */
-  #mobileControls{
+  #mobileControls:not(.hidden){
     position:fixed!important;
     inset:0!important;
     z-index:200!important;
@@ -607,9 +624,9 @@ html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-botto
   }
   #menu .menu-nav{
     grid-column:1!important;
-    grid-row:1!important;
-    align-self:start!important;
-    margin-top:120px!important;
+    grid-row:2!important;
+    align-self:stretch!important;
+    margin-top:0!important;
     display:flex!important;
     flex-direction:column!important;
   }

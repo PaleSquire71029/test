@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/game.css?v=gameplay-01"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018}body{font-family:"Plus Jakarta Sans",sans-serif}</style>
+<link rel="stylesheet" href="css/game.css?v=world-ui-02"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018}body{font-family:"Plus Jakarta Sans",sans-serif}</style>
 <style>
 #loading{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#071018;color:#f6efdc;font-family:"Plus Jakarta Sans",sans-serif}#loading.hidden{display:none!important}.load-logo{font-size:44px;font-weight:800;letter-spacing:.12em}.load-sub{font-family:"Noto Serif SC",serif;margin:8px 0 30px}.load-track{width:240px;height:2px;background:#ffffff22}.load-track i{display:block;height:100%;width:0;background:#e9cf91}.load-track+span{margin-top:14px;font-size:11px;opacity:.65}#worldCanvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none}</style>
 </head>
@@ -29,6 +29,7 @@
 <div id="start" class="screen"><div class="title"><small>A NEW WORLD AWAITS</small><h1>ETHERIA</h1><h2>回声大陆</h2><p>一片可以真正走进去的幻想大陆</p></div><button id="startBtn">进入世界 <span>→</span></button><div class="start-tip">开放世界 · 探索 · 战斗 · 任务 · 收集</div></div>
 <div id="menu" class="overlay hidden"><div class="panel"><button class="close" id="closeMenu">×</button><small>SYSTEM</small><h2>旅行手册</h2><div class="tabs"><button class="active" data-tab="map">地图</button><button data-tab="bag">背包</button><button data-tab="quests">任务</button><button data-tab="settings">设置</button></div><div id="tabContent"></div></div></div>
 <div id="dialogue" class="dialogue hidden"><div class="dialogue-box"><small id="dialogueRole">村民</small><h2 id="dialogueName">艾琳</h2><p id="dialogueText"></p><button id="dialogueNext">继续</button></div></div>
-<div id="toast"></div>
-<script src="js/main.js?v=gameplay-01" defer></script>
+<div id="miniMap" aria-label="小地图"><canvas id="miniMapCanvas" width="180" height="180"></canvas><div class="mini-map-label">晨雾谷</div></div>
+<div id="questGuide" class="hidden"><div class="guide-arrow">➤</div><span id="guideDistance">目标</span></div><div id="toast"></div>
+<script src="js/main.js?v=world-ui-02" defer></script>
 </body></html>

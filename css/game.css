@@ -972,3 +972,87 @@ html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-botto
 }
 @media (hover:none) and (pointer:coarse) and (orientation:portrait) and (max-width:380px){.brand{display:none!important}.mobile-controls-layer #joy{width:96px!important;height:96px!important}.mobile-controls-layer #joy i{width:40px!important;height:40px!important;margin:-20px!important}.mobile-controls-layer .mobile-actions{grid-template-columns:repeat(2,50px)!important;grid-template-rows:repeat(2,50px)!important}.mobile-controls-layer .mobile-actions button,.mobile-controls-layer .mobile-actions button:first-child{width:50px!important;height:50px!important}.mobile-controls-layer .mobile-actions button:first-child{width:60px!important;height:60px!important;margin-top:-20px!important}.mobile-controls-layer .mobile-actions button:last-child{right:58px!important;bottom:112px!important}#hud .player-card{width:215px!important;bottom:128px!important}#hud #quest{width:58vw!important;max-width:58vw!important}}
 @media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:420px){.mobile-controls-layer #joy{width:100px!important;height:100px!important}.mobile-controls-layer #joy i{width:44px!important;height:44px!important;margin:-22px!important}.mobile-controls-layer .mobile-actions{gap:6px!important}.mobile-controls-layer .mobile-actions button{width:52px!important;height:52px!important}.mobile-controls-layer .mobile-actions button:first-child{width:68px!important;height:68px!important}.mobile-controls-layer .mobile-actions button:last-child{bottom:58px!important}#hud .player-card{bottom:126px!important;width:220px!important}#hud #quest{top:132px!important;width:230px!important}}
+
+/* landscape-only-final-01: the game is designed for landscape play */
+#mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+#rotateHint{display:none!important;visibility:hidden!important;pointer-events:none!important}
+body.game-running #mobileControls{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important}
+body.game-running #mobileControls .mobile-actions,body.game-running #mobileControls #joy{pointer-events:auto!important}
+body.game-running #rotateHint{display:none!important}
+
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  #hud{visibility:hidden!important;pointer-events:none!important}
+  body.game-running #rotateHint{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:1000!important}
+}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  html,body,#game,#worldCanvas{width:100vw!important;height:100dvh!important;min-width:0!important;min-height:0!important;overflow:hidden!important}
+  #hud{visibility:visible!important;overflow:hidden!important}
+  #mobileControls{display:block!important;visibility:visible!important;opacity:1!important}
+  #rotateHint{display:none!important}
+
+  /* top HUD: four stable zones, no collision */
+  #hud .brand{left:18px!important;top:12px!important}
+  #hud .region{top:12px!important;left:50%!important;transform:translateX(-50%)!important;max-width:32vw!important;white-space:nowrap!important}
+  #hud .quick-nav{position:fixed!important;right:18px!important;top:10px!important;display:flex!important;gap:7px!important;z-index:90!important}
+  #hud .quick-nav button{width:42px!important;height:42px!important;padding:0!important}
+  #hud .quick-nav button span{display:none!important}
+  #hud #quest{left:18px!important;top:68px!important;width:min(300px,32vw)!important;min-width:220px!important;max-width:32vw!important;padding:9px 14px!important}
+  #hud #quest b,#hud #quest span{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+  /* bottom HUD stays inside the safe center corridor */
+  #hud .player-card{left:18px!important;bottom:20px!important;width:210px!important;min-height:54px!important;z-index:70!important}
+  #hud .hud-resources{left:18px!important;bottom:82px!important;top:auto!important;z-index:71!important;display:flex!important}
+  #hud .hud-resources span{display:inline-flex!important}
+  #hud #interact{left:50%!important;bottom:23%!important;max-width:260px!important;z-index:75!important}
+  #hud #combat{left:50%!important;top:13%!important;width:min(280px,34vw)!important;z-index:75!important}
+  #hud #hint{display:none!important}
+
+  /* right-hand controls: deliberate 2+1 combat cluster */
+  #mobileControls .mobile-actions{position:fixed!important;right:max(18px,env(safe-area-inset-right) + 12px)!important;bottom:max(18px,env(safe-area-inset-bottom) + 10px)!important;width:190px!important;height:150px!important;display:block!important;z-index:120!important}
+  #mobileControls .mobile-actions button{position:absolute!important;display:grid!important;place-items:center!important;width:58px!important;height:58px!important;margin:0!important;border-radius:50%!important}
+  #mobileControls #attackBtn{right:0!important;bottom:0!important;width:78px!important;height:78px!important;font-size:16px!important}
+  #mobileControls #dashBtn{right:86px!important;bottom:4px!important}
+  #mobileControls #skillBtn{right:14px!important;bottom:88px!important}
+  #mobileControls #interactBtn{right:92px!important;bottom:76px!important;width:48px!important;height:48px!important;font-size:10px!important}
+
+  /* left-hand joystick */
+  #mobileControls #joy{position:fixed!important;left:max(22px,env(safe-area-inset-left) + 12px)!important;bottom:max(20px,env(safe-area-inset-bottom) + 10px)!important;width:126px!important;height:126px!important;margin:0!important;z-index:120!important}
+  #mobileControls #joy i{width:52px!important;height:52px!important;margin:-26px!important}
+
+  /* full-screen game panels remain horizontal and never become a portrait card */
+  .full-panel-inner{width:100vw!important;min-width:0!important;height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;padding:64px max(28px,5vw) 30px!important}
+  .character-screen{display:grid!important;grid-template-columns:minmax(300px,.9fr) minmax(360px,1.1fr)!important;grid-template-rows:1fr!important;height:calc(100dvh - 94px)!important;min-height:0!important;align-items:stretch!important}
+  .character-art{height:auto!important;min-height:0!important;flex:none!important}
+  .character-info{height:auto!important;min-width:0!important;padding:26px 34px!important;border-left:1px solid #14232a18!important;border-top:0!important;overflow:auto!important}
+  .traveler-figure{height:min(68dvh,520px)!important;max-width:100%!important}
+  .inventory-screen,.quest-screen{height:auto!important;min-height:calc(100dvh - 94px)!important;padding:0!important}
+  .inventory-big-grid{grid-template-columns:repeat(4,minmax(130px,1fr))!important;gap:12px!important}
+  .inventory-big-grid .inventory-item{min-height:150px!important}
+  #menu.overlay{align-items:stretch!important;justify-content:stretch!important}
+  #menu .menu-shell{width:100vw!important;height:100dvh!important;min-height:0!important;grid-template-columns:170px minmax(0,1fr)!important;grid-template-rows:1fr!important}
+  #menu .menu-topbar{grid-column:1!important;grid-row:1!important;padding:24px 18px!important;min-height:0!important}
+  #menu .menu-nav{grid-column:1!important;grid-row:1!important;align-self:start!important;margin-top:120px!important;display:flex!important;flex-direction:column!important;padding:10px!important;gap:4px!important}
+  #menu .menu-nav button{padding:14px 12px!important;text-align:left!important;align-items:flex-start!important}
+  #menu .menu-nav button span{font-size:13px!important}
+  #menu .menu-nav button small{display:block!important;font-size:8px!important}
+  #menu .menu-content{grid-column:2!important;grid-row:1!important;padding:30px 38px 30px 28px!important;min-width:0!important;overflow:auto!important}
+  #menu .map-overview{height:46vh!important;min-height:240px!important}
+  #dialogue .dialogue-box{max-width:900px!important;width:min(900px,calc(100vw - 80px))!important;max-height:42dvh!important}
+}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:420px){
+  #hud .quest{top:62px!important}
+  #hud .player-card{bottom:12px!important}
+  #hud .hud-resources{bottom:70px!important}
+  #mobileControls #joy{width:104px!important;height:104px!important}
+  #mobileControls #joy i{width:44px!important;height:44px!important;margin:-22px!important}
+  #mobileControls .mobile-actions{right:14px!important;bottom:12px!important;width:170px!important;height:126px!important}
+  #mobileControls #attackBtn{width:68px!important;height:68px!important}
+  #mobileControls #dashBtn{right:76px!important}
+  #mobileControls #skillBtn{right:8px!important;bottom:76px!important}
+  #mobileControls #interactBtn{right:78px!important;bottom:66px!important;width:44px!important;height:44px!important}
+  #hud .quick-nav{right:12px!important;top:8px!important}
+  #hud .quick-nav button{width:38px!important;height:38px!important}
+}

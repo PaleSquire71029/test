@@ -208,15 +208,15 @@ function talk(npc){
  renderDialogue();
 }
 function renderDialogue(){
- if(!dialogueQueue.length){state.dialogue=false;$("dialogue")?.classList.add("hidden");return}
+ if(!dialogueQueue.length){state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue")?.classList.add("hidden");return}
  const d=dialogueQueue[0];
  $("dialogueRole").textContent=d[1];$("dialogueName").textContent=d[0];$("dialogueText").textContent=d[2];
- $("dialogue").classList.remove("hidden");
+ $("dialogue").classList.remove("hidden");document.body.classList.add("dialogue-open");
 }
 function nextDialogue(){
  dialogueQueue.shift();
  if(!dialogueQueue.length){
-   state.dialogue=false;$("dialogue").classList.add("hidden");
+   state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue").classList.add("hidden");
    if(state.quest===0){state.quest=1;notify("任务更新：清理森林中的威胁");updateQuestUI();}
  }else renderDialogue();
 }
@@ -240,7 +240,8 @@ function questTitle(){
 function questHint(){
  if(state.quest===0)return"与艾琳交谈，了解晨雾谷最近的异常";
  if(state.quest===1)return"击败森林中的野兽（"+state.kills+"/2）";
- return"前往潮汐祭坛，寻找回声的源头";
+ if(state.quest===2)return"前往潮汐祭坛，寻找回声的源头";
+ return"回到晨雾谷，向艾琳报告发现";
 }
 function updateQuestUI(){
  $("questTitle").textContent=questTitle();$("questHint").textContent=questHint();
@@ -250,6 +251,45 @@ function focusQuest(){
  updateQuestUI();
 }
 
+function questTarget(){
+ if(state.quest===0)return npcs.find(n=>n.name==="艾琳")||null;
+ if(state.quest===1){
+   const living=enemies.filter(e=>!e.dead);
+   return living.sort((a,b)=>dist(player,a)-dist(player,b))[0]||null;
+ }
+ if(state.quest===2)return landmarks.find(l=>l.name==="潮汐祭坛")||null;
+ if(state.quest===3)return npcs.find(n=>n.name==="艾琳")||null;
+ return null;
+}
+function updateQuestGuide(){
+ const guide=$("questGuide"),arrow=guide?.querySelector(".guide-arrow"),label=$("guideDistance"),target=questTarget();
+ if(!guide||!arrow||!label||!state.started||state.dialogue||!target){guide?.classList.add("hidden");return}
+ const dx=target.x-player.x,dy=target.y-player.y,d=Math.hypot(dx,dy);
+ const angle=Math.atan2(dy,dx)+Math.PI/2;
+ arrow.style.transform="rotate("+angle+"rad)";
+ label.textContent=d<100?"目标就在附近":Math.round(d)+"m";
+ guide.classList.remove("hidden");
+}
+function drawMiniMap(){
+ const c=$("miniMapCanvas");if(!c||!state.started||state.dialogue)return;
+ const m=c.getContext("2d"),mw=c.width,mh=c.height,sx=mw/world.w,sy=mh/world.h;
+ m.clearRect(0,0,mw,mh);
+ m.fillStyle="#78966f";m.fillRect(0,0,mw,mh);
+ m.fillStyle="#6e8f69";m.fillRect(0,0,950*sx,mh);
+ m.fillStyle="#809c73";m.fillRect(2050*sx,0,950*sx,900*sy);
+ m.fillStyle="#73937d";m.fillRect(1700*sx,1250*sy,1300*sx,950*sy);
+ m.fillStyle="#397386";m.beginPath();m.ellipse(2320*sx,1770*sy,620*sx,480*sy,0,0,Math.PI*2);m.fill();
+ m.strokeStyle="#c0a679";m.lineWidth=7;m.beginPath();m.moveTo(0,1050*sy);m.quadraticCurveTo(1300*sx,960*sy,3000*sx,1100*sy);m.stroke();
+ m.strokeStyle="#d3bc91";m.lineWidth=5;m.beginPath();m.moveTo(1180*sx,0);m.quadraticCurveTo(1250*sx,650*sy,1180*sx,mh);m.stroke();
+ // landmarks / camps / chests
+ for(const n of npcs){m.fillStyle="#e7b85b";m.beginPath();m.arc(n.x*sx,n.y*sy,2.8,0,Math.PI*2);m.fill()}
+ for(const f of campfires){m.fillStyle="#f3c65f";m.beginPath();m.arc(f.x*sx,f.y*sy,2.6,0,Math.PI*2);m.fill()}
+ for(const ch of chests.filter(x=>!x.opened)){m.fillStyle="#d6a25d";m.fillRect(ch.x*sx-2,ch.y*sy-2,4,4)}
+ const target=questTarget();
+ if(target){m.strokeStyle="#f0cf75";m.lineWidth=2;m.beginPath();m.arc(target.x*sx,target.y*sy,5,0,Math.PI*2);m.stroke()}
+ m.fillStyle="#fff";m.beginPath();m.arc(player.x*sx,player.y*sy,3.8,0,Math.PI*2);m.fill();
+ m.strokeStyle="#fff8";m.lineWidth=1;m.stroke();
+}
 function worldToScreen(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
 function screenToWorld(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
 
@@ -591,7 +631,7 @@ function interact(){
  let best=null,bd=95;
  for(const n of npcs){const d=dist(player,n);if(d<bd){bd=d;best=n}}
  if(best){talk(best);return}
- for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){if(l.type==="boss"&&!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(l.x,l.y,"#d8666a",30);return}notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI()}return}}
+ for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){if(l.type==="boss"&&!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(l.x,l.y,"#d8666a",30);return}notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI();saveGame()}return}}
  for(const b of buildings){if(b.name&&dist(player,b)<90){notify(b.name+"：一座安静的建筑");return}}
 }
 function updateBoss(dt){
@@ -703,14 +743,8 @@ function render(){
  ];
  list.sort((a,b)=>a.y-b.y);for(const o of list)o.fn();
  drawParticles();drawCombatFeedback();drawAtmosphere();
- // quest direction marker
- if(state.started&&state.quest===2){
-   const target=landmarks.find(x=>x.name==="潮汐祭坛");if(target){
-     const dx=target.x-player.x,dy=target.y-player.y,ang=Math.atan2(dy,dx);
-     const cx=W/2+Math.cos(ang)*Math.min(W,H)*.32,cy=H/2+Math.sin(ang)*Math.min(W,H)*.32;
-     ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);ctx.fillStyle="#e4c16f";ctx.shadowColor="#e4c16f";ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-10,-9);ctx.lineTo(-6,0);ctx.lineTo(-10,9);ctx.closePath();ctx.fill();ctx.restore();
-   }
- }
+ updateQuestGuide();drawMiniMap();
+
 }
 
 function loop(t){

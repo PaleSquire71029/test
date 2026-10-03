@@ -34,7 +34,7 @@ function tone(freq,duration,type="sine",volume=.08,slide=0,when=0){
   osc.stop(t+duration+.02);
 }
 
-export function init(){
+function init(){
   const c=ensureContext();
   if(!c||ambientStarted)return;
   ambientStarted=true;
@@ -68,32 +68,32 @@ export function init(){
   drone.start();
 }
 
-export function hit(){
+function hit(){
   tone(240,.045,"triangle",.11,90);
   tone(560,.025,"square",.045,-80,.008);
 }
 
-export function pickup(){
+function pickup(){
   tone(620,.09,"sine",.07,90);
   tone(920,.12,"sine",.055,120,.055);
 }
 
-export function levelUp(){
+function levelUp(){
   tone(520,.11,"triangle",.08,120);
   tone(760,.13,"triangle",.075,150,.07);
   tone(1040,.18,"sine",.065,220,.14);
 }
 
-export function hurt(){
+function hurt(){
   tone(115,.12,"sawtooth",.08,-45);
   tone(72,.16,"triangle",.055,-20,.025);
 }
 
-export function ambient(){
+function ambient(){
   init();
 }
 
-export function dispose(){
+function dispose(){
   if(ctx){
     ctx.close().catch(()=>{});
     ctx=null;
@@ -101,3 +101,6 @@ export function dispose(){
     ambientStarted=false;
   }
 }
+
+
+window.EtheriaAudio={init,hit,pickup,levelUp,hurt,ambient,dispose};

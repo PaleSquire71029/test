@@ -347,13 +347,15 @@ function questTitle(){
  if(state.quest===0)return"初见晨雾谷";
  if(state.quest===1)return"森林中的威胁";
  if(state.quest===2)return"回声的源头";
- return"回到晨雾谷";
+ if(state.quest===3)return"回到晨雾谷";
+ return"新的回声";
 }
 function questHint(){
  if(state.quest===0)return"与艾琳交谈，了解晨雾谷最近的异常";
  if(state.quest===1)return"击败森林中的野兽（"+state.kills+"/2）";
  if(state.quest===2)return"前往潮汐祭坛，寻找回声的源头";
- return"回到晨雾谷，向艾琳报告发现";
+ if(state.quest===3)return"回到晨雾谷，向艾琳报告发现";
+ return"晨雾谷的调查已经结束，继续探索更远的地方";
 }
 function updateQuestUI(){
  $("questTitle").textContent=questTitle();$("questHint").textContent=questHint();syncProgressHUD();

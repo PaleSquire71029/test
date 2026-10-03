@@ -29,6 +29,7 @@ const buildings=[];
 const resources=[];
 const chests=[];
 const gates=[];
+let boss=null;
 const world={w:3000,h:2200};
 
 const zones=[
@@ -128,6 +129,9 @@ function generateWorld(){
  addGate(930,1120,"森林石门");
  addGate(1760,1250,"湖畔古门");
  addChest(2580,470,true);
+ // Boss arena
+ addLandmark(2700,1650,"boss","古龙巢穴");
+ boss={x:2700,y:1650,type:"暮岩古龙",hp:1800,max:1800,hit:0,phase:0,active:false,dead:false,attackCd:0};
  // fireflies
  for(let i=0;i<70;i++)fireflies.push({x:rnd(300,1800),y:rnd(250,1900),p:rnd(0,6),s:rnd(.4,1)});
 }
@@ -294,6 +298,21 @@ function drawChest(ch){
  if(!ch.opened&&dist(player,ch)<65){ctx.fillStyle="#fff";ctx.font="11px sans-serif";ctx.textAlign="center";ctx.fillText("E 开启",0,32)}
  ctx.restore();
 }
+function drawBoss(){
+ if(!boss||boss.dead)return;
+ const s=worldToScreen(boss.x,boss.y);if(s.x<-150||s.x>W+150||s.y<-150||s.y>H+150)return;
+ const pulse=1+Math.sin(performance.now()/260)*.04;
+ ctx.save();ctx.translate(s.x,s.y);ctx.scale(pulse,pulse);
+ ctx.fillStyle="#0007";ctx.beginPath();ctx.ellipse(0,46,76,24,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#514c59";ctx.beginPath();ctx.moveTo(-70,25);ctx.lineTo(-55,-45);ctx.lineTo(-20,-72);ctx.lineTo(0,-55);ctx.lineTo(30,-78);ctx.lineTo(66,-38);ctx.lineTo(75,28);ctx.lineTo(30,55);ctx.lineTo(-30,55);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#796a7b";ctx.beginPath();ctx.moveTo(-42,-45);ctx.lineTo(-20,-92);ctx.lineTo(-5,-52);ctx.lineTo(-25,-28);ctx.closePath();ctx.fill();
+ ctx.beginPath();ctx.moveTo(25,-48);ctx.lineTo(48,-88);ctx.lineTo(52,-34);ctx.lineTo(34,-20);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#e36a61";ctx.shadowColor="#e36a61";ctx.shadowBlur=14;ctx.beginPath();ctx.arc(-23,-27,6,0,Math.PI*2);ctx.arc(23,-27,6,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+ ctx.fillStyle="#d6b56d";ctx.beginPath();ctx.moveTo(-8,-3);ctx.lineTo(0,14);ctx.lineTo(8,-3);ctx.closePath();ctx.fill();
+ ctx.restore();
+ const bw=150;ctx.fillStyle="#0009";ctx.fillRect(s.x-bw/2,s.y-115,bw,8);ctx.fillStyle="#c85e67";ctx.fillRect(s.x-bw/2,s.y-115,bw*clamp(boss.hp/boss.max,0,1),8);
+ ctx.fillStyle="#fff";ctx.font="bold 12px sans-serif";ctx.textAlign="center";ctx.fillText("暮岩古龙 · Lv. 12",s.x,s.y-125);
+}
 function drawGate(g){
  const s=worldToScreen(g.x,g.y);ctx.save();ctx.translate(s.x,s.y);
  ctx.strokeStyle=g.open?"#91c7a0":"#615f65";ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-32,25);ctx.lineTo(-32,-30);ctx.quadraticCurveTo(0,-62,32,-30);ctx.lineTo(32,25);ctx.stroke();
@@ -436,6 +455,11 @@ function attack(){
  for(const e of enemies)if(!e.dead){const d=dist(player,e);if(d<best){best=d;target=e}}
  if(!target){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
  const damage=state.equipment.power;
+ if(boss&&boss.active&&!boss.dead&&dist(player,boss)<115){
+   boss.hp-=damage;boss.hit=.15;player.attack=.32;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
+   if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;gainXp(520);state.bag.push("古龙核心");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
+   return;
+ }
  target.hp-=damage;target.hit=.15;player.attack=.32;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");
  if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
    if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");}
@@ -490,10 +514,23 @@ function interact(){
  let best=null,bd=95;
  for(const n of npcs){const d=dist(player,n);if(d<bd){bd=d;best=n}}
  if(best){talk(best);return}
- for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI()}return}}
+ for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){if(l.type==="boss"&&!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(l.x,l.y,"#d8666a",30);return}notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI()}return}}
  for(const b of buildings){if(b.name&&dist(player,b)<90){notify(b.name+"：一座安静的建筑");return}}
 }
 
+function updateBoss(dt){
+ if(!boss||boss.dead)return;
+ const d=dist(player,boss);
+ if(d<520&&state.started&&!state.dialogue){
+   boss.active=true;boss.phase+=dt;boss.attackCd-=dt;
+   const dx=(player.x-boss.x)/(d||1),dy=(player.y-boss.y)/(d||1);
+   if(d>115){boss.x+=dx*22*dt;boss.y+=dy*22*dt}
+   if(d<150&&boss.attackCd<=0&&player.inv<=0){
+     boss.attackCd=1.5;state.hp-=38;player.inv=.9;floatText(player.x,player.y-45,"-38","#ef8b7f");emit(player.x,player.y,"#c45e6a",14);updateHP();
+   }
+   if(Math.sin(boss.phase*1.7)>0.985)emit(boss.x+dx*50,boss.y+dy*50,"#d8666a",16);
+ }
+}
 function updateEnemies(dt){
  for(const e of enemies){
    if(e.dead)continue;e.hit=Math.max(0,e.hit-dt);
@@ -579,6 +616,7 @@ function render(){
   ...chests.map(x=>({y:x.y,fn:()=>drawChest(x)})),
   ...gates.map(x=>({y:x.y,fn:()=>drawGate(x)})),
   ...buildings.map(x=>({y:x.y,fn:()=>drawBuilding(x)})),
+  ...(boss&&!boss.dead?[{y:boss.y,fn:drawBoss}]:[]),
   ...landmarks.map(x=>({y:x.y,fn:()=>drawLandmark(x)})),
   ...npcs.map(x=>({y:x.y,fn:()=>drawNPC(x)})),
   ...enemies.filter(e=>!e.dead).map(x=>({y:x.y,fn:()=>drawEnemy(x)})),
@@ -598,7 +636,7 @@ function render(){
 
 function loop(t){
  const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
- move();updateEnemies(dt);updateParticles(dt);updateCamera();
+ move();updateEnemies(dt);updateBoss(dt);updateParticles(dt);updateCamera();
  player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
  updateClock(dt);updateInteraction();render();
  requestAnimationFrame(loop);

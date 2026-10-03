@@ -156,20 +156,7 @@ function setLoading(){
 setLoading();
 
 function setupUI(){
- async function enterImmersiveMobile(){
- if(innerWidth>900&&!matchMedia("(pointer:coarse)").matches)return;
- try{
-   if(!document.fullscreenElement) await (document.documentElement.requestFullscreen?.({navigationUI:"hide"})||Promise.resolve());
- }catch(e){}
- try{await screen.orientation?.lock?.("landscape");}catch(e){}
-}
-$("startBtn")?.addEventListener("click",async()=>{
-   state.started=true;$("start")?.classList.add("hidden");$("hud")?.classList.remove("hidden");
-   document.body.classList.add("game-running");
-   await enterImmersiveMobile();
-   $("mobileControls")?.classList.remove("hidden");
-   syncMobileUI();loadGame();notify("欢迎来到晨雾谷");focusQuest();
- });
+ $("startBtn")?.addEventListener("click",startGame);
  $("characterBtn")?.addEventListener("click",()=>openFullPanel("characterPanel"));
  $("inventoryBtn")?.addEventListener("click",()=>openFullPanel("inventoryPanel"));
  $("questBtn")?.addEventListener("click",()=>openFullPanel("questPanel"));
@@ -868,12 +855,12 @@ joy?.addEventListener("pointercancel",endJoy);
 joy?.addEventListener("lostpointercapture",endJoy);
 
 updateQuestUI();updateHP();
-function enterImmersiveMobile(){
+async function enterImmersiveMobile(){
  if(innerWidth>900&&!matchMedia("(pointer:coarse)").matches)return;
- if(document.documentElement.requestFullscreen&&!document.fullscreenElement){
-   document.documentElement.requestFullscreen({navigationUI:"hide"}).catch(()=>{});
- }
- if(screen.orientation?.lock)screen.orientation.lock("landscape").catch(()=>{});
+ try{
+   if(!document.fullscreenElement) await (document.documentElement.requestFullscreen?.({navigationUI:"hide"})||Promise.resolve());
+ }catch(e){}
+ try{await screen.orientation?.lock?.("landscape");}catch(e){}
 }
 function startGame(){
  if(state.started)return;
@@ -888,7 +875,6 @@ function startGame(){
  focusQuest();
  syncMobileUI();
 }
-$("startBtn")?.addEventListener("click",startGame);
 $("attackBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();attack()},{passive:false});
 $("dashBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();dash()},{passive:false});
 $("skillBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();skill()},{passive:false});
@@ -913,8 +899,6 @@ function syncInteractButton(){
  b.textContent="互动";
 }
 
-$("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
-$("closeMenu")?.addEventListener("click",()=>{$("menu")?.classList.add("hidden")});
 addEventListener("fullscreenchange",syncMobileUI);
 addEventListener("resize",()=>{if(state.started&&(innerWidth<=900||matchMedia("(pointer:coarse)").matches))enterImmersiveMobile()});
 

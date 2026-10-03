@@ -434,6 +434,14 @@ function drawPlayer(){
  ctx.restore();
 }
 
+function drawCombatFeedback(){
+ if(!state.started||state.combo<=0)return;
+ const a=clamp(state.comboTimer/.9,0,1);
+ ctx.save();ctx.globalAlpha=.45+.5*a;ctx.textAlign="center";ctx.font="700 16px sans-serif";
+ ctx.fillStyle="#f4d27e";ctx.shadowColor="#f4d27e";ctx.shadowBlur=12;
+ ctx.fillText("COMBO ×"+state.combo,W-120,H-150);
+ ctx.font="11px sans-serif";ctx.shadowBlur=0;ctx.globalAlpha=.55;ctx.fillText("连续命中提升伤害",W-120,H-132);ctx.restore();
+}
 function drawParticles(){
  for(const p of particles){const s=worldToScreen(p.x,p.y);ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(s.x,s.y,p.size,0,Math.PI*2);ctx.fill()}
  ctx.globalAlpha=1;
@@ -651,7 +659,7 @@ function drawAtmosphere(){
 }
 function saveGame(){
  localStorage.setItem("etheria-save",JSON.stringify({
-  state:{hp:state.hp,maxHp:state.maxHp,stamina:state.stamina,time:state.time,coins:state.coins,wood:state.wood,ore:state.ore,herbs:state.herbs,quest:state.quest,kills:state.kills,bag:state.bag,equipment:state.equipment,chestsOpened:state.chestsOpened,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,echoes:state.echoes},
+  state:{hp:state.hp,maxHp:state.maxHp,stamina:state.stamina,time:state.time,coins:state.coins,wood:state.wood,ore:state.ore,herbs:state.herbs,quest:state.quest,kills:state.kills,bag:state.bag,equipment:state.equipment,chestsOpened:state.chestsOpened,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,echoes:state.echoes,echoTaken:echoes.map(x=>x.taken)},
   player:{x:player.x,y:player.y}
  }));
 }
@@ -659,6 +667,7 @@ function loadGame(){
  try{
   const s=JSON.parse(localStorage.getItem("etheria-save")||"null");if(!s)return;
   Object.assign(state,s.state||{});Object.assign(player,s.player||{});
+  if(Array.isArray(s.state?.echoTaken))s.state.echoTaken.forEach((v,i)=>{if(echoes[i])echoes[i].taken=!!v});
   let n=0;for(const ch of chests)if(ch.opened)n++;
   chests.slice(0,n).forEach(x=>x.opened=true);
   updateHP();updateQuestUI();notify("已恢复上次旅程");
@@ -693,7 +702,7 @@ function render(){
   {y:player.y,fn:drawPlayer}
  ];
  list.sort((a,b)=>a.y-b.y);for(const o of list)o.fn();
- drawParticles();drawAtmosphere();
+ drawParticles();drawCombatFeedback();drawAtmosphere();
  // quest direction marker
  if(state.started&&state.quest===2){
    const target=landmarks.find(x=>x.name==="潮汐祭坛");if(target){

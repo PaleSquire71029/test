@@ -1080,3 +1080,90 @@ body.game-running #rotateHint{display:none!important}
   #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
   #questGuide,#toast{visibility:hidden!important}
 }
+
+/* hud-rebuild-01: authoritative landscape gameplay HUD
+   Keep one spatial layout instead of stacking contradictory responsive patches. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  #hud{position:fixed!important;inset:0!important;z-index:20!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important;overflow:hidden!important}
+  #hud header{position:absolute!important;inset:0!important;pointer-events:none!important}
+  #hud .brand{display:flex!important;left:22px!important;top:16px!important}
+  #hud .region{top:14px!important;left:50%!important;transform:translateX(-50%)!important;z-index:10!important}
+  #hud .quick-nav{
+    position:fixed!important;right:20px!important;top:12px!important;
+    display:flex!important;align-items:flex-start!important;gap:5px!important;
+    z-index:160!important;pointer-events:auto!important;
+  }
+  #hud .quick-nav button{
+    position:relative!important;display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:flex-start!important;
+    width:52px!important;height:62px!important;padding:0!important;
+    border:0!important;border-radius:0!important;background:transparent!important;
+    color:#f5ecd8!important;overflow:visible!important;
+  }
+  #hud .quick-nav .nav-icon{
+    display:block!important;visibility:visible!important;opacity:1!important;
+    width:30px!important;height:30px!important;margin:0!important;
+  }
+  #hud .quick-nav button span{
+    position:static!important;display:block!important;visibility:visible!important;
+    opacity:.9!important;transform:none!important;margin-top:5px!important;
+    font:11px "Noto Serif SC",serif!important;letter-spacing:.08em!important;
+    color:#f4ead4!important;text-shadow:0 2px 7px #000!important;
+  }
+  #hud .quick-nav button:hover .nav-icon{transform:translateY(-2px)!important}
+  #hud #menuBtn .nav-icon{width:30px!important;height:30px!important}
+  #hud #quest{
+    left:22px!important;top:72px!important;
+    width:300px!important;min-width:0!important;max-width:34vw!important;
+    padding:11px 16px 12px 40px!important;z-index:120!important;
+  }
+  #hud .hud-resources{
+    left:22px!important;top:146px!important;bottom:auto!important;z-index:121!important;
+  }
+  #hud .player-card{
+    left:22px!important;bottom:20px!important;
+    width:238px!important;min-height:62px!important;z-index:120!important;
+  }
+  /* Quest guidance lives in the upper-left objective lane, never over the player. */
+  #questGuide{
+    left:340px!important;right:auto!important;top:74px!important;
+    transform:none!important;z-index:125!important;
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    gap:7px!important;padding:7px 10px!important;border-radius:4px!important;
+    background:rgba(12,20,22,.62)!important;border:1px solid rgba(226,199,123,.22)!important;
+    backdrop-filter:blur(5px)!important;
+  }
+  #questGuide .guide-arrow{font-size:22px!important}
+  #questGuide span{font-size:10px!important}
+  #toast{
+    left:50%!important;right:auto!important;top:16px!important;
+    transform:translateX(-50%)!important;z-index:300!important;
+    max-width:42vw!important;white-space:nowrap!important;
+  }
+  #miniMap{
+    left:auto!important;right:22px!important;top:86px!important;
+    width:116px!important;height:116px!important;z-index:115!important;
+  }
+  #hud #combat{
+    top:17%!important;left:50%!important;transform:translateX(-50%)!important;
+    z-index:130!important;
+  }
+  #hud #interact{
+    left:50%!important;bottom:29%!important;transform:translateX(-50%)!important;
+    z-index:130!important;
+  }
+  #hud #crosshair{z-index:130!important}
+  #hud #hint{display:none!important}
+  /* Controls occupy only the bottom corners; the HUD never sits above them. */
+  #mobileControls{z-index:200!important}
+}
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  #hud{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  #mobileControls{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  #questGuide,#toast,#miniMap{display:none!important;visibility:hidden!important}
+  body.game-running #rotateHint{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+}
+/* Portrait is an entry screen, not a gameplay layout. */
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  body:not(.game-running) #start{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+}

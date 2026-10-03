@@ -700,7 +700,7 @@ joy?.addEventListener("lostpointercapture",endJoy);
 
 updateQuestUI();updateHP();
 function enterImmersiveMobile(){
- if(innerWidth>900)return;
+ if(innerWidth>900&&!matchMedia("(pointer:coarse)").matches)return;
  if(document.documentElement.requestFullscreen&&!document.fullscreenElement){
    document.documentElement.requestFullscreen({navigationUI:"hide"}).catch(()=>{});
  }

@@ -153,3 +153,42 @@
  .mobile-controls-layer .mobile-actions #interactBtn.ready{opacity:1;transform:scale(1);border-color:rgba(235,210,135,.85);box-shadow:0 0 22px rgba(225,195,105,.24),inset 0 1px rgba(255,255,255,.2)}
  .mobile-controls-layer .mobile-actions #interactBtn.ready::after{content:"";position:absolute;inset:-4px;border:1px solid rgba(235,210,135,.28);border-radius:50%;animation:interactPulse 1.2s infinite}
 }
+
+/* World HUD v2: dialogue always owns the screen */
+.dialogue{z-index:200!important;align-items:flex-end;pointer-events:auto}
+.dialogue-box{position:relative;max-width:960px;min-height:150px;padding:24px 30px 22px 112px;border-radius:8px 8px 0 0}
+.dialogue-box:before{content:"";position:absolute;left:24px;top:24px;width:64px;height:64px;border-radius:50%;border:1px solid #e1c886;background:linear-gradient(145deg,#e8d5a2,#647e78);box-shadow:0 5px 25px #0007}
+.dialogue-box h2{font-size:21px;margin:3px 0 8px}
+.dialogue-box p{margin:0 100px 15px 0;font-size:14px;line-height:1.8}
+.dialogue-box button{position:absolute;right:24px;bottom:20px;border-radius:99px;background:#d7bd7d16}
+.mobile-controls-layer{z-index:100}
+body.dialogue-open .mobile-controls-layer{pointer-events:none!important;opacity:0!important}
+body.dialogue-open #miniMap,body.dialogue-open #questGuide{opacity:0!important;pointer-events:none!important}
+#miniMap{
+ position:fixed;right:20px;top:76px;width:180px;height:180px;z-index:45;
+ border:1px solid #ffffff3d;border-radius:12px;overflow:hidden;
+ background:rgba(8,18,22,.66);backdrop-filter:blur(8px);
+ box-shadow:0 10px 30px #0006;transition:opacity .25s,transform .25s;
+}
+#miniMap canvas{width:100%;height:100%;display:block;image-rendering:auto}
+.mini-map-label{position:absolute;left:10px;bottom:8px;color:#fff;font:11px "Noto Serif SC",sans-serif;text-shadow:0 1px 5px #000;opacity:.85}
+#questGuide{
+ position:fixed;left:50%;top:82px;transform:translateX(-50%);z-index:46;
+ display:flex;flex-direction:column;align-items:center;gap:2px;color:#f4d37f;
+ text-shadow:0 2px 8px #000;pointer-events:none;transition:opacity .2s;
+}
+#questGuide .guide-arrow{font-size:28px;line-height:1;filter:drop-shadow(0 0 7px #e6c46d);transition:transform .12s}
+#questGuide span{font:10px sans-serif;background:#07131a99;padding:3px 8px;border-radius:99px}
+@media(hover:none) and (pointer:coarse) and (orientation:landscape){
+ #miniMap{right:max(18px,env(safe-area-inset-right) + 12px);top:max(72px,env(safe-area-inset-top) + 60px);width:156px;height:156px;border-radius:10px}
+ #questGuide{top:70px}
+ .dialogue{padding:0 18px env(safe-area-inset-bottom)}
+ .dialogue-box{width:100%;max-width:none;min-height:130px;padding:18px 115px 18px 92px;border-radius:8px 8px 0 0}
+ .dialogue-box:before{left:18px;top:18px;width:58px;height:58px}
+ .dialogue-box p{font-size:13px;margin-right:0;line-height:1.65}
+ .dialogue-box button{right:18px;bottom:16px;padding:7px 16px}
+ body.dialogue-open #hud{filter:brightness(.75)}
+}
+@media(hover:none) and (pointer:coarse) and (orientation:portrait){
+ #miniMap,#questGuide{display:none!important}
+}

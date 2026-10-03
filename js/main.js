@@ -1012,9 +1012,14 @@ addEventListener("fullscreenchange",syncMobileUI);
 addEventListener("resize",()=>{if(state.started&&(innerWidth<=900||matchMedia("(pointer:coarse)").matches))enterImmersiveMobile()});
 
 function syncMobileUI(){
- const mobile=innerWidth<=900||matchMedia("(pointer:coarse)").matches;
- if(mobile)$("mobileControls")?.classList.remove("hidden");else $("mobileControls")?.classList.add("hidden");
- $("rotateHint")?.classList.toggle("show",mobile&&matchMedia("(orientation: portrait)").matches&&state.started);
+ const touch=matchMedia("(pointer:coarse)").matches;
+ const landscape=matchMedia("(orientation: landscape)").matches;
+ const playable=state.started&&touch&&landscape;
+ const controls=$("mobileControls");
+ const rotate=$("rotateHint");
+ if(controls)controls.classList.toggle("hidden",!playable);
+ if(rotate)rotate.classList.toggle("show",state.started&&touch&&!landscape);
+ document.body.classList.toggle("landscape-game",playable);
 }
 addEventListener("resize",syncMobileUI);
 addEventListener("orientationchange",()=>setTimeout(syncMobileUI,120));

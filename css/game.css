@@ -252,6 +252,7 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
 .full-title small,.character-info>small{color:var(--hud-gold-hi)!important}
 .full-title h2,.character-info h2{color:#f5ecd8}
 .full-title p,.character-info p{color:#aebcb7!important}
+.full-close{position:absolute!important;top:22px!important;right:28px!important;z-index:20!important;width:44px!important;height:44px!important;display:grid!important;place-items:center!important;cursor:pointer!important;pointer-events:auto!important}
 .full-close{
   border:1px solid rgba(232,199,123,.22)!important;border-radius:50%!important;
   background:rgba(7,18,24,.52)!important;color:#f0dfae!important;

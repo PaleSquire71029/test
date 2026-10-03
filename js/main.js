@@ -1,213 +1,201 @@
-import{UPGRADES,LORE,ENDINGS,REGIONS}from"./data.js?v=596182a6";import{loadSave,saveGame,defaults,makeExport,parseImport,clearSave,saveLabel}from"./save.js?v=596182a6";import{TASKS,STORY,initStory,applyChoice,nodesAtWave,getEnding,canShow}from"./story.js?v=596182a6";
-const $=id=>document.getElementById(id),c=$("game"),x=c.getContext("2d");let W,H,d=1,last=0,run=0,pause=0,wave=1,spawn=0,wait=0,shake=0,bossLive=0,player,en=[],shots=[],loot=[],fx=[],keys={},mouse={x:0,y:0,down:0},move={x:0,y:0},aim={x:1,y:0,active:0},dashOK=1,dashT=0,skillT=0,saveDirty=0,hudClock=0,bgCanvas,bgCtx,bgW=0,bgH=0;const save=initStory(loadSave());let secret=!!save.flags.secretUnlocked,found=!!save.flags.secretFound;
-function rebuildBackground(){
-  bgCanvas=document.createElement("canvas");bgCanvas.width=Math.max(1,Math.ceil(W));bgCanvas.height=Math.max(1,Math.ceil(H));bgCtx=bgCanvas.getContext("2d");
-  const g=bgCtx.createRadialGradient(W/2,H/2,10,W/2,H/2,Math.max(W,H)*.72);g.addColorStop(0,"#111d33");g.addColorStop(1,"#04060d");bgCtx.fillStyle=g;bgCtx.fillRect(0,0,W,H);
-  bgCtx.strokeStyle="#142039";bgCtx.globalAlpha=.55;for(let a=-40;a<W+40;a+=56){bgCtx.beginPath();bgCtx.moveTo(a,0);bgCtx.lineTo(a,H);bgCtx.stroke()}for(let a=-40;a<H+40;a+=56){bgCtx.beginPath();bgCtx.moveTo(0,a);bgCtx.lineTo(W,a);bgCtx.stroke()}bgCtx.globalAlpha=1;bgW=W;bgH=H
-}
-function resize(){W=innerWidth;H=innerHeight;d=Math.min(devicePixelRatio||1,1.75);c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0);rebuildBackground()}addEventListener("resize",resize);resize();
-const vib=p=>save.settings.vibrate&&navigator.vibrate&&navigator.vibrate(p),R=(a,b)=>a+Math.random()*(b-a),N=(a,b)=>{let l=Math.hypot(a,b)||1;return{x:a/l,y:b/l}},D=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),A=(a,b)=>Math.atan2(b.y-a.y,b.x-a.x);
-function basePlayer(){
-  return{x:W/2,y:H/2,r:15,hp:100,maxHp:100,shield:0,maxShield:30,energy:100,maxEnergy:100,energyRegen:12,speed:230,damage:18,fireRate:210,last:0,pierce:0,crit:.08,dashCooldown:1800,magnet:70,level:1,xp:0,invuln:0,skillPower:70}
-}
-function snapshot(){
-  if(!player)return;
-  save.player={hp:player.hp,maxHp:player.maxHp,shield:player.shield,maxShield:player.maxShield,energy:player.energy,maxEnergy:player.maxEnergy,energyRegen:player.energyRegen,speed:player.speed,damage:player.damage,fireRate:player.fireRate,pierce:player.pierce,crit:player.crit,dashCooldown:player.dashCooldown,magnet:player.magnet,level:player.level,xp:player.xp,skillPower:player.skillPower};
-  save.checkpoint="wave-"+wave;
-}
-function restorePlayer(){
-  player=basePlayer();
-  if(save.player)Object.assign(player,save.player);
-  player.x=W/2;player.y=H/2;player.last=0;player.invuln=700;if(player.hp<=0){player.hp=player.maxHp;player.shield=player.maxShield;player.energy=player.maxEnergy}
-}
-function start(fresh=true){
-  try{
-    if(fresh){Object.assign(save,defaults());save.stats.runs=1;save.tasks.signal="active";secret=false;found=false}
-    else{save.stats.runs++;secret=!!save.flags.secretUnlocked;found=!!save.flags.secretFound}
-    restorePlayer();en=[];shots=[];loot=[];fx=[];wave=fresh?1:Math.max(1,save.wave||1);spawn=0;wait=0;dashOK=1;dashT=0;skillT=0;run=1;pause=0;delete save.flags.ending;save.wave=wave;
-    for(const q of document.querySelectorAll(".screen,.panel"))q.classList.add("hidden");
-    $("hud").style.display="block";$("touch").style.display="block";
-    sync();renderCharacter();renderHUD();persist();next();
-  }catch(err){
-    run=0;pause=0;$("hud").style.display="none";$("touch").style.display="none";
-    showBootError(new Error("开始运行失败：\\n"+(err?.stack||err?.message||String(err))));
-  }
-}
-function next(){
-  spawn=wave%5?Math.min(38,6+wave):0;wait=0;bossLive=0;
-  const r=wave<=15?REGIONS.r1:REGIONS.r2;save.wave=wave;snapshot();persist();
-  $("region").textContent=r.name+" · "+r.subtitle;$("wave").textContent="WAVE "+wave;
-  let objective=wave%5?(wave<=15?"清除区域内敌群。":"穿过镜原城区。"):"高能目标接近。";
-  if(save.flags.route==="fast"&&wave<=15)objective="沿红色信标推进。";
-  if(save.flags.route==="side"&&wave<=15)objective="寻找主路线之外的入口。";
-  if(wave>=7&&wave<15&&!save.flags.watchedAdaptation&&!save.flags.changedAdaptation)objective="注意敌人的移动方式。";
-  if(wave>=16&&wave<25)objective=save.flags.changedHabit?"不要重复刚才的路线。":"观察敌人如何布置位置。";
-  if(wave>=25)objective="击破前方防御单位。";
-  $("objectiveText").textContent=objective;
-  if(wave%5===0){boss();bossLive=1}
-  const ns=nodesAtWave(save,wave).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)setTimeout(()=>comm(ns[0]),120);
-  const secretChance=save.flags.route==="side"?.58:save.flags.route==="fast"?.16:.3;
-  if(wave>=7&&!secret&&Math.random()<secretChance)secretRoom();renderCharacter()
-}
-function enemy(){
-  let s=Math.floor(Math.random()*4),m=35,X=s<2?R(0,W):s==2?-m:W+m,Y=s<2?(s?-m:H+m):R(0,H);
-  let roll=Math.random(),type=wave>=10&&roll<.14?"striker":wave>=6&&roll<.34?"tank":wave>=3&&roll<.62?"hunter":"drone";
-  if(save.flags.route==="fast"&&wave<=15&&Math.random()<.22)type="striker";
-  if(save.flags.route==="side"&&wave<=15&&Math.random()<.28)type="hunter";
-  if(save.flags.changedHabit&&wave>=16&&Math.random()<.2)type="striker";
-  if(save.flags.resistedObservation&&wave>=20&&Math.random()<.18)type="tank";
-  let hp=type=="tank"?90+wave*10:type=="hunter"?34+wave*5:type=="striker"?48+wave*6:26+wave*4;
-  if(!save.flags["seen_"+type]){save.flags["seen_"+type]=1;save.flags["fragment_"+type]=1}
-  en.push({x:X,y:Y,r:type=="tank"?22:type=="striker"?17:14,type,hp,maxHp:hp,speed:type=="tank"?55:type=="hunter"?120:type=="striker"?150:78,shot:R(400,1500),dash:R(900,1800),flash:0})
-}
-function boss(){let hp=500+wave*70;en.push({x:W/2,y:-60,r:42,type:"boss",boss:1,hp,maxHp:hp,speed:45,shot:700,pattern:0,adaptive:!save.flags.unlearnedEcho})}
-function fire(){
-  let now=performance.now();if(now-player.last<player.fireRate)return;
-  let t=null,best=1e9;if(save.settings.autoAim)for(const e of en){let q=D(player,e);if(q<best)best=q,t=e}
-  let a=aim.active?Math.atan2(aim.y,aim.x):t?A(player,t):save.settings.autoAim?0:Math.atan2(aim.y,aim.x);if(!t&&!save.settings.autoAim&&!aim.active)a=Math.atan2(mouse.y-player.y,mouse.x-player.x);
-  let cr=Math.random()<player.crit;shots.push({x:player.x+Math.cos(a)*18,y:player.y+Math.sin(a)*18,vx:Math.cos(a)*680,vy:Math.sin(a)*680,r:4,damage:player.damage*(cr?2:1),pierce:player.pierce,hit:[],life:900,cr});
-  player.last=now;save.stats.shots++;vib(7)
-}
-function skill(){
-  if(!player||player.energy<35||skillT>0)return;
-  player.energy-=35;skillT=900;shake=10;vib([15,30,50]);burst(player.x,player.y,30);
-  for(const e of [...en]){let q=D(player,e);if(q<155){e.hp-=player.skillPower;burst(e.x,e.y,8);if(e.hp<=0)kill(e)}}
-}
-function dash(){if(!dashOK)return;let dx=move.x||((keys.d?1:0)-(keys.a?1:0)),dy=move.y||((keys.s?1:0)-(keys.w?1:0));let q=N(dx||((aim.active?aim.x:0)),dy||((aim.active?aim.y:-1)));player.x=Math.max(18,Math.min(W-18,player.x+q.x*170));player.y=Math.max(18,Math.min(H-18,player.y+q.y*170));player.invuln=380;dashOK=0;dashT=player.dashCooldown;shake=6;vib([18,25,30]);burst(player.x,player.y,18)}
-function hit(n){if(player.invuln>0)return;player.invuln=450;save.stats.damageTaken+=n;if(player.shield){let z=Math.min(player.shield,n);player.shield-=z;n-=z}player.hp-=n;shake=8;vib([20,30]);burst(player.x,player.y,8);if(player.hp<=0)die()}
-function kill(e){save.stats.kills++;if(e.boss){save.flags["boss_"+wave]=1;if(wave===25)save.flags.fragment_boss=1}let gain=e.boss?25:e.type=="tank"?4:e.type=="striker"?3:1;save.core+=gain;player.xp+=e.boss?40:5;if(player.xp>=player.level*100){player.xp-=player.level*100;player.level++;player.maxHp+=8;player.hp=player.maxHp;player.maxEnergy+=8;player.energy=player.maxEnergy;vib([20,35,60])}for(let i=0;i<(e.boss?12:3);i++)loot.push({x:e.x+R(-8,8),y:e.y+R(-8,8),v:R(20,90)});burst(e.x,e.y,e.boss?30:10);en.splice(en.indexOf(e),1);saveDirty=1}
-function upd(dt){
-  if(!run||pause)return;
-  player.invuln=Math.max(0,player.invuln-dt*1000);dashT-=dt*1000;skillT-=dt*1000;if(dashT<=0)dashOK=1;
-  player.energy=Math.min(player.maxEnergy,player.energy+player.energyRegen*dt);
-  let q=N(move.x||((keys.d?1:0)-(keys.a?1:0)),move.y||((keys.s?1:0)-(keys.w?1:0)));
-  player.x=Math.max(18,Math.min(W-18,player.x+q.x*player.speed*dt));player.y=Math.max(18,Math.min(H-18,player.y+q.y*player.speed*dt));
-  if(save.settings.autoFire||mouse.down||aim.active)fire();
-  if(spawn>0){wait-=dt*1000;if(wait<=0){enemy();spawn--;wait=R(250,600)}}
-  else if(!en.length){
-    if(bossLive){bossLive=0;if(wave>=30){const ns=nodesAtWave(save,30).filter(n=>!save.flags["seen_"+n.id]);if(ns.length)comm(ns[0]);else finish()}else{wave++;save.stats.waves++;upgrades()}}
-    else if(wave>=30)finish();else{wave++;save.stats.waves++;upgrades()}
-  }
-  for(let i=shots.length-1;i>=0;i--){let b=shots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt*1000;
-    if(!b.enemy)for(const e of [...en])if(!b.hit.includes(e)&&D(b,e)<b.r+e.r){b.hit.push(e);e.hp-=b.damage;save.stats.damage+=b.damage;burst(e.x,e.y,b.cr?7:3);if(e.hp<=0)kill(e);if(b.pierce)b.pierce--;else b.life=0}
-    if(b.life<=0||b.x<-50||b.x>W+50||b.y<-50||b.y>H+50)shots.splice(i,1)
-  }
-  for(const e of en){
-    let a=A(e,player),dist=D(e,player);e.shot-=dt*1000;e.dash-=dt*1000;
-    let mx=Math.cos(a),my=Math.sin(a);
-    if(e.boss){
-      const orbit=e.adaptive?Math.sin(performance.now()/900+e.pattern)*.65:Math.sin(performance.now()/520+e.pattern)*.25;mx=Math.cos(a+orbit);my=Math.sin(a+orbit);
-      if(dist>250){e.x+=mx*e.speed*dt;e.y+=my*e.speed*dt}else{e.x-=mx*e.speed*.35*dt;e.y-=my*e.speed*.35*dt}
-      if(e.shot<0){e.shot=850;for(let j=0;j<12;j++){let aa=j*Math.PI/6+e.pattern*.16;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(aa)*190,vy:Math.sin(aa)*190,r:5,damage:12,life:3200})}e.pattern++}
-    }else if(e.type==="hunter"){
-      const dir=dist<250?-1:dist>340?1:0;e.x+=mx*e.speed*dir*dt;e.y+=my*e.speed*dir*dt;
-      if(e.shot<0){e.shot=1200;shots.push({enemy:1,x:e.x,y:e.y,vx:Math.cos(a)*300,vy:Math.sin(a)*300,r:5,damage:10,life:2500})}
-    }else if(e.type==="striker"){
-      const orbit=Math.sin(performance.now()/350+e.x)*.5;e.x+=Math.cos(a+orbit)*e.speed*.7*dt;e.y+=Math.sin(a+orbit)*e.speed*.7*dt;
-      if(e.dash<0&&dist<520){e.dash=2100;e.flash=260;e.x+=mx*120;e.y+=my*120;burst(e.x,e.y,6)}
-    }else{
-      e.x+=mx*e.speed*dt;e.y+=my*e.speed*dt;
-    }
-    if(D(e,player)<e.r+player.r)hit(e.boss?20:e.type==="striker"?12:8)
-  }
-  for(let i=shots.length-1;i>=0;i--){let b=shots[i];if(b.enemy&&D(b,player)<b.r+player.r){hit(b.damage);shots.splice(i,1)}}
-  for(let i=loot.length-1;i>=0;i--){let z=loot[i],q=D(z,player);if(q<player.magnet){let a=A(z,player);z.v+=300*dt;z.x+=Math.cos(a)*z.v*dt;z.y+=Math.sin(a)*z.v*dt}if(q<18){save.core++;loot.splice(i,1);saveDirty=1}}
-  for(let i=fx.length-1;i>=0;i--){let p=fx[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt*1000;if(p.life<0)fx.splice(i,1)}
-  if(player.shield<player.maxShield)player.shield=Math.min(player.maxShield,player.shield+dt*2);
-  save.stats.playTime+=dt;hudClock-=dt;if(hudClock<=0){hudClock=.08;renderHUD()}
-  $("hp").textContent="HP "+Math.max(0,Math.ceil(player.hp))+(player.shield?" +"+Math.ceil(player.shield):"");
-  $("core").textContent="CORE "+save.core;
-  
-  if(saveDirty&&Math.random()<.04){snapshot();persist();saveDirty=0}
-}function burst(x,y,n){if(save.settings.lowFx)n=Math.min(4,n);else n=Math.min(18,n);for(let i=0;i<n;i++)fx.push({x,y,vx:R(-100,100),vy:R(-100,100),life:R(250,650),r:R(1,3)});if(fx.length>180)fx.splice(0,fx.length-180)}
-function draw(){
-  if(bgW!==W||bgH!==H)rebuildBackground();
-  x.drawImage(bgCanvas,0,0);
-  let shaken=shake>0;if(shaken){shake*=.88;if(shake<.2)shake=0;x.save();x.translate(R(-shake,shake),R(-shake,shake))}
-  const low=save.settings.lowFx;
-for(const z of loot){x.fillStyle="#bd8cff";x.beginPath();x.arc(z.x,z.y,4,0,7);x.fill()}for(const b of shots){x.fillStyle=b.enemy?"#ff668a":b.cr?"#fff2a6":"#6ce7ff";x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.fill()}for(const e of en){x.fillStyle=e.boss?"#ff668a":e.type=="tank"?"#c48cff":e.type=="striker"?"#ff4fa3":e.type=="hunter"?"#ffb86b":"#6ce7ff";x.beginPath();x.arc(e.x,e.y,e.r,0,7);x.fill();x.fillStyle="#111";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2,3);x.fillStyle="#7dffb2";x.fillRect(e.x-e.r,e.y-e.r-8,e.r*2*Math.max(0,e.hp/e.maxHp),3)}if(player){if(player.invuln>0)x.globalAlpha=.55+.45*Math.sin(performance.now()/45);x.shadowBlur=18;x.shadowColor="#6ce7ff";x.fillStyle="#e9fbff";x.beginPath();x.arc(player.x,player.y,player.r,0,7);x.fill();x.shadowBlur=0;x.globalAlpha=1}for(const p of fx){if(!low){x.globalAlpha=p.life/650;x.fillStyle="#8defff";x.fillRect(p.x,p.y,p.r,p.r)}}x.globalAlpha=1;if(shaken)x.restore()}
-function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;upd(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
-function upgrades(){pause=1;let box=$("upgradeChoices");box.innerHTML="";[...UPGRADES].sort(()=>Math.random()-.5).slice(0,3).forEach(u=>{let b=document.createElement("button");b.innerHTML="<b>"+u[1]+"</b><small>"+u[2]+"</small>";b.onclick=()=>{u[3](player);save.upgrades.push(u[0]);save.flags.upgradeCount=(save.flags.upgradeCount||0)+1;save.flags.lastUpgrade=u[0];if(save.flags.upgradeCount===1)save.flags.fragment_upgrade=1;if(u[0]==="speed"||u[0]==="dash")save.flags.mobileBuild=1;if(u[0]==="power"||u[0]==="firerate"||u[0]==="caliber")save.flags.fireBuild=1;persist();$("upgrade").classList.add("hidden");pause=0;next()};box.appendChild(b)});$("upgradeWave").textContent="WAVE "+wave;$("upgrade").classList.remove("hidden")}
-function comm(node){pause=1;if(node.id==="comm2")save.tasks.signal="active";if(node.id==="comm4")save.tasks.aster="active";if(node.id==="comm6"||node.id==="comm8")save.tasks.mira="active";if(node.id==="comm10"||node.id==="comm12"||node.id==="comm14"||node.id==="r2_16"||node.id==="r2_27"||node.id==="r2_29"||node.id==="final")save.tasks.protocol="active";save.flags["seen_"+node.id]=1;persist();$("dialogue").classList.remove("hidden");$("speaker").textContent=node.speaker;$("commId").textContent=node.id.toUpperCase();$("dialogueText").textContent=node.text;let box=$("choices");box.innerHTML="";const opts=node.choices.filter(ch=>(ch.conditions||[]).every(c=>canShow(save,{conditions:[c]})));if(!opts.length){box.innerHTML="<p>当前状态下没有可用回应。</p>"}opts.forEach(ch=>{let b=document.createElement("button");b.textContent=ch.label;b.onclick=()=>{const ending=applyChoice(save,node,ch);persist();renderTasks();box.innerHTML="<p>选择已记录。你的经历将进入下一阶段。</p>";if(ending){setTimeout(()=>finish(),250)}};box.appendChild(b)});$("closeDialogue").onclick=()=>{$("dialogue").classList.add("hidden");pause=0;if(node.id==="final"&&!save.flags.ending)save.flags.ending=getEnding(save,wave);persist();if(node.id==="final")finish()}}function secretRoom(){secret=1;save.flags.secretUnlocked=1;save.flags.fragment_room=1;persist();pause=1;$("secret").classList.remove("hidden");$("secretText").textContent=found?"终端仍在等待。":"房间里只有一台没有型号的终端。CORE似乎能让它启动。"}
-$("takeSecret").onclick=()=>{found=1;save.flags.secretFound=1;save.flags.coreTruth=1;save.flags.fragment_coordinate=1;save.tasks.core="done";persist();$("secretText").textContent="终端亮起了一秒。没有坐标，只有一条新的路线。";$("takeSecret").disabled=1;vib([15,30,45])};$("leaveSecret").onclick=()=>{$("secret").classList.add("hidden");pause=0};
-function finish(){snapshot();run=0;const k=getEnding(save,wave)||"survivor";save.flags.ending=k;const e=ENDINGS[k]||ENDINGS.survivor;$("death").classList.add("hidden");$("endingTitle").textContent=e[0];$("endingText").textContent=e[1];$("ending").classList.remove("hidden");$("touch").style.display="none";persist()}
-function die(){snapshot();run=0;$("deathReason").textContent="生命信号丢失。你到达 WAVE "+wave+"，回收 CORE "+save.core+"。";$("death").classList.remove("hidden");$("touch").style.display="none";persist()}
-function renderTasks(){if(!$("taskList"))return;const labels={active:"进行中",done:"已完成","":"未开始"};$("taskList").innerHTML=Object.entries(TASKS).map(([k,t])=>{const st=save.tasks[k]||"";return "<div class='loreItem'><b>"+t.title+" · "+labels[st]+"</b><p>"+t.desc+"</p></div>"}).join("")}
-function tasks(){pause=1;renderTasks();$("tasks").classList.remove("hidden")}
-function lore(){pause=1;$("lore").classList.remove("hidden");const foundFragments=[["fragment_drone","敌方单位","它们会改变路线。"],["fragment_hunter","追踪单位","它们会等待你改变方向。"],["fragment_tank","重型单位","它们会封锁你已经使用过的位置。"],["fragment_striker","突击单位","它们会在你犹豫时靠近。"],["fragment_upgrade","第一次升级","你的第一次强化被记录了。"],["fragment_room","隐藏房间","房间似乎一直在等一个合适的CORE。"],["fragment_coordinate","终端残留","它没有给出答案，只改变了你的路线。"],["fragment_boss","防御者","它会重复你已经使用过的东西。"]];const unlocked=foundFragments.filter(a=>save.flags[a[0]]);$("loreList").innerHTML=unlocked.length?unlocked.map(a=>"<div class='loreItem'><b>"+a[1]+"</b><p>"+a[2]+"</p></div>").join(""):"<div class='loreItem'><b>暂无记录</b><p>战斗中发现的异常会在这里留下碎片。</p></div>"}
-function renderCharacter(){
-  if(!player)return;
-  $("charRank").textContent="RANK "+String(player.level).padStart(2,"0");
-  $("charLevel").textContent="LEVEL "+player.level+" · XP "+Math.floor(player.xp)+"/"+player.level*100;
-  $("charHp").textContent=Math.ceil(player.hp)+" / "+player.maxHp;
-  $("charShield").textContent=Math.ceil(player.maxShield)+" · 回充";
-  $("charDamage").textContent=Math.round(player.damage);
-  $("charFire").textContent=Math.round(player.fireRate)+"ms";
-  $("charSpeed").textContent=Math.round(player.speed);
-  $("charCrit").textContent=Math.round(player.crit*100)+"%";
-  const upgrades=Array.isArray(save.upgrades)?save.upgrades:[];
-  save.upgrades=upgrades;
-  const loadout=$("loadout");
-  if(loadout)loadout.replaceChildren(...(upgrades.length?upgrades.map(id=>{const el=document.createElement("span");el.textContent=String(id);return el}):[Object.assign(document.createElement("span"),{textContent:"基础武装"})]));
-}
-function renderHUD(){
-  if(!player)return;
-  $("hp").textContent="HP "+Math.max(0,Math.ceil(player.hp))+(player.shield?" +"+Math.ceil(player.shield):"");
-  $("core").textContent="CORE "+save.core;
-  $("hpBar").style.width=Math.max(0,player.hp/player.maxHp*100)+"%";
-  $("energyBar").style.width=Math.max(0,player.energy/player.maxEnergy*100)+"%";
-  $("dashState").textContent=dashOK?"READY":Math.ceil(Math.max(0,dashT)/100)/10+"s";
-  $("skillState").textContent=skillT>0?Math.ceil(skillT/100)/10+"s":Math.floor(player.energy)+"/35";
-  const b=en.find(e=>e.boss);$("bossBar").classList.toggle("hidden",!b);if(b){const pct=Math.max(0,b.hp/b.maxHp*100);$("bossName").textContent="BOSS · "+(wave<=15?"GREY TIDE":"MIRRORPLAIN");$("bossHpText").textContent=Math.ceil(pct)+"%";$("bossHpBar").style.width=pct+"%"}
-  $("combatHint").style.display=save.settings.showHints?"block":"none";
-}
-function renderSavePanel(){
-  $("saveInfo").textContent=(hasSaveLabel?saveLabel(save):"暂无存档")+"\n"+(save.checkpoint||"wave-1")+"\n击杀 "+save.stats.kills+" · 运行 "+save.stats.runs+" · 游戏时间 "+Math.floor(save.stats.playTime/60)+" 分钟";
-}
-function sync(){["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].forEach(k=>$(k).checked=!!save.settings[k]);$("sensitivity").value=save.settings.sensitivity*100;$("sensValue").textContent=Math.round(save.settings.sensitivity*100)+"%";$("touch").classList.toggle("left",save.settings.leftHand);renderCharacter()}
-const hasSaveLabel=true;
-let saveErrorShown=false;
-function persist(){
-  try{saveGame(save);saveErrorShown=false;return true}
-  catch(err){
-    console.error("VOID//RUN save failed",err);
-    if(!saveErrorShown){
-      saveErrorShown=true;
-      const box=$("saveInfo");
-      if(box)box.textContent="本机存储暂时不可用。游戏仍可运行，但当前进度可能无法保存。";
-    }
-    return false
-  }
-}
-function showBootError(err){
-  console.error("VOID//RUN boot error",err);
-  const box=document.createElement("div");
-  box.style.cssText="position:fixed;inset:16px;z-index:99999;padding:18px;background:#120914;color:#ffd8e3;border:1px solid #ff668a;border-radius:14px;font:13px/1.7 monospace;white-space:pre-wrap;overflow:auto";
-  box.textContent="VOID//RUN 启动异常\\n\\n"+(err?.stack||err?.message||String(err));
-  document.body.appendChild(box)
-}
-addEventListener("error",e=>{if(e.error)showBootError(e.error)});
-addEventListener("unhandledrejection",e=>showBootError(e.reason));
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
+import {OrbitControls} from "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js";
 
-$("newGame").onclick=()=>{start(true);if(run&&save.settings.showHints){pause=1;$("help").classList.remove("hidden")}};
-$("helpBtn").onclick=()=>{pause=1;$("help").classList.remove("hidden")};$("closeHelp").onclick=()=>{$("help").classList.add("hidden");pause=0};
-$("continueGame").onclick=()=>start(false);
-$("retry").onclick=()=>start(false);
-$("tasksBtn").onclick=tasks;
-$("characterBtn").onclick=()=>{pause=1;renderCharacter();$("character").classList.remove("hidden")};
-$("closeCharacter").onclick=()=>{$("character").classList.add("hidden");pause=0};
-$("saveBtn").onclick=()=>{pause=1;renderSavePanel();$("savePanel").classList.remove("hidden")};
-$("closeSave").onclick=()=>{$("savePanel").classList.add("hidden");pause=0};
-$("manualSave").onclick=()=>{snapshot();persist();saveDirty=0;renderSavePanel();vib([15,25])};
-$("exportSave").onclick=()=>{snapshot();persist();const blob=new Blob([makeExport(save)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="voidrun-save-wave-"+wave+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderSavePanel()};
-$("importSave").onclick=()=>$("saveFile").click();
-$("saveFile").onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const imported=parseImport(await file.text());Object.assign(save,imported);persist();alert("存档导入成功。");renderSavePanel();start(false)}catch{alert("存档文件无效或已损坏。")}e.target.value=""};
-$("clearSave").onclick=()=>{if(confirm("确定删除本机存档？导出的JSON不会受影响。")){clearSave();Object.assign(save,defaults());renderSavePanel()}};
-$("pauseBtn").onclick=()=>{if(!run)return;pause=!pause;$("pauseMenu").classList.toggle("hidden",!pause);$("touch").style.display=pause?"none":"block"};
-$("resumeBtn").onclick=()=>{pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="block"};
-$("pauseSaveBtn").onclick=()=>{snapshot();persist();run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
-$("pauseMenuBtn").onclick=()=>{run=0;pause=0;$("pauseMenu").classList.add("hidden");$("touch").style.display="none";$("hud").style.display="none";$("menu").classList.remove("hidden")};
-$("skill").onclick=skill;
-$("closeTasks").onclick=()=>{$("tasks").classList.add("hidden");pause=0};$("loreBtn").onclick=lore;$("closeLore").onclick=()=>{$("lore").classList.add("hidden");pause=0};$("settingsBtn").onclick=()=>{$("settings").classList.remove("hidden");pause=1;sync()};$("closeSettings").onclick=()=>{$("settings").classList.add("hidden");pause=0};$("deathMenu").onclick=()=>{$("death").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};$("endingMenu").onclick=()=>{$("ending").classList.add("hidden");$("menu").classList.remove("hidden");$("hud").style.display="none"};["vibrate","autoAim","autoFire","leftHand","lowFx","showHints"].forEach(k=>$(k).onchange=()=>{save.settings[k]=$(k).checked;persist();sync()});$("sensitivity").oninput=e=>{save.settings.sensitivity=+e.target.value/100;persist();sync()};addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=1;if(e.key==" ")dash()});addEventListener("keyup",e=>keys[e.key.toLowerCase()]=0);c.onpointermove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};c.onpointerdown=e=>{mouse.down=1;mouse.x=e.clientX;mouse.y=e.clientY};addEventListener("pointerup",()=>mouse.down=0);
-function stick(el,type){let on=0,s={x:0,y:0};el.onpointerdown=e=>{on=1;s={x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId);el.classList.add("active")};el.onpointermove=e=>{if(!on)return;let sens=save.settings.sensitivity||1;let a=(e.clientX-s.x)/52*sens,b=(e.clientY-s.y)/52*sens,l=Math.hypot(a,b);if(l>1){a/=l;b/=l}if(type=="m")move={x:a,y:b};else{aim={x:a,y:b};aim.active=l>.12}};el.onpointerup=()=>{on=0;el.classList.remove("active");if(type=="m")move={x:0,y:0};else aim.active=0}}stick($("moveStick"),"m");stick($("aimStick"),"a");$("dash").onclick=dash;
-document.addEventListener("visibilitychange",()=>{if(document.hidden&&run){snapshot();persist()}});addEventListener("beforeunload",()=>{if(run){snapshot();persist()}});sync();renderHUD();renderTasks();renderSavePanel();$("hud").style.display="none";$("touch").style.display="none";
+const el=id=>document.getElementById(id);
+const state={started:false,hp:820,maxHp:820,stamina:100,time:6.7,coins:126,wood:0,ore:0,herbs:3,quest:0,bag:["旅者短剑","野外地图","晨雾草×3"],settings:{low:false},enemy:null,interacting:null};
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9fb8bd);
+scene.fog=new THREE.FogExp2(0x9fb8bd,.012);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,600);
+camera.position.set(0,8,13);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+el("game").appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.enablePan=false;controls.minDistance=5;controls.maxDistance=18;controls.maxPolarAngle=Math.PI*.46;controls.minPolarAngle=.25;
+controls.target.set(0,1,0);
+renderer.domElement.addEventListener("contextmenu",e=>e.preventDefault());
+
+const hemi=new THREE.HemisphereLight(0xc9e1dc,0x4d4439,2.1);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffe4b2,3.1);sun.position.set(-40,65,25);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
+
+const world=new THREE.Group();scene.add(world);
+const colliders=[];
+const interactables=[];
+const enemies=[];
+const keys={};
+const clock=new THREE.Clock();
+const player=new THREE.Group();player.position.set(0,0,12);world.add(player);
+
+function mat(color,rough=.8,metal=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});}
+function mesh(g,m,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;world.add(o);return o;}
+function rand(a,b){return a+Math.random()*(b-a);}
+function terrainHeight(x,z){return Math.sin(x*.055)*1.8+Math.cos(z*.045)*1.4+Math.sin((x+z)*.025)*1.1;}
+function addTree(x,z,s=1){
+ const y=terrainHeight(x,z);
+ const g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(s);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,2.4,8),mat(0x66503c));trunk.position.y=1.2;trunk.castShadow=true;g.add(trunk);
+ for(let i=0;i<3;i++){const crown=new THREE.Mesh(new THREE.ConeGeometry(1.35-i*.22,2.5,9),mat(i===0?0x365c4c:0x416c54));crown.position.y=2.4+i*1.0;crown.castShadow=true;g.add(crown)}
+ world.add(g);
+}
+function addRock(x,z,s=1){
+ const y=terrainHeight(x,z);const r=mesh(new THREE.DodecahedronGeometry(rand(.35,.8)*s,0),mat(0x737a76),x,y+.3*s,z);r.scale.y=.65;r.rotation.set(rand(0,2),rand(0,2),rand(0,2));
+}
+function addHouse(x,z,scale=1){
+ const y=terrainHeight(x,z),g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(scale);
+ const body=new THREE.Mesh(new THREE.BoxGeometry(5,3.2,4.2),mat(0xc9b38b));body.position.y=1.6;body.castShadow=true;body.receiveShadow=true;g.add(body);
+ const roof=new THREE.Mesh(new THREE.ConeGeometry(3.7,2.4,4),mat(0x6b5147));roof.rotation.y=Math.PI/4;roof.position.y=4.4;roof.castShadow=true;g.add(roof);
+ const door=new THREE.Mesh(new THREE.BoxGeometry(.9,1.7,.12),mat(0x3e3330));door.position.set(0,.85,2.12);g.add(door);
+ world.add(g);colliders.push({x,z,r:3.2*scale});
+}
+function addLantern(x,z){
+ const y=terrainHeight(x,z);const g=new THREE.Group();g.position.set(x,y,z);
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.045,.07,2.2,6),mat(0x282e2e));pole.position.y=1.1;g.add(pole);
+ const lamp=new THREE.Mesh(new THREE.OctahedronGeometry(.22),new THREE.MeshStandardMaterial({color:0xffcf72,emissive:0xff9e32,emissiveIntensity:2}));lamp.position.y=2.2;g.add(lamp);world.add(g);
+ const l=new THREE.PointLight(0xffb95f,1.2,7);l.position.set(x,y+2.2,z);world.add(l);
+}
+function makeTerrain(){
+ const geo=new THREE.PlaneGeometry(180,180,80,80);geo.rotateX(-Math.PI/2);
+ const p=geo.attributes.position;
+ for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,terrainHeight(x,z)-1.2)}
+ geo.computeVertexNormals();
+ const ground=new THREE.Mesh(geo,mat(0x7d9b7b));ground.receiveShadow=true;world.add(ground);
+ const pathMat=mat(0xb7a47c);
+ const road=new THREE.Mesh(new THREE.PlaneGeometry(7,110),pathMat);road.rotation.x=-Math.PI/2;road.position.set(0,-.03,0);road.receiveShadow=true;world.add(road);
+ const road2=new THREE.Mesh(new THREE.PlaneGeometry(5,70),pathMat);road2.rotation.x=-Math.PI/2;road2.rotation.z=Math.PI/2;road2.position.set(-2,-.01,-12);world.add(road2);
+ const water=new THREE.Mesh(new THREE.CircleGeometry(22,48),new THREE.MeshStandardMaterial({color:0x5b91a0,roughness:.22,metalness:.05,transparent:true,opacity:.9}));
+ water.rotation.x=-Math.PI/2;water.position.set(43,-1.0,31);world.add(water);
+}
+function buildWorld(){
+ makeTerrain();
+ for(let i=0;i<90;i++){let x=rand(-75,75),z=rand(-72,72);if(Math.hypot(x,z)<18|| (x>28&&z>10))continue;addTree(x,z,rand(.75,1.3))}
+ for(let i=0;i<55;i++){let x=rand(-78,78),z=rand(-76,76);if(Math.hypot(x,z)<15)continue;addRock(x,z,rand(.7,1.4))}
+ addHouse(-8,-13,1);addHouse(8,-17,.82);addHouse(-15,-23,.72);
+ [-12,-5,3,11].forEach(x=>addLantern(x,-8));
+ const sign=mesh(new THREE.BoxGeometry(2.4,1.3,.12),mat(0x806348),0,terrainHeight(0,2)+1,2);
+ sign.name="村口告示牌";interactables.push({obj:sign,name:"村口告示牌",text:"木牌上写着：向北是旧森林，向东是银潮湖。"});
+ addNPC(-3,-8,"艾琳",0xead7bb);
+ addNPC(18,3,"罗安",0x9bb9c8);
+ for(let i=0;i<7;i++)spawnEnemy(rand(-30,30),rand(-42,34),i%2?"荒原狼":"岩甲兽");
+ addShrine(24,-25);
+}
+function addNPC(x,z,name,color){
+ const g=new THREE.Group();g.position.set(x,terrainHeight(x,z),z);
+ const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.5,1.35,10),mat(color));body.position.y=.8;body.castShadow=true;g.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),mat(0xd7ad8d));head.position.y=1.75;head.castShadow=true;g.add(head);
+ const marker=new THREE.Mesh(new THREE.OctahedronGeometry(.16),new THREE.MeshStandardMaterial({color:0xe5bc62,emissive:0x9a6724,emissiveIntensity:1.3}));marker.position.y=2.6;g.add(marker);
+ world.add(g);interactables.push({obj:g,name,text:name==="艾琳"?"“你是刚到这里的旅者吧？森林里的回声最近越来越近了。”":"“银潮湖以东有一座废弃遗迹，别在雾里迷路。”",npc:true});
+}
+function addShrine(x,z){
+ const y=terrainHeight(x,z);const g=new THREE.Group();g.position.set(x,y,z);
+ const base=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.8,.6,8),mat(0x66737a));base.position.y=.3;g.add(base);
+ const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(.75),new THREE.MeshStandardMaterial({color:0x79b5bd,emissive:0x3b9aa5,emissiveIntensity:1.4,transparent:true,opacity:.88}));crystal.position.y=1.5;g.add(crystal);
+ world.add(g);interactables.push({obj:g,name:"潮汐祭坛",text:"晶石里传出低沉的回响。你的地图被点亮了一片新的区域。",shrine:true});
+}
+function spawnEnemy(x,z,type){
+ const y=terrainHeight(x,z);const g=new THREE.Group();g.position.set(x,y,z);
+ const body=new THREE.Mesh(new THREE.CapsuleGeometry(.48,.8,5,10),mat(type==="荒原狼"?0x6c625a:0x68787a));body.position.y=.85;body.castShadow=true;g.add(body);
+ const head=new THREE.Mesh(new THREE.ConeGeometry(.52,.75,6),mat(type==="荒原狼"?0x57504a:0x58696b));head.rotation.x=-Math.PI/2;head.position.set(0,1.15,.55);head.castShadow=true;g.add(head);
+ const eyeMat=new THREE.MeshBasicMaterial({color:0xe06a4f});for(const sx of [-.16,.16]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),eyeMat);eye.position.set(sx,1.32,.86);g.add(eye)}
+ world.add(g);enemies.push({obj:g,hp:type==="荒原狼"?140:220,max:type==="荒原狼"?140:220,name:type,damage:type==="荒原狼"?34:48,home:new THREE.Vector3(x,y,z),cool:rand(0,2)});
+}
+function buildPlayer(){
+ const cloak=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.95,6,12),mat(0x263e48));cloak.position.y=1;cloak.castShadow=true;player.add(cloak);
+ const coat=new THREE.Mesh(new THREE.CylinderGeometry(.5,.38,1.05,8),mat(0x9d7a50));coat.position.y=1.05;coat.castShadow=true;player.add(coat);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),mat(0xe0b495));head.position.y=1.9;head.castShadow=true;player.add(head);
+ const hair=new THREE.Mesh(new THREE.ConeGeometry(.38,.65,8),mat(0x303238));hair.position.y=2.2;hair.rotation.y=.3;player.add(hair);
+ const sword=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,1.5),mat(0xd9dce0,.25,.7));sword.position.set(.65,1.15,.15);sword.rotation.x=-.3;sword.rotation.z=-.4;player.add(sword);
+}
+buildWorld();buildPlayer();
+
+function dist(a,b){return a.position.distanceTo(b.position)}
+function nearestEnemy(){
+ let best=null,bd=8;for(const e of enemies){if(e.hp<=0)continue;const d=dist(player,e.obj);if(d<bd){bd=d;best=e}}return best;
+}
+function attack(){
+ const e=nearestEnemy();if(!e){toast("附近没有敌人");return}
+ e.hp-=95;state.enemy=e;showCombat(e);
+ player.rotation.y=Math.atan2(e.obj.position.x-player.position.x,e.obj.position.z-player.position.z);
+ toast("斩击命中 · -95");
+ if(e.hp<=0){e.obj.visible=false;state.coins+=18;state.wood++;state.quest=Math.min(2,state.quest+1);toast("击败 "+e.name+" · 获得 18 金币");updateQuest()}
+}
+function dash(){
+ if(state.stamina<25)return toast("体力不足");
+ state.stamina-=25;const f=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);player.position.addScaledVector(f,5);toast("疾行");
+}
+function useSkill(){
+ const hit=enemies.filter(e=>e.hp>0&&dist(player,e.obj)<7);if(!hit.length)return toast("没有目标进入元素技范围");
+ hit.forEach(e=>e.hp-=150);toast("回响爆发 · "+hit.length+" 个目标受创");state.quest=Math.min(2,state.quest+hit.filter(e=>e.hp<=0).length);updateQuest();
+ hit.filter(e=>e.hp<=0).forEach(e=>{e.obj.visible=false;state.coins+=20});
+}
+function move(dt){
+ const v=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));
+ if(v.lengthSq()){v.normalize();const speed=keys.shift&&state.stamina>0?9:4.6;player.position.addScaledVector(v,speed*dt);player.position.y=terrainHeight(player.position.x,player.position.z);if(keys.shift)state.stamina=Math.max(0,state.stamina-22*dt);else state.stamina=Math.min(100,state.stamina+14*dt);player.rotation.y=Math.atan2(v.x,v.z)}
+ else state.stamina=Math.min(100,state.stamina+18*dt);
+ player.position.x=THREE.MathUtils.clamp(player.position.x,-82,82);player.position.z=THREE.MathUtils.clamp(player.position.z,-82,82);
+}
+function updateEnemies(dt){
+ for(const e of enemies){if(e.hp<=0)continue;const d=dist(player,e.obj);e.cool-=dt;if(d<12){const dir=player.position.clone().sub(e.obj.position);dir.y=0;dir.normalize();e.obj.position.addScaledVector(dir,dt*(d>2.2?1.5:0));e.obj.position.y=terrainHeight(e.obj.position.x,e.obj.position.z);e.obj.rotation.y=Math.atan2(dir.x,dir.z);if(d<2.5&&e.cool<=0){state.hp=Math.max(0,state.hp-e.damage);e.cool=1.5;updateHP();toast("受到 "+e.damage+" 点伤害");if(state.hp<=0)state.hp=state.maxHp}}else{const h=e.home.clone().sub(e.obj.position);h.y=0;if(h.length()>7){h.normalize();e.obj.position.addScaledVector(h,dt);}}}
+}
+function updateCamera(){
+ const target=player.position.clone();target.y+=1;
+ controls.target.lerp(target,.12);
+ const offset=camera.position.clone().sub(controls.target);if(offset.length()>18)offset.setLength(18);if(offset.length()<5)offset.setLength(5);
+ camera.position.copy(controls.target).add(offset);
+}
+function updateDay(dt){
+ state.time=(state.time+dt*.018)%24;const a=(state.time/24)*Math.PI*2-Math.PI/2;
+ sun.position.set(Math.cos(a)*55,Math.sin(a)*65,25);
+ const daylight=THREE.MathUtils.clamp(Math.sin(a)*.8+.35,.12,1);
+ hemi.intensity=1.1+daylight;sun.intensity=1.2+daylight*2;
+ const sky=new THREE.Color().setHSL(.53,.18,.27+daylight*.23);scene.background.copy(sky);scene.fog.color.copy(sky);
+ el("clock").textContent=String(Math.floor(state.time)).padStart(2,"0")+":"+String(Math.floor((state.time%1)*60)).padStart(2,"0");
+}
+function updateHP(){el("hpFill").style.width=(state.hp/state.maxHp*100)+"%";el("hpText").textContent=Math.ceil(state.hp)+" / "+state.maxHp}
+function showCombat(e){el("combat").classList.remove("hidden");el("enemyName").textContent=e.name;el("enemyLevel").textContent="Lv. "+(e.name==="荒原狼"?5:7);el("enemyHp").style.width=Math.max(0,e.hp/e.max*100)+"%"}
+function updateQuest(){const q=[["初见晨雾谷","跟随金色光标前往村庄"],["森林中的威胁","击败 2 个荒原生物"],["回声的源头","前往东北方的潮汐祭坛"]][state.quest];el("questTitle").textContent=q[0];el("questHint").textContent=q[1];if(state.quest===2)el("regionName").textContent="银潮湖畔"}
+function toast(t){const x=el("toast");x.textContent=t;x.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>x.classList.remove("show"),1800)}
+function interact(){
+ let best=null,bd=4;for(const a of interactables){const d=dist(player,a.obj);if(d<bd){bd=d;best=a}}
+ if(!best)return toast("附近没有可以互动的目标");
+ el("dialogueName").textContent=best.name;el("dialogueRole").textContent=best.npc?"NPC":"世界交互";el("dialogueText").textContent=best.text;el("dialogue").classList.remove("hidden");
+ if(best.npc&&best.name==="艾琳"&&state.quest===0){state.quest=1;updateQuest();toast("新任务：森林中的威胁")}
+}
+function save(){localStorage.setItem("etheria-save",JSON.stringify({hp:state.hp,coins:state.coins,quest:state.quest,time:state.time}));toast("旅行记录已保存")}
+function load(){try{const s=JSON.parse(localStorage.getItem("etheria-save"));if(s){Object.assign(state,s);updateHP();updateQuest();toast("旅行记录已恢复")}}catch{}}
+function menu(tab="map"){
+ el("menu").classList.remove("hidden");document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+ const c=el("tabContent");
+ if(tab==="map")c.innerHTML='<div class="tab-body"><div class="map-box"><i class="map-pin" style="left:48%;top:62%"></i><i class="map-pin" style="left:76%;top:28%"></i></div><h3>晨雾谷</h3><div class="stat-row"><span>已探索</span><b>18%</b></div><div class="stat-row"><span>发现地点</span><b>3 / 16</b></div><div class="stat-row"><span>世界等级</span><b>Ⅰ</b></div></div>';
+ if(tab==="bag")c.innerHTML='<div class="tab-body"><div class="item"><strong>旅者短剑</strong><span class="tag">装备</span></div><div class="item"><strong>野外地图</strong><span class="tag">任务</span></div><div class="item"><strong>晨雾草 ×3</strong><span class="tag">素材</span></div><div class="item"><strong>银潮矿 ×'+state.ore+'</strong><span class="tag">素材</span></div><div class="stat-row"><span>金币</span><b>'+state.coins+'</b></div></div>';
+ if(tab==="quests")c.innerHTML='<div class="tab-body"><div class="quest-row"><div><b>主线 · 回声大陆</b><small>'+el("questTitle").textContent+' · '+el("questHint").textContent+'</small></div><span class="tag">进行中</span></div><div class="quest-row"><div><b>晨雾谷的传闻</b><small>与村民交谈，了解这片土地</small></div><span class="tag">支线</span></div></div>';
+ if(tab==="settings")c.innerHTML='<div class="tab-body settings"><label>低性能模式 <input id="lowToggle" type="checkbox"></label><label>自动保存 <input type="checkbox" checked></label><label>镜头灵敏度 <input type="range" min="1" max="10" value="5"></label><div class="stat-row"><span>本地存档</span><button id="saveNow">立即保存</button></div></div>';
+ const saveNow=el("saveNow");if(saveNow)saveNow.onclick=save;
+}
+function start(){
+ state.started=true;el("start").classList.add("hidden");el("hud").classList.remove("hidden");el("mobileControls").classList.toggle("hidden",innerWidth>700);updateQuest();load();toast("欢迎来到回声大陆");
+}
+el("startBtn").onclick=start;el("menuBtn").onclick=()=>menu();el("closeMenu").onclick=()=>el("menu").classList.add("hidden");
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>menu(b.dataset.tab));
+el("dialogueNext").onclick=()=>el("dialogue").classList.add("hidden");
+addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;if(e.key===" "){e.preventDefault();dash()}if(e.key.toLowerCase()==="e")interact();if(e.key.toLowerCase()==="q")useSkill();if(e.key.toLowerCase()==="k")save()});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+renderer.domElement.addEventListener("click",()=>{if(state.started)attack()});
+el("dashBtn")?.addEventListener("click",dash);el("skillBtn")?.addEventListener("click",useSkill);el("attackBtn")?.addEventListener("click",attack);
+let dragging=false,lastX=0;
+renderer.domElement.addEventListener("pointerdown",e=>{if(e.button===2){dragging=true;lastX=e.clientX}});
+renderer.domElement.addEventListener("pointermove",e=>{if(!dragging)return;const dx=e.clientX-lastX;controls.rotateLeft(dx*.004);lastX=e.clientX});
+renderer.domElement.addEventListener("pointerup",()=>dragging=false);
+let progress=0;const loading=setInterval(()=>{progress=Math.min(100,progress+Math.random()*18);el("loadBar").style.width=progress+"%";if(progress>=100){clearInterval(loading);setTimeout(()=>el("loading").remove(),350)}},120);
+
+function loop(){
+ requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);
+ if(state.started){move(dt);updateEnemies(dt);updateCamera();updateDay(dt);const near=interactables.find(a=>dist(player,a.obj)<4);el("interact").classList.toggle("hidden",!near);if(near)el("interactName").textContent=near.name;const e=nearestEnemy();el("combat").classList.toggle("hidden",!e);if(e)showCombat(e)}
+ controls.update();renderer.render(scene,camera);
+}
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7))});
+loop();

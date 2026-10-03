@@ -594,7 +594,7 @@ function attack(){
 }
 
 function skill(){
- if(!state.started||state.dialogue||state.stamina<30)return;
+ if(!state.started||state.dialogue||state.menuOpen||state.stamina<30)return;
  state.stamina-=30;player.attack=.5;
  emit(player.x,player.y,"#79c8d4",35);
  for(const e of enemies)if(!e.dead&&dist(player,e)<105){e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");if(e.hp<=0){e.dead=true;state.kills++;state.coins+=18}}
@@ -621,7 +621,7 @@ function dash(){
 }
 
 function interact(){
- if(!state.started||state.dialogue)return;
+ if(!state.started||state.dialogue||state.menuOpen)return;
  for(const e of echoes){
    if(!e.taken&&dist(player,e)<68){
      e.taken=true;state.echoes++;state.coins+=15;state.bag.push("回声碎片 ×1");
@@ -671,7 +671,7 @@ function interact(){
 function updateBoss(dt){
  if(!boss||boss.dead)return;
  const d=dist(player,boss);
- if(d<520&&state.started&&!state.dialogue){
+ if(d<520&&state.started&&!state.dialogue&&!state.menuOpen){
    boss.active=true;boss.phase+=dt;boss.attackCd-=dt;
    const dx=(player.x-boss.x)/(d||1),dy=(player.y-boss.y)/(d||1);
    if(d>115){boss.x+=dx*22*dt;boss.y+=dy*22*dt}
@@ -685,7 +685,7 @@ function updateEnemies(dt){
  for(const e of enemies){
    if(e.dead)continue;e.hit=Math.max(0,e.hit-dt);
    const d=dist(player,e);
-   if(d<310&&!state.dialogue){
+   if(d<310&&!state.dialogue&&!state.menuOpen){
      const dx=(player.x-e.x)/(d||1),dy=(player.y-e.y)/(d||1);
      const sp=e.type==="岩甲兽"?34:52;
      if(d>48){e.x+=dx*sp*dt;e.y+=dy*sp*dt}

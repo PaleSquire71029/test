@@ -222,3 +222,11 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
   .player-card{bottom:154px!important;left:18px!important;width:190px!important}
   #quest{top:154px!important}
 }
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .mobile-controls-layer .mobile-actions{position:absolute!important}
+  .mobile-controls-layer .mobile-actions button:first-child{order:3!important}
+  .mobile-controls-layer .mobile-actions button:nth-child(2){order:1!important}
+  .mobile-controls-layer .mobile-actions button:nth-child(3){order:2!important}
+  .mobile-controls-layer .mobile-actions button:last-child{order:4!important;position:absolute!important;right:4px!important;bottom:72px!important;margin:0!important}
+}

@@ -810,7 +810,7 @@ function syncInteractButton(){
  const b=$("interactBtn");if(!b)return;
  const target=nearestInteractable();
  b.classList.toggle("ready",!!target);
- b.textContent=target?(target.name||({ore:"铁矿",wood:"木材",herb:"晨雾草"}[target.type]||"互动")):"互动";
+ b.textContent="互动";
 }
 
 $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});

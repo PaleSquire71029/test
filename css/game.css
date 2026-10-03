@@ -98,3 +98,50 @@
 @media (hover:none) and (pointer:coarse) and (orientation:landscape){
   #rotateHint{display:none!important}
 }
+
+/* v6: independent mobile control layer */
+.mobile-controls-layer{
+  position:fixed!important;inset:0!important;z-index:100!important;
+  pointer-events:none!important;display:none;
+}
+.mobile-controls-layer #joy,
+.mobile-controls-layer .mobile-actions{pointer-events:auto!important}
+@media (hover:none) and (pointer:coarse){
+  .mobile-controls-layer{display:block!important;visibility:visible!important}
+}
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .mobile-controls-layer{
+    display:block!important;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .mobile-controls-layer #joy{
+    position:absolute!important;
+    left:max(28px,env(safe-area-inset-left) + 18px)!important;
+    bottom:max(24px,env(safe-area-inset-bottom) + 12px)!important;
+    width:128px!important;height:128px!important;
+    margin:0!important;
+  }
+  .mobile-controls-layer #joy i{
+    left:50%!important;top:50%!important;
+    width:54px!important;height:54px!important;margin:-27px!important;
+  }
+  .mobile-controls-layer .mobile-actions{
+    position:absolute!important;
+    right:max(24px,env(safe-area-inset-right) + 18px)!important;
+    bottom:max(22px,env(safe-area-inset-bottom) + 12px)!important;
+    display:flex!important;align-items:flex-end!important;gap:12px!important;
+  }
+  .mobile-controls-layer .mobile-actions button{
+    display:grid!important;place-items:center!important;
+    width:64px!important;height:64px!important;
+  }
+  .mobile-controls-layer .mobile-actions button:first-child{
+    width:82px!important;height:82px!important;
+  }
+  .mobile-controls-layer .mobile-actions button:last-child{
+    margin-bottom:72px!important;
+  }
+}
+@media (hover:none) and (pointer:coarse) and (orientation:portrait){
+  .mobile-controls-layer{display:none!important}
+}

@@ -972,6 +972,12 @@ async function enterImmersiveMobile(){
 }
 function startGame(){
  if(state.started)return;
+ const touch=matchMedia("(pointer:coarse)").matches;
+ const landscape=matchMedia("(orientation: landscape)").matches;
+ if(touch&&!landscape){
+  syncMobileUI();
+  return;
+ }
  ensureFxLayer();
  state.started=true;
  $("start")?.classList.add("hidden");

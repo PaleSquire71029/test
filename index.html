@@ -42,8 +42,11 @@
     <main id="tabContent" class="menu-content"></main>
   </div>
 </div>
+<div id="characterPanel" class="full-panel hidden"><div class="full-panel-inner character-screen"><button class="full-close" data-close-panel="characterPanel">×</button><div class="character-art"><div class="character-silhouette">E</div></div><div class="character-info"><small>TRAVELER</small><h2>旅者</h2><p>Lv. 7 · 晨雾谷的旅人</p><div class="stat-list"><div><span>生命值</span><b>820 / 820</b></div><div><span>攻击力</span><b id="charPower">95</b></div><div><span>体力</span><b>100</b></div></div><div class="equipment-show"><span>当前武器</span><b>旅者短剑</b></div></div></div></div>
+<div id="inventoryPanel" class="full-panel hidden"><div class="full-panel-inner inventory-screen"><button class="full-close" data-close-panel="inventoryPanel">×</button><div class="full-title"><small>INVENTORY</small><h2>背包</h2><p>旅途中获得的物品</p></div><div class="inventory-categories"><button class="active">全部</button><button>消耗品</button><button>材料</button><button>任务</button></div><div id="inventoryPanelGrid" class="inventory-big-grid"></div></div></div>
+<div id="questPanel" class="full-panel hidden"><div class="full-panel-inner quest-screen"><button class="full-close" data-close-panel="questPanel">×</button><div class="full-title"><small>QUEST LOG</small><h2>任务</h2><p>旅途中的目标与发现</p></div><div class="quest-focus"><small>当前追踪</small><h3 id="questPanelTitle"></h3><p id="questPanelHint"></p><div class="quest-progress"></div></div><div class="quest-history"><div><b>探索记录</b><span>旧灯塔 · 藤蔓遗迹 · 潮汐祭坛</span></div></div></div></div>
 <div id="dialogue" class="dialogue hidden"><div class="dialogue-box"><small id="dialogueRole">村民</small><h2 id="dialogueName">艾琳</h2><p id="dialogueText"></p><button id="dialogueNext">继续</button></div></div>
 <div id="miniMap" aria-label="小地图"><canvas id="miniMapCanvas" width="180" height="180"></canvas><div class="mini-map-label">晨雾谷</div></div>
 <div id="questGuide" class="hidden"><div class="guide-arrow">➤</div><span id="guideDistance">目标</span></div><div id="toast"></div>
-<script src="js/main.js?v=menu-ui-04" defer></script>
+<script src="js/main.js?v=ui-polish-06" defer></script>
 </body></html>

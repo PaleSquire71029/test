@@ -339,7 +339,8 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
 #hud.hidden,#mobileControls.hidden,#questGuide.hidden,#miniMap.hidden{display:none!important}
 #hud:not(.hidden),#mobileControls:not(.hidden){display:block!important}
 .full-panel-inner{position:relative!important;z-index:1!important;width:100%;height:100%;margin:0;box-sizing:border-box}
-\n/* responsive-pass-01 */
+
+/* responsive-pass-01 */
 html,body{width:100%;height:100%;overflow:hidden}.full-panel-inner{padding-bottom:max(24px,env(safe-area-inset-bottom))!important}.menu-shell{width:100%;height:100%;min-width:0;min-height:0}.menu-content,.menu-page,.full-title,.inventory-screen,.quest-screen{min-width:0}.inventory-big-grid,.inventory-grid,.info-grid{min-width:0}.inventory-big-grid .inventory-item,.inventory-item,.quest-card,.info-grid>div{min-width:0}.inventory-big-grid .inventory-item b,.inventory-item b,.quest-card p,.page-head p{overflow-wrap:anywhere}
 
 /* responsive-game-layout: single authoritative touch layout */

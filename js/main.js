@@ -1,201 +1,526 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
-import {OrbitControls} from "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js";
+const $=id=>document.getElementById(id);
 
-const el=id=>document.getElementById(id);
-const state={started:false,hp:820,maxHp:820,stamina:100,time:6.7,coins:126,wood:0,ore:0,herbs:3,quest:0,bag:["旅者短剑","野外地图","晨雾草×3"],settings:{low:false},enemy:null,interacting:null};
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x9fb8bd);
-scene.fog=new THREE.FogExp2(0x9fb8bd,.012);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,600);
-camera.position.set(0,8,13);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
-renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.outputColorSpace=THREE.SRGBColorSpace;
-el("game").appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true;controls.enablePan=false;controls.minDistance=5;controls.maxDistance=18;controls.maxPolarAngle=Math.PI*.46;controls.minPolarAngle=.25;
-controls.target.set(0,1,0);
-renderer.domElement.addEventListener("contextmenu",e=>e.preventDefault());
+const state={
+ started:false,hp:820,maxHp:820,stamina:100,time:6.7,coins:126,wood:0,ore:0,herbs:3,
+ quest:0,kills:0,enemy:null,dialogue:false,interacting:null,settings:{low:false},
+ bag:["旅者短剑","野外地图","晨雾草 ×3"]
+};
 
-const hemi=new THREE.HemisphereLight(0xc9e1dc,0x4d4439,2.1);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xffe4b2,3.1);sun.position.set(-40,65,25);sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
-
-const world=new THREE.Group();scene.add(world);
-const colliders=[];
-const interactables=[];
+const canvas=document.createElement("canvas");
+canvas.id="worldCanvas";
+$("game").appendChild(canvas);
+const ctx=canvas.getContext("2d",{alpha:false});
+let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,2);
+const keys=Object.create(null);
+const mouse={x:0,y:0,down:false};
+const camera={x:0,y:0};
+const player={x:980,y:860,dir:0,speed:185,attack:0,dash:0,inv:0,stamina:100,walk:0};
+const particles=[];
+const texts=[];
 const enemies=[];
-const keys={};
-const clock=new THREE.Clock();
-const player=new THREE.Group();player.position.set(0,0,12);world.add(player);
+const npcs=[];
+const landmarks=[];
+const trees=[];
+const rocks=[];
+const flowers=[];
+const fireflies=[];
+const buildings=[];
+const world={w:3000,h:2200};
 
-function mat(color,rough=.8,metal=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});}
-function mesh(g,m,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;world.add(o);return o;}
-function rand(a,b){return a+Math.random()*(b-a);}
-function terrainHeight(x,z){return Math.sin(x*.055)*1.8+Math.cos(z*.045)*1.4+Math.sin((x+z)*.025)*1.1;}
-function addTree(x,z,s=1){
- const y=terrainHeight(x,z);
- const g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(s);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.32,2.4,8),mat(0x66503c));trunk.position.y=1.2;trunk.castShadow=true;g.add(trunk);
- for(let i=0;i<3;i++){const crown=new THREE.Mesh(new THREE.ConeGeometry(1.35-i*.22,2.5,9),mat(i===0?0x365c4c:0x416c54));crown.position.y=2.4+i*1.0;crown.castShadow=true;g.add(crown)}
- world.add(g);
-}
-function addRock(x,z,s=1){
- const y=terrainHeight(x,z);const r=mesh(new THREE.DodecahedronGeometry(rand(.35,.8)*s,0),mat(0x737a76),x,y+.3*s,z);r.scale.y=.65;r.rotation.set(rand(0,2),rand(0,2),rand(0,2));
-}
-function addHouse(x,z,scale=1){
- const y=terrainHeight(x,z),g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(scale);
- const body=new THREE.Mesh(new THREE.BoxGeometry(5,3.2,4.2),mat(0xc9b38b));body.position.y=1.6;body.castShadow=true;body.receiveShadow=true;g.add(body);
- const roof=new THREE.Mesh(new THREE.ConeGeometry(3.7,2.4,4),mat(0x6b5147));roof.rotation.y=Math.PI/4;roof.position.y=4.4;roof.castShadow=true;g.add(roof);
- const door=new THREE.Mesh(new THREE.BoxGeometry(.9,1.7,.12),mat(0x3e3330));door.position.set(0,.85,2.12);g.add(door);
- world.add(g);colliders.push({x,z,r:3.2*scale});
-}
-function addLantern(x,z){
- const y=terrainHeight(x,z);const g=new THREE.Group();g.position.set(x,y,z);
- const pole=new THREE.Mesh(new THREE.CylinderGeometry(.045,.07,2.2,6),mat(0x282e2e));pole.position.y=1.1;g.add(pole);
- const lamp=new THREE.Mesh(new THREE.OctahedronGeometry(.22),new THREE.MeshStandardMaterial({color:0xffcf72,emissive:0xff9e32,emissiveIntensity:2}));lamp.position.y=2.2;g.add(lamp);world.add(g);
- const l=new THREE.PointLight(0xffb95f,1.2,7);l.position.set(x,y+2.2,z);world.add(l);
-}
-function makeTerrain(){
- const geo=new THREE.PlaneGeometry(180,180,80,80);geo.rotateX(-Math.PI/2);
- const p=geo.attributes.position;
- for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,terrainHeight(x,z)-1.2)}
- geo.computeVertexNormals();
- const ground=new THREE.Mesh(geo,mat(0x7d9b7b));ground.receiveShadow=true;world.add(ground);
- const pathMat=mat(0xb7a47c);
- const road=new THREE.Mesh(new THREE.PlaneGeometry(7,110),pathMat);road.rotation.x=-Math.PI/2;road.position.set(0,-.03,0);road.receiveShadow=true;world.add(road);
- const road2=new THREE.Mesh(new THREE.PlaneGeometry(5,70),pathMat);road2.rotation.x=-Math.PI/2;road2.rotation.z=Math.PI/2;road2.position.set(-2,-.01,-12);world.add(road2);
- const water=new THREE.Mesh(new THREE.CircleGeometry(22,48),new THREE.MeshStandardMaterial({color:0x5b91a0,roughness:.22,metalness:.05,transparent:true,opacity:.9}));
- water.rotation.x=-Math.PI/2;water.position.set(43,-1.0,31);world.add(water);
-}
-function buildWorld(){
- makeTerrain();
- for(let i=0;i<90;i++){let x=rand(-75,75),z=rand(-72,72);if(Math.hypot(x,z)<18|| (x>28&&z>10))continue;addTree(x,z,rand(.75,1.3))}
- for(let i=0;i<55;i++){let x=rand(-78,78),z=rand(-76,76);if(Math.hypot(x,z)<15)continue;addRock(x,z,rand(.7,1.4))}
- addHouse(-8,-13,1);addHouse(8,-17,.82);addHouse(-15,-23,.72);
- [-12,-5,3,11].forEach(x=>addLantern(x,-8));
- const sign=mesh(new THREE.BoxGeometry(2.4,1.3,.12),mat(0x806348),0,terrainHeight(0,2)+1,2);
- sign.name="村口告示牌";interactables.push({obj:sign,name:"村口告示牌",text:"木牌上写着：向北是旧森林，向东是银潮湖。"});
- addNPC(-3,-8,"艾琳",0xead7bb);
- addNPC(18,3,"罗安",0x9bb9c8);
- for(let i=0;i<7;i++)spawnEnemy(rand(-30,30),rand(-42,34),i%2?"荒原狼":"岩甲兽");
- addShrine(24,-25);
-}
-function addNPC(x,z,name,color){
- const g=new THREE.Group();g.position.set(x,terrainHeight(x,z),z);
- const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.5,1.35,10),mat(color));body.position.y=.8;body.castShadow=true;g.add(body);
- const head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),mat(0xd7ad8d));head.position.y=1.75;head.castShadow=true;g.add(head);
- const marker=new THREE.Mesh(new THREE.OctahedronGeometry(.16),new THREE.MeshStandardMaterial({color:0xe5bc62,emissive:0x9a6724,emissiveIntensity:1.3}));marker.position.y=2.6;g.add(marker);
- world.add(g);interactables.push({obj:g,name,text:name==="艾琳"?"“你是刚到这里的旅者吧？森林里的回声最近越来越近了。”":"“银潮湖以东有一座废弃遗迹，别在雾里迷路。”",npc:true});
-}
-function addShrine(x,z){
- const y=terrainHeight(x,z);const g=new THREE.Group();g.position.set(x,y,z);
- const base=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.8,.6,8),mat(0x66737a));base.position.y=.3;g.add(base);
- const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(.75),new THREE.MeshStandardMaterial({color:0x79b5bd,emissive:0x3b9aa5,emissiveIntensity:1.4,transparent:true,opacity:.88}));crystal.position.y=1.5;g.add(crystal);
- world.add(g);interactables.push({obj:g,name:"潮汐祭坛",text:"晶石里传出低沉的回响。你的地图被点亮了一片新的区域。",shrine:true});
-}
-function spawnEnemy(x,z,type){
- const y=terrainHeight(x,z);const g=new THREE.Group();g.position.set(x,y,z);
- const body=new THREE.Mesh(new THREE.CapsuleGeometry(.48,.8,5,10),mat(type==="荒原狼"?0x6c625a:0x68787a));body.position.y=.85;body.castShadow=true;g.add(body);
- const head=new THREE.Mesh(new THREE.ConeGeometry(.52,.75,6),mat(type==="荒原狼"?0x57504a:0x58696b));head.rotation.x=-Math.PI/2;head.position.set(0,1.15,.55);head.castShadow=true;g.add(head);
- const eyeMat=new THREE.MeshBasicMaterial({color:0xe06a4f});for(const sx of [-.16,.16]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),eyeMat);eye.position.set(sx,1.32,.86);g.add(eye)}
- world.add(g);enemies.push({obj:g,hp:type==="荒原狼"?140:220,max:type==="荒原狼"?140:220,name:type,damage:type==="荒原狼"?34:48,home:new THREE.Vector3(x,y,z),cool:rand(0,2)});
-}
-function buildPlayer(){
- const cloak=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.95,6,12),mat(0x263e48));cloak.position.y=1;cloak.castShadow=true;player.add(cloak);
- const coat=new THREE.Mesh(new THREE.CylinderGeometry(.5,.38,1.05,8),mat(0x9d7a50));coat.position.y=1.05;coat.castShadow=true;player.add(coat);
- const head=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),mat(0xe0b495));head.position.y=1.9;head.castShadow=true;player.add(head);
- const hair=new THREE.Mesh(new THREE.ConeGeometry(.38,.65,8),mat(0x303238));hair.position.y=2.2;hair.rotation.y=.3;player.add(hair);
- const sword=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,1.5),mat(0xd9dce0,.25,.7));sword.position.set(.65,1.15,.15);sword.rotation.x=-.3;sword.rotation.z=-.4;player.add(sword);
-}
-buildWorld();buildPlayer();
+const zones=[
+ {x:0,y:0,w:3000,h:2200,c:"#76986f",name:"晨雾谷"},
+ {x:0,y:0,w:950,h:2200,c:"#6e8f69",name:"静谧森林"},
+ {x:2050,y:0,w:950,h:900,c:"#809c73",name:"风痕高地"},
+ {x:1700,y:1250,w:1300,h:950,c:"#73937d",name:"暮潮湖畔"}
+];
 
-function dist(a,b){return a.position.distanceTo(b.position)}
-function nearestEnemy(){
- let best=null,bd=8;for(const e of enemies){if(e.hp<=0)continue;const d=dist(player,e.obj);if(d<bd){bd=d;best=e}}return best;
+function resize(){
+ W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,2);
+ canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+"px";canvas.style.height=H+"px";
+ ctx.setTransform(DPR,0,0,DPR,0,0);
 }
+addEventListener("resize",resize);resize();
+
+function rnd(a,b){return a+Math.random()*(b-a)}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function hash(x,y){const n=Math.sin(x*12.9898+y*78.233)*43758.5453;return n-Math.floor(n)}
+function roadY(x){return 1050+Math.sin(x*.002)*80}
+function roadX(y){return 1180+Math.sin(y*.0025)*70}
+function isLake(x,y){return x>1830&&y>1350}
+function zoneAt(x,y){
+ if(isLake(x,y))return "暮潮湖畔";
+ if(x<950)return "静谧森林";
+ if(x>2050&&y<900)return "风痕高地";
+ return "晨雾谷";
+}
+function notify(s){
+ const t=$("toast");if(!t)return;
+ t.textContent=s;t.classList.add("show");clearTimeout(notify.t);
+ notify.t=setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+function addTree(x,y,s=1){
+ trees.push({x,y,s,variant:Math.floor(rnd(0,3)),shade:rnd(.85,1.15)});
+}
+function addRock(x,y,s=1){rocks.push({x,y,s,rot:rnd(0,Math.PI*2)})}
+function addFlower(x,y,c){flowers.push({x,y,c})}
+function addBuilding(x,y,w,h,type,name){
+ buildings.push({x,y,w,h,type,name});
+}
+function addNPC(x,y,name,role,color){
+ npcs.push({x,y,name,role,color,phase:rnd(0,6),homeX:x,homeY:y});
+}
+function addEnemy(x,y,type="荒原狼"){
+ enemies.push({x,y,type,hp:type==="岩甲兽"?360:180,max:type==="岩甲兽"?360:180,homeX:x,homeY:y,phase:rnd(0,6),hit:0,dead:false});
+}
+function addLandmark(x,y,type,name){
+ landmarks.push({x,y,type,name});
+}
+
+function generateWorld(){
+ // forest
+ for(let i=0;i<145;i++)addTree(rnd(70,900),rnd(80,2080),rnd(.75,1.35));
+ // highland trees / rocks
+ for(let i=0;i<55;i++)addTree(rnd(2000,2940),rnd(80,980),rnd(.7,1.15));
+ for(let i=0;i<95;i++)addRock(rnd(80,2920),rnd(80,2100),rnd(.6,1.25));
+ for(let i=0;i<180;i++)addFlower(rnd(70,2920),rnd(70,2080),["#d6b86a","#e8d9a2","#b6d19c","#d98f86"][i%4]);
+ // village
+ addBuilding(1120,770,170,125,"house","村长宅邸");
+ addBuilding(1330,735,145,110,"house","旅店");
+ addBuilding(1120,990,150,105,"house","工坊");
+ addBuilding(1350,990,130,100,"house","杂货铺");
+ addBuilding(1500,825,100,80,"well","村井");
+ addBuilding(1270,575,210,95,"hall","晨雾谷礼堂");
+ // roads
+ for(let i=0;i<24;i++)addLandmark(1050+i*42,roadY(1050+i*42),"stone","道路");
+ // landmarks
+ addLandmark(430,420,"ruin","旧灯塔");
+ addLandmark(720,1590,"ruin","藤蔓遗迹");
+ addLandmark(1550,430,"shrine","回声神殿");
+ addLandmark(2150,1500,"shrine","潮汐祭坛");
+ // NPCs
+ addNPC(1260,820,"艾琳","村庄向导","#e7b85b");
+ addNPC(1390,900,"诺安","铁匠","#b87b62");
+ addNPC(1190,1040,"米娅","杂货商","#86a98e");
+ addNPC(1510,760,"莱恩","巡林者","#7895ae");
+ // enemies
+ addEnemy(520,650,"荒原狼");addEnemy(650,780,"荒原狼");addEnemy(800,520,"荒原狼");
+ addEnemy(620,1450,"荒原狼");addEnemy(840,1660,"荒原狼");
+ addEnemy(2220,520,"岩甲兽");addEnemy(2450,720,"岩甲兽");addEnemy(2700,430,"荒原狼");
+ addEnemy(1900,1160,"荒原狼");addEnemy(2250,1190,"荒原狼");
+ // fireflies
+ for(let i=0;i<70;i++)fireflies.push({x:rnd(300,1800),y:rnd(250,1900),p:rnd(0,6),s:rnd(.4,1)});
+}
+generateWorld();
+
+function setLoading(){
+ const bar=$("loadBar"),txt=$("loadText"),loading=$("loading");
+ if(!loading)return;
+ let p=0;const timer=setInterval(()=>{
+   p+=18; if(bar)bar.style.width=Math.min(p,100)+"%";
+   if(txt)txt.textContent=p<45?"正在绘制晨雾谷…":p<80?"正在唤醒居民与野兽…":"世界已准备完成";
+   if(p>=100){clearInterval(timer);loading.classList.add("hidden");}
+ },90);
+}
+setLoading();
+
+function setupUI(){
+ $("startBtn")?.addEventListener("click",()=>{
+   state.started=true;$("start")?.classList.add("hidden");$("hud")?.classList.remove("hidden");
+   notify("欢迎来到晨雾谷");focusQuest();
+ });
+ $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
+ $("closeMenu")?.addEventListener("click",()=>$("menu")?.classList.add("hidden"));
+ document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+   document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
+ }));
+ $("dialogueNext")?.addEventListener("click",nextDialogue);
+ $("attackBtn")?.addEventListener("click",attack);
+ $("dashBtn")?.addEventListener("click",dash);
+ $("skillBtn")?.addEventListener("click",skill);
+}
+setupUI();
+
+let dialogueQueue=[];
+function talk(npc){
+ state.dialogue=true;
+ if(npc.name==="艾琳"){
+   if(state.quest===0){
+    dialogueQueue=[
+      ["艾琳","村庄向导","你终于来了。晨雾谷最近总能听见森林深处传来奇怪的回声。"],
+      ["艾琳","村庄向导","先别急着追问。去旧灯塔看看，那里是最早出现异常的地方。"],
+      ["艾琳","村庄向导","如果遇到野兽，记得观察它们的行动，不要只顾着冲上去。"]
+    ];
+   }else{
+    dialogueQueue=[
+      ["艾琳","村庄向导","森林里的路最近安静了不少。可那个声音……还在。"],
+      ["艾琳","村庄向导","顺着水边继续走吧。也许答案就在潮汐祭坛。"]
+    ];
+   }
+ }else if(npc.name==="诺安"){
+   dialogueQueue=[["诺安","铁匠","你的剑刃磨损得厉害。野外可不是只有风景。"],["诺安","铁匠","收集矿石和木材，我可以替你做些实用的东西。"]];
+ }else if(npc.name==="米娅"){
+   dialogueQueue=[["米娅","杂货商","晨雾草在湖畔也能找到。它们的花瓣在夜里会发光。"]];
+ }else{
+   dialogueQueue=[["莱恩","巡林者","别往北面的高地走太深。那里的岩甲兽比看起来更难对付。"]];
+ }
+ renderDialogue();
+}
+function renderDialogue(){
+ if(!dialogueQueue.length){state.dialogue=false;$("dialogue")?.classList.add("hidden");return}
+ const d=dialogueQueue[0];
+ $("dialogueRole").textContent=d[1];$("dialogueName").textContent=d[0];$("dialogueText").textContent=d[2];
+ $("dialogue").classList.remove("hidden");
+}
+function nextDialogue(){
+ dialogueQueue.shift();
+ if(!dialogueQueue.length){
+   state.dialogue=false;$("dialogue").classList.add("hidden");
+   if(state.quest===0){state.quest=1;notify("任务更新：清理森林中的威胁");updateQuestUI();}
+ }else renderDialogue();
+}
+
+function renderTab(tab){
+ const box=$("tabContent");if(!box)return;
+ if(tab==="map")box.innerHTML='<div class="tab-body"><h3>晨雾谷</h3><div class="map-box" style="height:280px"><span class="map-pin" style="left:42%;top:38%"></span><span class="map-pin" style="left:69%;top:68%"></span><span class="map-pin" style="left:51%;top:49%"></span></div><div class="stat-row"><span>已探索区域</span><b>'+Math.round(exploredPercent())+'%</b></div><div class="stat-row"><span>当前位置</span><b>'+zoneAt(player.x,player.y)+'</b></div><p style="opacity:.65;line-height:1.7">穿过森林、村庄与湖畔，寻找散落在大陆上的回声。</p></div>';
+ if(tab==="bag")box.innerHTML='<div class="tab-body"><h3>旅行者背包</h3>'+state.bag.map(x=>'<div class="item"><strong>'+x+'</strong><span class="tag">持有</span></div>').join("")+'<div class="stat-row"><span>金币</span><b>'+state.coins+'</b></div><div class="stat-row"><span>木材</span><b>'+state.wood+'</b></div><div class="stat-row"><span>矿石</span><b>'+state.ore+'</b></div></div>';
+ if(tab==="quests")box.innerHTML='<div class="tab-body"><h3>任务记录</h3><div class="quest-row"><div><b>'+questTitle()+'</b><small>'+questHint()+'</small></div><span class="tag">进行中</span></div><div class="quest-row"><div><b>探索未知地标</b><small>发现旧灯塔、藤蔓遗迹与潮汐祭坛</small></div><span class="tag">'+landmarks.filter(l=>l.type!=="stone").length+'处</span></div></div>';
+ if(tab==="settings")box.innerHTML='<div class="tab-body settings"><h3>设置</h3><label>低画质模式 <input type="checkbox" id="lowToggle" '+(state.settings.low?"checked":"")+'></label><label>屏幕震动 <input type="checkbox" id="vibToggle" checked></label><p style="opacity:.6;line-height:1.7">2D Canvas 模式不依赖 3D 引擎，适合移动设备运行。</p></div>';
+ $("lowToggle")?.addEventListener("change",e=>state.settings.low=e.target.checked);
+}
+function exploredPercent(){
+ const d=Math.hypot(player.x-980,player.y-860);
+ return clamp(100-d/22,8,100);
+}
+
+function questTitle(){
+ return state.quest===0?"初见晨雾谷":state.quest===1?"森林中的威胁":"回声的源头";
+}
+function questHint(){
+ if(state.quest===0)return"与艾琳交谈，了解晨雾谷最近的异常";
+ if(state.quest===1)return"击败森林中的野兽（"+state.kills+"/2）";
+ return"前往潮汐祭坛，寻找回声的源头";
+}
+function updateQuestUI(){
+ $("questTitle").textContent=questTitle();$("questHint").textContent=questHint();
+}
+
+function focusQuest(){
+ updateQuestUI();
+}
+
+function worldToScreen(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
+function screenToWorld(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
+
+function drawBackground(){
+ ctx.fillStyle="#708d72";ctx.fillRect(0,0,W,H);
+ const sx=Math.floor(camera.x-W/2-100),sy=Math.floor(camera.y-H/2-100);
+ // broad zone overlays
+ ctx.save();ctx.translate(W/2-camera.x,H/2-camera.y);
+ ctx.fillStyle="#678666";ctx.fillRect(0,0,950,world.h);
+ ctx.fillStyle="#81976d";ctx.fillRect(2050,0,950,900);
+ ctx.fillStyle="#789581";ctx.fillRect(1700,1250,1300,950);
+ // lake
+ const grad=ctx.createLinearGradient(1800,1350,2700,2200);grad.addColorStop(0,"#477e8c");grad.addColorStop(1,"#285f72");
+ ctx.fillStyle=grad;ctx.beginPath();ctx.ellipse(2320,1770,620,480,0,0,Math.PI*2);ctx.fill();
+ // shore
+ ctx.strokeStyle="#c8bd8b";ctx.lineWidth=18;ctx.globalAlpha=.55;ctx.stroke();
+ // roads
+ ctx.globalAlpha=1;ctx.strokeStyle="#c0a679";ctx.lineWidth=48;ctx.beginPath();ctx.moveTo(-100,1050);ctx.quadraticCurveTo(1300,960,3100,1100);ctx.stroke();
+ ctx.strokeStyle="#d3bc91";ctx.lineWidth=32;ctx.beginPath();ctx.moveTo(1180,-50);ctx.quadraticCurveTo(1250,650,1180,2250);ctx.stroke();
+ ctx.restore();
+ // texture dots
+ ctx.globalAlpha=.11;for(let i=0;i<130;i++){const x=hash(i,3)*W,y=hash(i,7)*H;ctx.fillStyle=i%2?"#fff":"#244d38";ctx.fillRect(x,y,2,2)}ctx.globalAlpha=1;
+}
+
+function drawTree(t){
+ const s=worldToScreen(t.x,t.y);if(s.x<-60||s.x>W+60||s.y<-100||s.y>H+100)return;
+ const q=t.s;
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(0,16*q,25*q,9*q,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=t.variant===0?"#4d6f4c":t.variant===1?"#3f6848":"#56794f";
+ ctx.beginPath();ctx.arc(0,-18*q,25*q,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#6d8d59";ctx.beginPath();ctx.arc(-12*q,-29*q,17*q,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#385c43";ctx.beginPath();ctx.arc(13*q,-25*q,16*q,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#6d503b";ctx.fillRect(-5*q,-2*q,10*q,25*q);
+ ctx.restore();
+}
+function drawRock(r){
+ const s=worldToScreen(r.x,r.y);if(s.x<-40||s.x>W+40||s.y<-40||s.y>H+40)return;
+ ctx.save();ctx.translate(s.x,s.y);ctx.rotate(r.rot);ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,7*r.s,18*r.s,7*r.s,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#777b76";ctx.beginPath();ctx.moveTo(-16*r.s,5*r.s);ctx.lineTo(-8*r.s,-11*r.s);ctx.lineTo(8*r.s,-15*r.s);ctx.lineTo(18*r.s,-1*r.s);ctx.lineTo(8*r.s,10*r.s);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#969b91";ctx.beginPath();ctx.moveTo(-8*r.s,-11*r.s);ctx.lineTo(8*r.s,-15*r.s);ctx.lineTo(2*r.s,-2*r.s);ctx.lineTo(-9*r.s,-2*r.s);ctx.closePath();ctx.fill();ctx.restore();
+}
+function drawFlower(f){
+ const s=worldToScreen(f.x,f.y);if(s.x<0||s.x>W||s.y<0||s.y>H)return;
+ ctx.fillStyle=f.c;ctx.globalAlpha=.75;ctx.beginPath();ctx.arc(s.x,s.y,2.3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+}
+function drawBuilding(b){
+ const s=worldToScreen(b.x,b.y);if(s.x<-180||s.x>W+180||s.y<-150||s.y>H+150)return;
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.fillStyle="#0004";ctx.fillRect(-b.w/2+8,-b.h/2+10,b.w,b.h);
+ if(b.type==="well"){
+   ctx.fillStyle="#8d765c";ctx.beginPath();ctx.arc(0,0,38,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#416c78";ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.fill();
+ }else{
+   ctx.fillStyle=b.type==="hall"?"#d7c39a":"#cbb18a";ctx.fillRect(-b.w/2,-b.h/2,b.w,b.h);
+   ctx.fillStyle=b.type==="hall"?"#745047":"#80564d";ctx.beginPath();ctx.moveTo(-b.w/2-12,-b.h/2);ctx.lineTo(0,-b.h/2-55);ctx.lineTo(b.w/2+12,-b.h/2);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#4b3832";ctx.fillRect(-13,b.h/2-42,26,42);
+   ctx.fillStyle="#9ec1c2";ctx.fillRect(-b.w/2+18,-b.h/2+25,24,20);ctx.fillRect(b.w/2-42,-b.h/2+25,24,20);
+ }
+ if(b.name&&b.type!=="house"){ctx.font="12px 'Noto Serif SC',sans-serif";ctx.textAlign="center";ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=5;ctx.fillText(b.name,0,b.h/2+25)}
+ ctx.restore();
+}
+
+function drawLandmark(l){
+ if(l.type==="stone")return;
+ const s=worldToScreen(l.x,l.y);if(s.x<-100||s.x>W+100||s.y<-100||s.y>H+100)return;
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,22,42,13,0,0,Math.PI*2);ctx.fill();
+ if(l.type==="shrine"){
+   ctx.fillStyle="#8d8170";ctx.fillRect(-42,0,84,22);ctx.fillRect(-28,-18,56,18);
+   ctx.fillStyle="#d9c36f";ctx.shadowColor="#ffe18a";ctx.shadowBlur=20;ctx.beginPath();ctx.moveTo(0,-65);ctx.lineTo(24,-22);ctx.lineTo(0,5);ctx.lineTo(-24,-22);ctx.closePath();ctx.fill();
+ }else{
+   ctx.fillStyle="#806e5c";ctx.fillRect(-22,-72,44,94);
+   ctx.fillStyle="#9b896e";ctx.fillRect(-35,-84,70,18);ctx.fillStyle="#bba37c";ctx.fillRect(-14,-50,28,8);
+   if(l.name==="旧灯塔"){ctx.fillStyle="#e6c66d";ctx.shadowColor="#ffd873";ctx.shadowBlur=25;ctx.beginPath();ctx.arc(0,-60,8,0,Math.PI*2);ctx.fill()}
+ }
+ if(dist(player,l)<100){ctx.font="13px 'Noto Serif SC'";ctx.textAlign="center";ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=6;ctx.fillText(l.name,0,-100)}
+ ctx.restore();
+}
+
+function drawNPC(n){
+ const bob=Math.sin(performance.now()/500+n.phase)*2;
+ const s=worldToScreen(n.x,n.y);if(s.x<-40||s.x>W+40||s.y<-70||s.y>H+70)return;
+ ctx.save();ctx.translate(s.x,s.y+bob);
+ ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(0,18,18,7,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=n.color;ctx.beginPath();ctx.arc(0,-6,15,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#f0c9a0";ctx.beginPath();ctx.arc(0,-25,11,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#493b38";ctx.beginPath();ctx.arc(0,-29,11,Math.PI,Math.PI*2);ctx.fill();
+ if(dist(player,n)<90){ctx.fillStyle="#fff";ctx.font="12px 'Noto Serif SC'";ctx.textAlign="center";ctx.shadowColor="#000";ctx.shadowBlur=5;ctx.fillText(n.name,0,-45);ctx.fillStyle="#e7c36f";ctx.font="10px sans-serif";ctx.fillText("E 互动",0,-31)}
+ ctx.restore();
+}
+
+function drawEnemy(e){
+ if(e.dead)return;const s=worldToScreen(e.x,e.y);if(s.x<-60||s.x>W+60||s.y<-60||s.y>H+60)return;
+ const r=e.type==="岩甲兽"?25:20;
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(0,r*.55,r*1.1,r*.4,0,0,Math.PI*2);ctx.fill();
+ if(e.type==="岩甲兽"){
+   ctx.fillStyle="#66706e";ctx.beginPath();ctx.moveTo(-28,10);ctx.lineTo(-19,-22);ctx.lineTo(0,-31);ctx.lineTo(23,-18);ctx.lineTo(29,12);ctx.lineTo(10,25);ctx.lineTo(-16,22);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#8c9690";ctx.beginPath();ctx.moveTo(-12,-22);ctx.lineTo(3,-28);ctx.lineTo(13,-12);ctx.lineTo(-5,-9);ctx.closePath();ctx.fill();
+ }else{
+   ctx.fillStyle="#574c48";ctx.beginPath();ctx.ellipse(0,2,24,15,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#6c5b54";ctx.beginPath();ctx.moveTo(-19,-4);ctx.lineTo(-24,-25);ctx.lineTo(-7,-13);ctx.lineTo(4,-24);ctx.lineTo(13,-7);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#d65f55";ctx.fillRect(-10,-1,5,3);ctx.fillRect(5,-1,5,3);
+ }
+ if(e.hit>0){ctx.strokeStyle="#ffe6a0";ctx.lineWidth=3;ctx.strokeRect(-r-4,-r-4,r*2+8,r*2+8)}
+ ctx.restore();
+ // hp
+ if(e.hp<e.max){const w=48;ctx.fillStyle="#0008";ctx.fillRect(s.x-w/2,s.y-r-13,w,4);ctx.fillStyle="#d9685d";ctx.fillRect(s.x-w/2,s.y-r-13,w*clamp(e.hp/e.max,0,1),4)}
+}
+
+function drawPlayer(){
+ const s=worldToScreen(player.x,player.y);ctx.save();ctx.translate(s.x,s.y);
+ const bob=Math.sin(player.walk)*2;
+ ctx.fillStyle="#0006";ctx.beginPath();ctx.ellipse(0,20,22,8,0,0,Math.PI*2);ctx.fill();
+ ctx.translate(0,bob);
+ ctx.fillStyle="#182a35";ctx.beginPath();ctx.moveTo(-18,15);ctx.lineTo(-13,-12);ctx.lineTo(0,-23);ctx.lineTo(14,-12);ctx.lineTo(18,15);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#d8bd7c";ctx.beginPath();ctx.arc(0,-27,12,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#3b3432";ctx.beginPath();ctx.arc(0,-31,12,Math.PI,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#e5cc8a";ctx.fillRect(-17,-2,34,4);
+ // sword
+ ctx.save();ctx.rotate(player.dir);ctx.strokeStyle="#e9edf0";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(38,0);ctx.stroke();ctx.strokeStyle="#b48b4d";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(10,-7);ctx.lineTo(10,7);ctx.stroke();ctx.restore();
+ if(player.attack>0){ctx.save();ctx.rotate(player.dir);ctx.strokeStyle="rgba(238,211,125,"+clamp(player.attack*4,0,1)+")";ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,47,-.8,.8);ctx.stroke();ctx.restore()}
+ ctx.restore();
+}
+
+function drawParticles(){
+ for(const p of particles){const s=worldToScreen(p.x,p.y);ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(s.x,s.y,p.size,0,Math.PI*2);ctx.fill()}
+ ctx.globalAlpha=1;
+ for(const t of texts){const s=worldToScreen(t.x,t.y);ctx.globalAlpha=clamp(t.life,0,1);ctx.font="bold 15px sans-serif";ctx.textAlign="center";ctx.fillStyle=t.color;ctx.fillText(t.text,s.x,s.y)}
+ ctx.globalAlpha=1;
+}
+
+function emit(x,y,color="#f0c66f",n=12){
+ for(let i=0;i<n;i++)particles.push({x,y,vx:rnd(-70,70),vy:rnd(-100,20),life:rnd(.35,.8),max:.8,size:rnd(1,4),color});
+}
+function floatText(x,y,text,color="#f5d27e"){texts.push({x,y,text,color,life:1.1})}
+
+function move(){
+ if(!state.started||state.dialogue)return;
+ let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+ let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+ if(dx||dy){
+   const len=Math.hypot(dx,dy);dx/=len;dy/=len;
+   const sprint=keys.shift&&player.stamina>3;
+   const speed=player.speed*(sprint?1.72:1);
+   player.x+=dx*speed/60;player.y+=dy*speed/60;
+   player.dir=Math.atan2(dy,dx);player.walk+=.25;
+   if(sprint)player.stamina-=.7;else player.stamina=Math.min(100,player.stamina+.25);
+ }else player.stamina=Math.min(100,player.stamina+.55);
+ player.x=clamp(player.x,35,world.w-35);player.y=clamp(player.y,35,world.h-35);
+ if(isLake(player.x,player.y)){player.x-=dx*4;player.y-=dy*4}
+}
+
 function attack(){
- const e=nearestEnemy();if(!e){toast("附近没有敌人");return}
- e.hp-=95;state.enemy=e;showCombat(e);
- player.rotation.y=Math.atan2(e.obj.position.x-player.position.x,e.obj.position.z-player.position.z);
- toast("斩击命中 · -95");
- if(e.hp<=0){e.obj.visible=false;state.coins+=18;state.wood++;state.quest=Math.min(2,state.quest+1);toast("击败 "+e.name+" · 获得 18 金币");updateQuest()}
+ if(!state.started||state.dialogue||player.attack>0)return;
+ let target=null,best=90;
+ for(const e of enemies)if(!e.dead){const d=dist(player,e);if(d<best){best=d;target=e}}
+ if(!target){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
+ target.hp-=95;target.hit=.15;player.attack=.32;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-95","#ffe1a1");
+ if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
+   if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");}
+   updateQuestUI();
+ }
 }
+
+function skill(){
+ if(!state.started||state.dialogue||state.stamina<30)return;
+ state.stamina-=30;player.attack=.5;
+ emit(player.x,player.y,"#79c8d4",35);
+ for(const e of enemies)if(!e.dead&&dist(player,e)<105){e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");if(e.hp<=0){e.dead=true;state.kills++;state.coins+=18}}
+ if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");updateQuestUI()}
+}
+
 function dash(){
- if(state.stamina<25)return toast("体力不足");
- state.stamina-=25;const f=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);player.position.addScaledVector(f,5);toast("疾行");
+ if(!state.started||state.dialogue||player.stamina<22)return;
+ let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0);
+ if(!dx&&!dy){dx=Math.cos(player.dir);dy=Math.sin(player.dir)}
+ const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
+ player.x=clamp(player.x+dx*115,35,world.w-35);player.y=clamp(player.y+dy*115,35,world.h-35);
+ player.stamina-=22;player.inv=.35;emit(player.x,player.y,"#d7c47d",18);
 }
-function useSkill(){
- const hit=enemies.filter(e=>e.hp>0&&dist(player,e.obj)<7);if(!hit.length)return toast("没有目标进入元素技范围");
- hit.forEach(e=>e.hp-=150);toast("回响爆发 · "+hit.length+" 个目标受创");state.quest=Math.min(2,state.quest+hit.filter(e=>e.hp<=0).length);updateQuest();
- hit.filter(e=>e.hp<=0).forEach(e=>{e.obj.visible=false;state.coins+=20});
+
+function interact(){
+ if(!state.started||state.dialogue)return;
+ let best=null,bd=95;
+ for(const n of npcs){const d=dist(player,n);if(d<bd){bd=d;best=n}}
+ if(best){talk(best);return}
+ for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI()}return}}
+ for(const b of buildings){if(b.name&&dist(player,b)<90){notify(b.name+"：一座安静的建筑");return}}
 }
-function move(dt){
- const v=new THREE.Vector3((keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),0,(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0));
- if(v.lengthSq()){v.normalize();const speed=keys.shift&&state.stamina>0?9:4.6;player.position.addScaledVector(v,speed*dt);player.position.y=terrainHeight(player.position.x,player.position.z);if(keys.shift)state.stamina=Math.max(0,state.stamina-22*dt);else state.stamina=Math.min(100,state.stamina+14*dt);player.rotation.y=Math.atan2(v.x,v.z)}
- else state.stamina=Math.min(100,state.stamina+18*dt);
- player.position.x=THREE.MathUtils.clamp(player.position.x,-82,82);player.position.z=THREE.MathUtils.clamp(player.position.z,-82,82);
-}
+
 function updateEnemies(dt){
- for(const e of enemies){if(e.hp<=0)continue;const d=dist(player,e.obj);e.cool-=dt;if(d<12){const dir=player.position.clone().sub(e.obj.position);dir.y=0;dir.normalize();e.obj.position.addScaledVector(dir,dt*(d>2.2?1.5:0));e.obj.position.y=terrainHeight(e.obj.position.x,e.obj.position.z);e.obj.rotation.y=Math.atan2(dir.x,dir.z);if(d<2.5&&e.cool<=0){state.hp=Math.max(0,state.hp-e.damage);e.cool=1.5;updateHP();toast("受到 "+e.damage+" 点伤害");if(state.hp<=0)state.hp=state.maxHp}}else{const h=e.home.clone().sub(e.obj.position);h.y=0;if(h.length()>7){h.normalize();e.obj.position.addScaledVector(h,dt);}}}
+ for(const e of enemies){
+   if(e.dead)continue;e.hit=Math.max(0,e.hit-dt);
+   const d=dist(player,e);
+   if(d<310&&!state.dialogue){
+     const dx=(player.x-e.x)/(d||1),dy=(player.y-e.y)/(d||1);
+     const sp=e.type==="岩甲兽"?34:52;
+     if(d>48){e.x+=dx*sp*dt;e.y+=dy*sp*dt}
+     if(d<52&&player.inv<=0){state.hp-=e.type==="岩甲兽"?24:12;player.inv=.8;floatText(player.x,player.y-40,"-"+(e.type==="岩甲兽"?24:12),"#ef8b7f");emit(player.x,player.y,"#d9675e",8);updateHP()}
+   }else{
+     e.phase+=dt; e.x=e.homeX+Math.sin(e.phase*.55)*28;e.y=e.homeY+Math.cos(e.phase*.45)*22;
+   }
+ }
+}
+function updateHP(){
+ const p=clamp(state.hp/state.maxHp,0,1);$("hpFill").style.width=(p*100)+"%";$("hpText").textContent=Math.max(0,Math.ceil(state.hp))+" / "+state.maxHp;
+ if(state.hp<=0){state.hp=state.maxHp;player.x=1260;player.y=850;notify("你在村庄醒来，旅途还没有结束");}
+}
+function updateInteraction(){
+ let near=null,bd=90;
+ [...npcs,...landmarks,...buildings].forEach(o=>{if(o.name){const d=dist(player,o);if(d<bd){bd=d;near=o}}});
+ const box=$("interact");
+ if(near){box.classList.remove("hidden");$("interactName").textContent=near.name}else box.classList.add("hidden");
+ $("combat").classList.add("hidden");
+ let en=enemies.find(e=>!e.dead&&dist(player,e)<170);
+ if(en){$("combat").classList.remove("hidden");$("enemyName").textContent=en.type;$("enemyLevel").textContent=en.type==="岩甲兽"?"Lv. 8":"Lv. 5";$("enemyHp").style.width=(100*en.hp/en.max)+"%"}
 }
 function updateCamera(){
- const target=player.position.clone();target.y+=1;
- controls.target.lerp(target,.12);
- const offset=camera.position.clone().sub(controls.target);if(offset.length()>18)offset.setLength(18);if(offset.length()<5)offset.setLength(5);
- camera.position.copy(controls.target).add(offset);
+ const tx=clamp(player.x, W/2, world.w-W/2),ty=clamp(player.y,H/2,world.h-H/2);
+ camera.x+=(tx-camera.x)*.12;camera.y+=(ty-camera.y)*.12;
 }
-function updateDay(dt){
- state.time=(state.time+dt*.018)%24;const a=(state.time/24)*Math.PI*2-Math.PI/2;
- sun.position.set(Math.cos(a)*55,Math.sin(a)*65,25);
- const daylight=THREE.MathUtils.clamp(Math.sin(a)*.8+.35,.12,1);
- hemi.intensity=1.1+daylight;sun.intensity=1.2+daylight*2;
- const sky=new THREE.Color().setHSL(.53,.18,.27+daylight*.23);scene.background.copy(sky);scene.fog.color.copy(sky);
- el("clock").textContent=String(Math.floor(state.time)).padStart(2,"0")+":"+String(Math.floor((state.time%1)*60)).padStart(2,"0");
+function updateParticles(dt){
+ for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=100*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
+ for(let i=texts.length-1;i>=0;i--){texts[i].y-=24*dt;texts[i].life-=dt;if(texts[i].life<=0)texts.splice(i,1)}
 }
-function updateHP(){el("hpFill").style.width=(state.hp/state.maxHp*100)+"%";el("hpText").textContent=Math.ceil(state.hp)+" / "+state.maxHp}
-function showCombat(e){el("combat").classList.remove("hidden");el("enemyName").textContent=e.name;el("enemyLevel").textContent="Lv. "+(e.name==="荒原狼"?5:7);el("enemyHp").style.width=Math.max(0,e.hp/e.max*100)+"%"}
-function updateQuest(){const q=[["初见晨雾谷","跟随金色光标前往村庄"],["森林中的威胁","击败 2 个荒原生物"],["回声的源头","前往东北方的潮汐祭坛"]][state.quest];el("questTitle").textContent=q[0];el("questHint").textContent=q[1];if(state.quest===2)el("regionName").textContent="银潮湖畔"}
-function toast(t){const x=el("toast");x.textContent=t;x.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>x.classList.remove("show"),1800)}
-function interact(){
- let best=null,bd=4;for(const a of interactables){const d=dist(player,a.obj);if(d<bd){bd=d;best=a}}
- if(!best)return toast("附近没有可以互动的目标");
- el("dialogueName").textContent=best.name;el("dialogueRole").textContent=best.npc?"NPC":"世界交互";el("dialogueText").textContent=best.text;el("dialogue").classList.remove("hidden");
- if(best.npc&&best.name==="艾琳"&&state.quest===0){state.quest=1;updateQuest();toast("新任务：森林中的威胁")}
-}
-function save(){localStorage.setItem("etheria-save",JSON.stringify({hp:state.hp,coins:state.coins,quest:state.quest,time:state.time}));toast("旅行记录已保存")}
-function load(){try{const s=JSON.parse(localStorage.getItem("etheria-save"));if(s){Object.assign(state,s);updateHP();updateQuest();toast("旅行记录已恢复")}}catch{}}
-function menu(tab="map"){
- el("menu").classList.remove("hidden");document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
- const c=el("tabContent");
- if(tab==="map")c.innerHTML='<div class="tab-body"><div class="map-box"><i class="map-pin" style="left:48%;top:62%"></i><i class="map-pin" style="left:76%;top:28%"></i></div><h3>晨雾谷</h3><div class="stat-row"><span>已探索</span><b>18%</b></div><div class="stat-row"><span>发现地点</span><b>3 / 16</b></div><div class="stat-row"><span>世界等级</span><b>Ⅰ</b></div></div>';
- if(tab==="bag")c.innerHTML='<div class="tab-body"><div class="item"><strong>旅者短剑</strong><span class="tag">装备</span></div><div class="item"><strong>野外地图</strong><span class="tag">任务</span></div><div class="item"><strong>晨雾草 ×3</strong><span class="tag">素材</span></div><div class="item"><strong>银潮矿 ×'+state.ore+'</strong><span class="tag">素材</span></div><div class="stat-row"><span>金币</span><b>'+state.coins+'</b></div></div>';
- if(tab==="quests")c.innerHTML='<div class="tab-body"><div class="quest-row"><div><b>主线 · 回声大陆</b><small>'+el("questTitle").textContent+' · '+el("questHint").textContent+'</small></div><span class="tag">进行中</span></div><div class="quest-row"><div><b>晨雾谷的传闻</b><small>与村民交谈，了解这片土地</small></div><span class="tag">支线</span></div></div>';
- if(tab==="settings")c.innerHTML='<div class="tab-body settings"><label>低性能模式 <input id="lowToggle" type="checkbox"></label><label>自动保存 <input type="checkbox" checked></label><label>镜头灵敏度 <input type="range" min="1" max="10" value="5"></label><div class="stat-row"><span>本地存档</span><button id="saveNow">立即保存</button></div></div>';
- const saveNow=el("saveNow");if(saveNow)saveNow.onclick=save;
-}
-function start(){
- state.started=true;el("start").classList.add("hidden");el("hud").classList.remove("hidden");el("mobileControls").classList.toggle("hidden",innerWidth>700);updateQuest();load();toast("欢迎来到回声大陆");
-}
-el("startBtn").onclick=start;el("menuBtn").onclick=()=>menu();el("closeMenu").onclick=()=>el("menu").classList.add("hidden");
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>menu(b.dataset.tab));
-el("dialogueNext").onclick=()=>el("dialogue").classList.add("hidden");
-addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;if(e.key===" "){e.preventDefault();dash()}if(e.key.toLowerCase()==="e")interact();if(e.key.toLowerCase()==="q")useSkill();if(e.key.toLowerCase()==="k")save()});
-addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-renderer.domElement.addEventListener("click",()=>{if(state.started)attack()});
-el("dashBtn")?.addEventListener("click",dash);el("skillBtn")?.addEventListener("click",useSkill);el("attackBtn")?.addEventListener("click",attack);
-let dragging=false,lastX=0;
-renderer.domElement.addEventListener("pointerdown",e=>{if(e.button===2){dragging=true;lastX=e.clientX}});
-renderer.domElement.addEventListener("pointermove",e=>{if(!dragging)return;const dx=e.clientX-lastX;controls.rotateLeft(dx*.004);lastX=e.clientX});
-renderer.domElement.addEventListener("pointerup",()=>dragging=false);
-let progress=0;const loading=setInterval(()=>{progress=Math.min(100,progress+Math.random()*18);el("loadBar").style.width=progress+"%";if(progress>=100){clearInterval(loading);setTimeout(()=>el("loading").remove(),350)}},120);
 
-function loop(){
- requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);
- if(state.started){move(dt);updateEnemies(dt);updateCamera();updateDay(dt);const near=interactables.find(a=>dist(player,a.obj)<4);el("interact").classList.toggle("hidden",!near);if(near)el("interactName").textContent=near.name;const e=nearestEnemy();el("combat").classList.toggle("hidden",!e);if(e)showCombat(e)}
- controls.update();renderer.render(scene,camera);
+function drawAtmosphere(){
+ const hour=state.time%24;
+ let night=hour<5.5||hour>19;
+ if(night){
+   ctx.fillStyle="rgba(15,27,58,.48)";ctx.fillRect(0,0,W,H);
+   for(const f of fireflies){const s=worldToScreen(f.x,f.y);if(s.x<0||s.x>W||s.y<0||s.y>H)continue;const a=.35+.3*Math.sin(performance.now()/700+f.p);ctx.globalAlpha=a;ctx.fillStyle="#f1df8b";ctx.shadowColor="#f1df8b";ctx.shadowBlur=10;ctx.beginPath();ctx.arc(s.x,s.y,1.7*f.s,0,Math.PI*2);ctx.fill()}ctx.shadowBlur=0;ctx.globalAlpha=1;
+ }else if(hour<8||hour>17){
+   ctx.fillStyle="rgba(235,180,105,.14)";ctx.fillRect(0,0,W,H);
+ }
 }
-addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7))});
-loop();
+function updateClock(dt){
+ state.time=(state.time+dt*.22)%24;
+ const hh=Math.floor(state.time),mm=Math.floor((state.time-hh)*60);
+ $("clock").textContent=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
+ $("regionName").textContent=zoneAt(player.x,player.y);
+ $("weatherDot").style.background=state.time>19||state.time<6?"#8299d6":"#dfc77e";
+}
+
+function render(){
+ ctx.clearRect(0,0,W,H);
+ drawBackground();
+ // depth sort
+ const list=[
+  ...trees.map(x=>({y:x.y,fn:()=>drawTree(x)})),
+  ...rocks.map(x=>({y:x.y,fn:()=>drawRock(x)})),
+  ...flowers.map(x=>({y:x.y,fn:()=>drawFlower(x)})),
+  ...buildings.map(x=>({y:x.y,fn:()=>drawBuilding(x)})),
+  ...landmarks.map(x=>({y:x.y,fn:()=>drawLandmark(x)})),
+  ...npcs.map(x=>({y:x.y,fn:()=>drawNPC(x)})),
+  ...enemies.filter(e=>!e.dead).map(x=>({y:x.y,fn:()=>drawEnemy(x)})),
+  {y:player.y,fn:drawPlayer}
+ ];
+ list.sort((a,b)=>a.y-b.y);for(const o of list)o.fn();
+ drawParticles();drawAtmosphere();
+ // quest direction marker
+ if(state.started&&state.quest===2){
+   const target=landmarks.find(x=>x.name==="潮汐祭坛");if(target){
+     const dx=target.x-player.x,dy=target.y-player.y,ang=Math.atan2(dy,dx);
+     const cx=W/2+Math.cos(ang)*Math.min(W,H)*.32,cy=H/2+Math.sin(ang)*Math.min(W,H)*.32;
+     ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);ctx.fillStyle="#e4c16f";ctx.shadowColor="#e4c16f";ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-10,-9);ctx.lineTo(-6,0);ctx.lineTo(-10,9);ctx.closePath();ctx.fill();ctx.restore();
+   }
+ }
+}
+
+function loop(t){
+ const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
+ move();updateEnemies(dt);updateParticles(dt);updateCamera();
+ player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
+ updateClock(dt);updateInteraction();render();
+ requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();keys[k]=true;
+ if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k))e.preventDefault();
+ if(k==="e")interact();if(k==="q")skill();if(k===" "){attack()}
+ if(k==="escape"){$("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");state.dialogue=false}
+});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+canvas.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+canvas.addEventListener("mousedown",e=>{mouse.down=true;if(state.started&&e.button===0)attack()});
+addEventListener("mouseup",()=>mouse.down=false);
+canvas.addEventListener("click",e=>{
+ if(!state.started||state.dialogue)return;
+ const p=screenToWorld(e.clientX,e.clientY);player.dir=Math.atan2(p.y-player.y,p.x-player.x);
+});
+
+let joyTouch=null,joyOrigin=null;
+const joy=$("joy");
+joy?.addEventListener("touchstart",e=>{
+ const t=e.changedTouches[0];joyTouch=t.identifier;joyOrigin={x:t.clientX,y:t.clientY};e.preventDefault();
+},{passive:false});
+joy?.addEventListener("touchmove",e=>{
+ const t=[...e.changedTouches].find(x=>x.identifier===joyTouch);if(!t)return;
+ const dx=t.clientX-joyOrigin.x,dy=t.clientY-joyOrigin.y,d=Math.hypot(dx,dy),r=42;
+ const nx=clamp(dx/r,-1,1),ny=clamp(dy/r,-1,1);
+ keys.a=nx<-.25;keys.d=nx>.25;keys.w=ny<-.25;keys.s=ny>.25;
+ const dot=joy.querySelector("i");if(dot){dot.style.transform="translate("+clamp(dx,-42,42)+"px,"+clamp(dy,-42,42)+"px)"}
+ e.preventDefault();
+},{passive:false});
+function endJoy(){joyTouch=null;["a","d","w","s"].forEach(k=>keys[k]=false);const dot=joy?.querySelector("i");if(dot)dot.style.transform=""}
+joy?.addEventListener("touchend",endJoy);joy?.addEventListener("touchcancel",endJoy);
+
+updateQuestUI();updateHP();

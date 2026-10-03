@@ -149,14 +149,19 @@ function setLoading(){
 setLoading();
 
 function setupUI(){
- $("startBtn")?.addEventListener("click",async()=>{
+ async function enterImmersiveMobile(){
+ if(innerWidth>900)return;
+ try{
+   if(!document.fullscreenElement) await (document.documentElement.requestFullscreen?.({navigationUI:"hide"})||Promise.resolve());
+ }catch(e){}
+ try{await screen.orientation?.lock?.("landscape");}catch(e){}
+}
+$("startBtn")?.addEventListener("click",async()=>{
    state.started=true;$("start")?.classList.add("hidden");$("hud")?.classList.remove("hidden");
    document.body.classList.add("game-running");
-   if(matchMedia("(orientation: portrait)").matches){
-     try{await document.documentElement.requestFullscreen?.();await screen.orientation?.lock?.("landscape");}catch(e){}
-   }
-   if(innerWidth<=900)$("mobileControls")?.classList.remove("hidden");
-   loadGame();notify("欢迎来到晨雾谷");focusQuest();
+   await enterImmersiveMobile();
+   $("mobileControls")?.classList.remove("hidden");
+   syncMobileUI();loadGame();notify("欢迎来到晨雾谷");focusQuest();
  });
  $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
  $("closeMenu")?.addEventListener("click",()=>$("menu")?.classList.add("hidden"));
@@ -665,20 +670,33 @@ canvas.addEventListener("click",e=>{
 });
 
 let joyTouch=null,joyOrigin=null;
-const joy=$("joy");
+const joy=$("joy"),JOY_R=48,JOY_DEAD=.12;
+function setJoy(dx,dy){
+ const d=Math.hypot(dx,dy)||1,mag=Math.min(d,JOY_R),nx=dx/d,ny=dy/d;
+ const usable=Math.max(0,mag-JOY_R*JOY_DEAD)/(JOY_R*(1-JOY_DEAD));
+ const ux=nx*usable,uy=ny*usable;
+ keys.a=ux<-.08;keys.d=ux>.08;keys.w=uy<-.08;keys.s=uy>.08;
+ const dot=joy?.querySelector("i");
+ if(dot)dot.style.transform="translate("+nx*mag+"px,"+ny*mag+"px)";
+}
 joy?.addEventListener("pointerdown",e=>{
- joyTouch=e.pointerId;joyOrigin={x:e.clientX,y:e.clientY};joy.setPointerCapture?.(e.pointerId);e.preventDefault();
+ if(!state.started)return;
+ joyTouch=e.pointerId;joyOrigin={x:e.clientX,y:e.clientY};
+ joy.setPointerCapture?.(e.pointerId);joy.classList.add("active");
+ setJoy(0,0);e.preventDefault();
 },{passive:false});
 joy?.addEventListener("pointermove",e=>{
- if(e.pointerId!==joyTouch)return;
- const dx=e.clientX-joyOrigin.x,dy=e.clientY-joyOrigin.y,d=Math.hypot(dx,dy),r=42;
- const nx=clamp(dx/r,-1,1),ny=clamp(dy/r,-1,1);
- keys.a=nx<-.25;keys.d=nx>.25;keys.w=ny<-.25;keys.s=ny>.25;
- const dot=joy.querySelector("i");if(dot){dot.style.transform="translate("+clamp(dx,-42,42)+"px,"+clamp(dy,-42,42)+"px)"}
- e.preventDefault();
+ if(e.pointerId!==joyTouch||!joyOrigin)return;
+ setJoy(e.clientX-joyOrigin.x,e.clientY-joyOrigin.y);e.preventDefault();
 },{passive:false});
-function endJoy(){joyTouch=null;joyOrigin=null;["a","d","w","s"].forEach(k=>keys[k]=false);const dot=joy?.querySelector("i");if(dot)dot.style.transform=""}
-joy?.addEventListener("pointerup",endJoy);joy?.addEventListener("pointercancel",endJoy);joy?.addEventListener("lostpointercapture",endJoy);
+function endJoy(){
+ joyTouch=null;joyOrigin=null;joy?.classList.remove("active");
+ ["a","d","w","s"].forEach(k=>keys[k]=false);
+ const dot=joy?.querySelector("i");if(dot)dot.style.transform="";
+}
+joy?.addEventListener("pointerup",endJoy);
+joy?.addEventListener("pointercancel",endJoy);
+joy?.addEventListener("lostpointercapture",endJoy);
 
 updateQuestUI();updateHP();
 function syncMobileUI(){

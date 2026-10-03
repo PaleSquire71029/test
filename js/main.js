@@ -150,7 +150,7 @@ setLoading();
 
 function setupUI(){
  async function enterImmersiveMobile(){
- if(innerWidth>900)return;
+ if(innerWidth>900&&!matchMedia("(pointer:coarse)").matches)return;
  try{
    if(!document.fullscreenElement) await (document.documentElement.requestFullscreen?.({navigationUI:"hide"})||Promise.resolve());
  }catch(e){}
@@ -726,10 +726,10 @@ $("skillBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();skill()},{p
 $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
 $("closeMenu")?.addEventListener("click",()=>{$("menu")?.classList.add("hidden")});
 addEventListener("fullscreenchange",syncMobileUI);
-addEventListener("resize",()=>{if(state.started&&innerWidth<=900)enterImmersiveMobile()});
+addEventListener("resize",()=>{if(state.started&&(innerWidth<=900||matchMedia("(pointer:coarse)").matches))enterImmersiveMobile()});
 
 function syncMobileUI(){
- const mobile=innerWidth<=900;
+ const mobile=innerWidth<=900||matchMedia("(pointer:coarse)").matches;
  if(mobile)$("mobileControls")?.classList.remove("hidden");else $("mobileControls")?.classList.add("hidden");
  $("rotateHint")?.classList.toggle("show",mobile&&matchMedia("(orientation: portrait)").matches&&state.started);
 }

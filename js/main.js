@@ -206,11 +206,22 @@ interactionObjects.push(...npcs,...landmarks,...buildings);
 function setLoading(){
  const bar=$("loadBar"),txt=$("loadText"),loading=$("loading");
  if(!loading)return;
- let p=0;const timer=setInterval(()=>{
-   p+=18; if(bar)bar.style.width=Math.min(p,100)+"%";
+ let p=0,finished=false;
+ const finish=()=>{
+   if(finished)return;
+   finished=true;
+   loading.classList.add("hidden");
+   loading.setAttribute("aria-hidden","true");
+ };
+ // The loading screen is presentation only; it must never block the game.
+ const timer=setInterval(()=>{
+   p=Math.min(100,p+20);
+   if(bar)bar.style.width=p+"%";
    if(txt)txt.textContent=p<45?"正在绘制晨雾谷…":p<80?"正在唤醒居民与野兽…":"世界已准备完成";
-   if(p>=100){clearInterval(timer);loading.classList.add("hidden");}
- },90);
+   if(p>=100){clearInterval(timer);finish();}
+ },80);
+ // Hard fallback in case a mobile browser throttles the interval.
+ setTimeout(()=>{clearInterval(timer);finish();},1200);
 }
 setLoading();
 

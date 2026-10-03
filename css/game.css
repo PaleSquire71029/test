@@ -594,3 +594,177 @@ body.dialogue-open #hud,body.dialogue-open #miniMap,body.dialogue-open #questGui
     bottom:10px;
   }
 }
+
+
+/* game-ui-redesign-08: physical game HUD surfaces, no web-card language */
+#hud #quest{
+  min-width:280px!important;
+  padding:11px 28px 12px 42px!important;
+  color:#f3ead5!important;
+  background:
+    radial-gradient(circle at 16px 50%,#d8bd74 0 3px,transparent 4px),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,rgba(38,31,22,.94),rgba(52,43,30,.78) 72%,transparent)!important;
+  border:0!important;
+  border-left:2px solid #d9bd71!important;
+  border-bottom:1px solid #9a7b43!important;
+  border-radius:2px 10px 10px 2px!important;
+  box-shadow:0 6px 18px #0007,inset 0 1px #fff2,inset 0 -4px 8px #0005!important;
+  text-shadow:0 2px 5px #000;
+}
+#hud #quest:before{
+  content:"";
+  position:absolute;
+  left:11px;top:50%;
+  width:18px;height:18px;
+  transform:translateY(-50%) rotate(45deg);
+  border:1px solid #d9bd71;
+  background:#30271c;
+  box-shadow:inset 0 0 0 3px #30271c,0 2px 5px #0008;
+}
+#hud #quest:after{
+  content:"";
+  position:absolute;
+  left:16px;top:50%;
+  width:8px;height:8px;
+  transform:translateY(-50%) rotate(45deg);
+  background:#d9bd71;
+  box-shadow:0 0 8px #d9bd7166;
+}
+#hud #quest b{font-size:13px!important}
+#hud #quest span{color:#e1d8c4!important;opacity:.72!important}
+
+#mobileControls .mobile-actions button{
+  position:relative!important;
+  width:62px!important;height:62px!important;
+  border-radius:50%!important;
+  border:2px solid #8d7750!important;
+  background:
+    radial-gradient(circle at 34% 28%,#bca878,#746344 46%,#3b3328 100%)!important;
+  box-shadow:0 5px 12px #0009,inset 0 2px 3px #fff3,inset 0 -6px 9px #17130e!important;
+  backdrop-filter:none!important;
+  color:#f2e5c3!important;
+  text-shadow:0 2px 4px #000;
+  overflow:visible;
+}
+#mobileControls .mobile-actions button:before{
+  content:"";
+  position:absolute;inset:5px;
+  border:1px solid #e2cd9670;
+  border-radius:50%;
+  pointer-events:none;
+}
+#mobileControls .mobile-actions button:after{
+  content:"";
+  position:absolute;left:50%;top:50%;
+  width:4px;height:4px;margin:-2px;
+  border-radius:50%;background:#f1d99588;
+  box-shadow:0 0 8px #e5c97555;
+  pointer-events:none;
+}
+#mobileControls .mobile-actions button:active{
+  transform:scale(.9)!important;
+  box-shadow:0 2px 7px #000b,inset 0 4px 8px #17130e!important;
+}
+#mobileControls .mobile-actions button:first-child{
+  width:78px!important;height:78px!important;
+  border-color:#b69a5c!important;
+}
+#mobileControls .mobile-actions button:last-child{
+  margin-bottom:70px!important;
+}
+#mobileControls .mobile-actions #interactBtn.ready{
+  box-shadow:0 5px 14px #0009,inset 0 2px 3px #fff3,0 0 18px #d9bd7166!important;
+}
+#mobileControls .mobile-actions #interactBtn.ready:after{
+  width:auto;height:auto;inset:-7px;margin:0;
+  background:none;border:1px solid #d9bd7155;
+  border-radius:50%;box-shadow:none;
+  animation:buttonReadyRing 1.4s ease-in-out infinite;
+}
+@keyframes buttonReadyRing{50%{inset:-11px;opacity:.25}}
+
+#joy{
+  background:
+    radial-gradient(circle,#6f614a22 0 30%,#443a2c18 31% 60%,transparent 61%)!important;
+  border:2px solid #766448!important;
+  box-shadow:0 8px 24px #0009,inset 0 0 18px #0008!important;
+}
+#joy:before{border-color:#c8ae7660!important}
+#joy i{
+  background:radial-gradient(circle at 32% 25%,#d8c69a,#827354 48%,#3a3329 100%)!important;
+  border:2px solid #a88c55!important;
+  box-shadow:0 5px 12px #000a,inset 0 2px 3px #fff3,inset 0 -6px 9px #17130e!important;
+}
+
+.menu-shell{
+  background:
+    radial-gradient(circle at 50% 20%,rgba(221,195,132,.12),transparent 34%),
+    repeating-linear-gradient(0deg,rgba(86,63,34,.025) 0 1px,transparent 1px 5px),
+    linear-gradient(135deg,#d8c69e,#b8a47a 48%,#8c7754)!important;
+  color:#29241d!important;
+  backdrop-filter:none!important;
+}
+.menu-shell:before{
+  content:"";
+  position:absolute;inset:14px;
+  border:1px solid #5f4c3266;
+  pointer-events:none;
+}
+.menu-shell .menu-nav{
+  background:#3a3025!important;
+  border:0!important;
+  border-bottom:2px solid #a48650!important;
+}
+.menu-shell .menu-nav button{
+  background:transparent!important;
+  color:#cfc1a4!important;
+  border:0!important;
+  border-right:1px solid #ffffff12!important;
+  border-radius:0!important;
+}
+.menu-shell .menu-nav button.active{
+  color:#f2dfad!important;
+  background:#5a4934!important;
+  box-shadow:inset 0 -3px #d8bd72;
+}
+.menu-shell .menu-content{
+  background:transparent!important;
+}
+.menu-shell .menu-title,.menu-shell h2{
+  font-family:"Noto Serif SC",serif!important;
+  color:#332a20!important;
+}
+.menu-shell .menu-card,.menu-shell .menu-section{
+  background:rgba(246,235,204,.3)!important;
+  border:1px solid #67523766!important;
+  border-radius:3px!important;
+  box-shadow:inset 0 1px #fff5,inset 0 -5px 12px #55412718,0 4px 12px #0002!important;
+}
+.menu-shell .menu-card button{
+  border-radius:2px!important;
+}
+
+.inventory-big-grid .inventory-item{
+  background:
+    radial-gradient(circle at 30% 20%,#fff5,transparent 24%),
+    repeating-linear-gradient(0deg,#5d472015 0 1px,transparent 1px 4px),
+    linear-gradient(145deg,#d8c59b,#ad986c)!important;
+  color:#342b20!important;
+  border:2px solid #5d4a32!important;
+  border-radius:3px!important;
+  box-shadow:inset 0 1px #fff8,inset 0 -7px 12px #4a35201f,0 4px 9px #0004!important;
+}
+.inventory-big-grid .inventory-item:before{
+  inset:5px!important;
+  border:1px solid #6f573766!important;
+}
+.inventory-big-grid .inventory-item b{
+  color:#342b20!important;
+  text-shadow:0 1px #fff5;
+}
+.inventory-big-grid .inventory-item span{color:#68583e!important}
+.inventory-big-grid .inventory-item:hover{
+  transform:translateY(-2px);
+  box-shadow:inset 0 1px #fff8,inset 0 -7px 12px #4a35201f,0 7px 14px #0005!important;
+}

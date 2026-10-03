@@ -235,7 +235,10 @@ function exploredPercent(){
 }
 
 function questTitle(){
- return state.quest===0?"初见晨雾谷":state.quest===1?"森林中的威胁":"回声的源头";
+ if(state.quest===0)return"初见晨雾谷";
+ if(state.quest===1)return"森林中的威胁";
+ if(state.quest===2)return"回声的源头";
+ return"回到晨雾谷";
 }
 function questHint(){
  if(state.quest===0)return"与艾琳交谈，了解晨雾谷最近的异常";

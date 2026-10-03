@@ -238,9 +238,6 @@ function setupUI(){
    document.querySelectorAll(".menu-nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
  }));
  $("dialogueNext")?.addEventListener("click",nextDialogue);
- $("attackBtn")?.addEventListener("click",attack);
- $("dashBtn")?.addEventListener("click",dash);
- $("skillBtn")?.addEventListener("click",skill);
 }
 
 function openFullPanel(id){

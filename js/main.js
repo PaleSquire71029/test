@@ -7,6 +7,62 @@ const state={
  chestsOpened:0,level:7,xp:0,nextXp:240,defeatedBoss:false,echoes:0,combo:0,comboTimer:0
 };
 
+let dialogueTyping=false;
+let dialogueFullText="";
+let dialogueTypeTimer=0;
+
+function ensureFxLayer(){
+  if($("fxLayer"))return;
+  const layer=document.createElement("div");
+  layer.id="fxLayer";
+  layer.innerHTML='<div id="fxFlash"></div>';
+  document.body.appendChild(layer);
+}
+function playNumberPop(el){
+  if(!el)return;
+  el.classList.remove("hud-number-pop");
+  void el.offsetWidth;
+  el.classList.add("hud-number-pop");
+}
+function setHudText(id,value){
+  const el=$(id);if(!el)return;
+  const next=String(value);
+  if(el.textContent!==next){el.textContent=next;playNumberPop(el);}
+}
+function playRewardFx(title,detail=""){
+  ensureFxLayer();
+  const flash=$("fxFlash");if(flash){flash.classList.remove("play");void flash.offsetWidth;flash.classList.add("play");}
+  const old=document.querySelector(".fx-reward-popup");
+  old?.remove();
+  const p=document.createElement("div");
+  p.className="fx-reward-popup";
+  p.innerHTML="<small>NEW DISCOVERY</small><b>"+title+"</b>"+(detail?"<span>"+detail+"</span>":"");
+  $("fxLayer").appendChild(p);
+  setTimeout(()=>p.classList.add("out"),1050);
+  setTimeout(()=>p.remove(),1420);
+}
+function triggerButtonFx(button,held=false){
+  if(!button)return;
+  if(held)button.classList.add("is-held");
+  const ripple=document.createElement("i");
+  ripple.className="game-action-ripple";
+  button.appendChild(ripple);
+  setTimeout(()=>ripple.remove(),520);
+}
+function typeDialogueText(text){
+  clearInterval(dialogueTypeTimer);
+  const el=$("dialogueText");if(!el)return;
+  dialogueTyping=true;dialogueFullText=text;el.classList.add("dialogue-text-typing");el.textContent="";
+  let i=0;
+  const step=()=>{
+    i++;
+    el.textContent=text.slice(0,i);
+    if(i>=text.length){clearInterval(dialogueTypeTimer);dialogueTyping=false;el.classList.remove("dialogue-text-typing");}
+  };
+  dialogueTypeTimer=setInterval(step,Math.max(16,Math.min(42,900/Math.max(1,text.length))));
+}
+
+
 
 const canvas=document.createElement("canvas");
 canvas.id="worldCanvas";
@@ -194,6 +250,16 @@ function renderInventoryPanel(){
 }
 setupUI();
 
+document.addEventListener("pointerdown",e=>{
+  const b=e.target.closest("button");
+  if(!b)return;
+  triggerButtonFx(b,false);
+  if(b.closest(".mobile-actions"))triggerButtonFx(b,true);
+},{passive:true});
+document.addEventListener("pointerup",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
+document.addEventListener("pointercancel",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
+document.addEventListener("pointerleave",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
+
 let dialogueQueue=[];
 function talk(npc){
  state.dialogue=true;
@@ -222,10 +288,17 @@ function talk(npc){
 function renderDialogue(){
  if(!dialogueQueue.length){state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue")?.classList.add("hidden");return}
  const d=dialogueQueue[0];
- $("dialogueRole").textContent=d[1];$("dialogueName").textContent=d[0];$("dialogueText").textContent=d[2];
+ $("dialogueRole").textContent=d[1];$("dialogueName").textContent=d[0];typeDialogueText(d[2]);
  $("dialogue").classList.remove("hidden");document.body.classList.add("dialogue-open");
 }
 function nextDialogue(){
+ if(dialogueTyping){
+   clearInterval(dialogueTypeTimer);
+   $("dialogueText").textContent=dialogueFullText;
+   $("dialogueText").classList.remove("dialogue-text-typing");
+   dialogueTyping=false;
+   return;
+ }
  dialogueQueue.shift();
  if(!dialogueQueue.length){
    state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue").classList.add("hidden");
@@ -593,6 +666,7 @@ function gainXp(v){
  while(state.xp>=state.nextXp){
    state.xp-=state.nextXp;state.level++;state.nextXp=Math.floor(state.nextXp*1.28);
    state.maxHp+=55;state.hp=state.maxHp;state.equipment.power+=12;
+   updateHP();playRewardFx("等级提升","Lv. "+state.level+" · 最大生命值 +55 · 攻击力 +12");
    notify("升级！ Lv."+state.level+" · 攻击力 +12");emit(player.x,player.y,"#f0cf72",24);
  }
 }
@@ -605,12 +679,12 @@ function attack(){
  const damage=Math.floor(state.equipment.power*(1+Math.max(0,state.combo-1)*.12));
  if(boss&&boss.active&&!boss.dead&&dist(player,boss)<115){
    boss.hp-=damage;boss.hit=.15;player.attack=.32;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
-   if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;gainXp(520);state.bag.push("古龙核心");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
+   if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;playNumberPop($("coins"));gainXp(520);state.bag.push("古龙核心");playRewardFx("古龙核心","击败暮岩古龙 · +600 金币");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
    return;
  }
  target.hp-=damage;target.hit=.15;player.attack=.32;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");
- if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;state.combo=Math.min(state.combo+1,5);state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
-   if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");}
+ if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;playNumberPop($("coins"));state.combo=Math.min(state.combo+1,5);state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
+   if(state.quest===1&&state.kills>=2){state.quest=2;playRewardFx("任务更新","前往潮汐祭坛");notify("任务更新：前往潮汐祭坛");}
    updateQuestUI();
  }
 }
@@ -619,7 +693,7 @@ function skill(){
  if(!state.started||state.dialogue||state.menuOpen||state.stamina<30)return;
  state.stamina-=30;player.attack=.5;
  emit(player.x,player.y,"#79c8d4",35);
- for(const e of enemies)if(!e.dead&&dist(player,e)<105){e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");if(e.hp<=0){e.dead=true;state.kills++;state.coins+=18}}
+ for(const e of enemies)if(!e.dead&&dist(player,e)<105){e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");if(e.hp<=0){e.dead=true;state.kills++;state.coins+=18;playNumberPop($("coins"));}
  if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");updateQuestUI()}
 }
 
@@ -646,10 +720,10 @@ function interact(){
  if(!state.started||state.dialogue||state.menuOpen)return;
  for(const e of echoes){
    if(!e.taken&&dist(player,e)<68){
-     e.taken=true;state.echoes++;state.coins+=15;state.bag.push("回声碎片 ×1");
+     e.taken=true;state.echoes++;state.coins+=15;state.bag.push("回声碎片 ×1");playNumberPop($("coins"));playRewardFx("回声碎片","发现第 "+state.echoes+" 枚碎片");
      emit(e.x,e.y,"#8ee5ed",28);floatText(e.x,e.y-28,"回声碎片 +1","#a8eff5");
      notify(state.echoes>=9?"九枚回声碎片共鸣，神殿已经开启":"发现回声碎片 "+state.echoes+"/9");
-     if(state.echoes>=9){state.coins+=180;state.equipment.power+=20;notify("回声神殿回应了你 · 攻击力 +20");}
+     if(state.echoes>=9){state.coins+=180;playNumberPop($("coins"));state.equipment.power+=20;playRewardFx("神殿回应","攻击力 +20 · +180 金币");notify("回声神殿回应了你 · 攻击力 +20");}
      saveGame();return;
    }
  }
@@ -662,17 +736,17 @@ function interact(){
  for(const r of resources){
    if(!r.taken&&dist(player,r)<58){
      r.taken=true;
-     if(r.type==="ore"){state.ore++;state.bag.push("铁矿 ×1");notify("获得铁矿 ×1");}
-     else if(r.type==="wood"){state.wood++;state.bag.push("木材 ×1");notify("获得木材 ×1");}
-     else {state.herbs++;state.bag.push("晨雾草 ×1");notify("获得晨雾草 ×1");}
+     if(r.type==="ore"){state.ore++;state.bag.push("铁矿 ×1");playRewardFx("获得铁矿","材料 +1");notify("获得铁矿 ×1");}
+     else if(r.type==="wood"){state.wood++;state.bag.push("木材 ×1");playRewardFx("获得木材","材料 +1");notify("获得木材 ×1");}
+     else {state.herbs++;state.bag.push("晨雾草 ×1");playRewardFx("获得晨雾草","材料 +1");notify("获得晨雾草 ×1");}
      emit(r.x,r.y,"#d6c27d",12);saveGame();return;
    }
  }
  for(const ch of chests){
    if(!ch.opened&&dist(player,ch)<65){
      ch.opened=true;state.chestsOpened++;
-     if(ch.rare){state.equipment.power+=35;state.bag.push("古代剑刃");state.coins+=120;notify("开启稀有宝箱：古代剑刃 · 攻击力 +35");}
-     else {state.coins+=35;state.herbs++;state.bag.push("治疗药草 ×1");notify("开启宝箱：获得 35 金币与药草");}
+     if(ch.rare){state.equipment.power+=35;state.bag.push("古代剑刃");state.coins+=120;playNumberPop($("coins"));playRewardFx("古代剑刃","稀有宝箱 · 攻击力 +35");notify("开启稀有宝箱：古代剑刃 · 攻击力 +35");}
+     else {state.coins+=35;state.herbs++;state.bag.push("治疗药草 ×1");playNumberPop($("coins"));playRewardFx("宝箱奖励","+35 金币 · 治疗药草 ×1");notify("开启宝箱：获得 35 金币与药草");}
      emit(ch.x,ch.y,"#f0d47e",26);saveGame();return;
    }
  }
@@ -718,7 +792,12 @@ function updateEnemies(dt){
  }
 }
 function updateHP(){
- const p=clamp(state.hp/state.maxHp,0,1);$("hpFill").style.width=(p*100)+"%";$("hpText").textContent=Math.max(0,Math.ceil(state.hp))+" / "+state.maxHp;
+ const p=clamp(state.hp/state.maxHp,0,1);
+ const fill=$("hpFill"),text=$("hpText");
+ if(fill)fill.style.width=(p*100)+"%";
+ setHudText("hpText",Math.max(0,Math.ceil(state.hp))+" / "+state.maxHp);
+ const card=document.querySelector(".player-card");
+ card?.classList.toggle("low-health",p<=.3);
  if(state.hp<=0){state.hp=state.maxHp;player.x=1260;player.y=850;notify("你在村庄醒来，旅途还没有结束");}
 }
 function updateInteraction(){
@@ -867,6 +946,7 @@ async function enterImmersiveMobile(){
 }
 function startGame(){
  if(state.started)return;
+ ensureFxLayer();
  state.started=true;
  $("start")?.classList.add("hidden");
  $("hud")?.classList.remove("hidden");

@@ -648,7 +648,7 @@ function loop(t){
  const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
  move();updateEnemies(dt);updateBoss(dt);updateParticles(dt);updateCamera();
  player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
- updateClock(dt);updateInteraction();render();
+ updateClock(dt);updateInteraction();syncInteractButton();render();
  requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -723,6 +723,25 @@ $("startBtn")?.addEventListener("click",startGame);
 $("attackBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();attack()},{passive:false});
 $("dashBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();dash()},{passive:false});
 $("skillBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();skill()},{passive:false});
+$("interactBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();interact()},{passive:false});
+function nearestInteractable(){
+ let best=null,bd=Infinity;
+ const check=(arr,r,fn)=>{for(const x of arr){if(fn&& !fn(x))continue;const d=dist(player,x);if(d<r&&d<bd){bd=d;best=x}}};
+ check(resources,72,x=>!x.taken);
+ check(chests,78,x=>!x.opened);
+ check(gates,88,x=>!x.open);
+ check(npcs,110);
+ check(landmarks,115,x=>x.type!=="stone");
+ check(buildings,105,x=>!!x.name);
+ return best;
+}
+function syncInteractButton(){
+ const b=$("interactBtn");if(!b)return;
+ const target=nearestInteractable();
+ b.classList.toggle("ready",!!target);
+ b.textContent=target?"互动":"互动";
+}
+
 $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
 $("closeMenu")?.addEventListener("click",()=>{$("menu")?.classList.add("hidden")});
 addEventListener("fullscreenchange",syncMobileUI);

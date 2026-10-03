@@ -107,7 +107,7 @@
 .mobile-controls-layer #joy,
 .mobile-controls-layer .mobile-actions{pointer-events:auto!important}
 @media (hover:none) and (pointer:coarse){
-  .mobile-controls-layer{display:block!important;visibility:visible!important}
+  body.game-running .mobile-controls-layer{display:block!important;visibility:visible!important}
 }
 @media (hover:none) and (pointer:coarse) and (orientation:landscape){
   .mobile-controls-layer{

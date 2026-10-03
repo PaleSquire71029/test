@@ -699,6 +699,35 @@ joy?.addEventListener("pointercancel",endJoy);
 joy?.addEventListener("lostpointercapture",endJoy);
 
 updateQuestUI();updateHP();
+function enterImmersiveMobile(){
+ if(innerWidth>900)return;
+ if(document.documentElement.requestFullscreen&&!document.fullscreenElement){
+   document.documentElement.requestFullscreen({navigationUI:"hide"}).catch(()=>{});
+ }
+ if(screen.orientation?.lock)screen.orientation.lock("landscape").catch(()=>{});
+}
+function startGame(){
+ if(state.started)return;
+ state.started=true;
+ $("start")?.classList.add("hidden");
+ $("hud")?.classList.remove("hidden");
+ document.body.classList.add("game-running");
+ enterImmersiveMobile();
+ $("mobileControls")?.classList.remove("hidden");
+ loadGame();
+ notify("欢迎来到晨雾谷");
+ focusQuest();
+ syncMobileUI();
+}
+$("startBtn")?.addEventListener("click",startGame);
+$("attackBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();attack()},{passive:false});
+$("dashBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();dash()},{passive:false});
+$("skillBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();skill()},{passive:false});
+$("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
+$("closeMenu")?.addEventListener("click",()=>{$("menu")?.classList.add("hidden")});
+addEventListener("fullscreenchange",syncMobileUI);
+addEventListener("resize",()=>{if(state.started&&innerWidth<=900)enterImmersiveMobile()});
+
 function syncMobileUI(){
  const mobile=innerWidth<=900;
  if(mobile)$("mobileControls")?.classList.remove("hidden");else $("mobileControls")?.classList.add("hidden");

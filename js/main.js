@@ -31,6 +31,7 @@ const chests=[];
 const gates=[];
 const echoes=[];
 const campfires=[];
+const interactionObjects=[];
 let boss=null;
 const world={w:3000,h:2200};
 
@@ -143,6 +144,7 @@ function generateWorld(){
  for(let i=0;i<70;i++)fireflies.push({x:rnd(300,1800),y:rnd(250,1900),p:rnd(0,6),s:rnd(.4,1)});
 }
 generateWorld();
+interactionObjects.push(...npcs,...landmarks,...buildings);
 
 function setLoading(){
  const bar=$("loadBar"),txt=$("loadText"),loading=$("loading");
@@ -724,7 +726,7 @@ function updateInteraction(){
  for(const ch of chests)if(!ch.opened&&dist(player,ch)<bd){bd=dist(player,ch);near=ch}
  for(const g of gates)if(dist(player,g)<bd){bd=dist(player,g);near=g}
 
- [...npcs,...landmarks,...buildings].forEach(o=>{if(o.name){const d=dist(player,o);if(d<bd){bd=d;near=o}}});
+ for(const o of interactionObjects)if(o.name){const d=dist(player,o);if(d<bd){bd=d;near=o}}
  const box=$("interact");
  if(near){box.classList.remove("hidden");$("interactName").textContent=near.name||({ore:"铁矿",wood:"木材",herb:"晨雾草"}[near.type]||"宝箱")}else box.classList.add("hidden");
  $("combat").classList.add("hidden");

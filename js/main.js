@@ -964,20 +964,46 @@ joy?.addEventListener("lostpointercapture",endJoy);
 
 updateQuestUI();updateHP();
 async function enterImmersiveMobile(){
- if(innerWidth>900&&!matchMedia("(pointer:coarse)").matches)return;
+ const touch=matchMedia("(pointer:coarse)").matches;
+ if(!touch)return true;
+
+ // The Enter World button is a user gesture, so request both permissions
+ // before changing the game state. Fullscreen must come first because
+ // Android browsers generally only allow orientation locking in fullscreen.
  try{
-   if(!document.fullscreenElement) await (document.documentElement.requestFullscreen?.({navigationUI:"hide"})||Promise.resolve());
- }catch(e){}
- try{await screen.orientation?.lock?.("landscape");}catch(e){}
+  if(!document.fullscreenElement){
+   await document.documentElement.requestFullscreen?.({navigationUI:"hide"});
+  }
+ }catch(e){
+  console.warn("Fullscreen request was denied:",e);
+ }
+
+ try{
+  await screen.orientation?.lock?.("landscape");
+ }catch(e){
+  console.warn("Landscape lock was denied:",e);
+ }
+
+ // Give the browser a moment to apply the orientation change.
+ await new Promise(resolve=>setTimeout(resolve,180));
+ return !touch || matchMedia("(orientation: landscape)").matches;
 }
-function startGame(){
+async function startGame(){
  if(state.started)return;
+
  const touch=matchMedia("(pointer:coarse)").matches;
  const landscape=matchMedia("(orientation: landscape)").matches;
+
+ // On touch devices, entering the world is only allowed after the
+ // fullscreen + landscape transition has completed.
  if(touch&&!landscape){
-  syncMobileUI();
-  return;
+  const ready=await enterImmersiveMobile();
+  if(!ready){
+   syncMobileUI();
+   return;
+  }
  }
+
  ensureFxLayer();
  state.started=true;
  $("start")?.classList.add("hidden");

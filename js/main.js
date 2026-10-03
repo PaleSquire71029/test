@@ -4,7 +4,7 @@ const state={
  started:false,hp:820,maxHp:820,stamina:100,time:6.7,coins:126,wood:0,ore:0,herbs:3,
  quest:0,kills:0,enemy:null,dialogue:false,interacting:null,settings:{low:false},
  bag:["旅者短剑","野外地图","晨雾草 ×3"],equipment:{weapon:"旅者短剑",power:95},
- chestsOpened:0,level:7,xp:0,nextXp:240,defeatedBoss:false
+ chestsOpened:0,level:7,xp:0,nextXp:240,defeatedBoss:false,echoes:0,combo:0,comboTimer:0
 };
 
 const canvas=document.createElement("canvas");
@@ -29,6 +29,8 @@ const buildings=[];
 const resources=[];
 const chests=[];
 const gates=[];
+const echoes=[];
+const campfires=[];
 let boss=null;
 const world={w:3000,h:2200};
 
@@ -91,6 +93,8 @@ function addChest(x,y,rare=false){
 function addGate(x,y,name){
  gates.push({x,y,name,open:false});
 }
+function addEcho(x,y){echoes.push({x,y,taken:false,phase:rnd(0,6)});}
+function addCampfire(x,y,name="营火"){campfires.push({x,y,name,phase:rnd(0,6)});}
 
 function generateWorld(){
  // forest
@@ -128,6 +132,9 @@ function generateWorld(){
  for(let i=0;i<8;i++)addChest([560,880,1020,1580,1660,2100,2500,2780][i],[360,1380,620,1840,1180,1580,640,820][i],i>5);
  addGate(930,1120,"森林石门");
  addGate(1760,1250,"湖畔古门");
+ // hidden echoes and rest points
+ [[300,300],[880,310],[1020,1510],[1480,390],[1640,1060],[2010,1040],[2380,930],[2700,900],[2820,1420]].forEach(p=>addEcho(p[0],p[1]));
+ addCampfire(1040,920,"晨雾谷营火");addCampfire(2020,1180,"湖畔营火");addCampfire(2570,760,"高地营火");
  addChest(2580,470,true);
  // Boss arena
  addLandmark(2700,1650,"boss","古龙巢穴");
@@ -398,6 +405,20 @@ function drawEnemy(e){
  if(e.hp<e.max){const w=48;ctx.fillStyle="#0008";ctx.fillRect(s.x-w/2,s.y-r-13,w,4);ctx.fillStyle="#d9685d";ctx.fillRect(s.x-w/2,s.y-r-13,w*clamp(e.hp/e.max,0,1),4)}
 }
 
+function drawEcho(e){
+ const s=worldToScreen(e.x,e.y);if(s.x<-40||s.x>W+40||s.y<-40||s.y>H+40)return;
+ const pulse=.75+.25*Math.sin(performance.now()/260+e.phase);
+ ctx.save();ctx.translate(s.x,s.y);ctx.rotate(performance.now()/1800+e.phase);
+ ctx.globalAlpha=.75*pulse;ctx.shadowColor="#8ee5ed";ctx.shadowBlur=18;
+ ctx.fillStyle="#9cebf0";ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(7,0);ctx.lineTo(0,12);ctx.lineTo(-7,0);ctx.closePath();ctx.fill();
+ ctx.restore();
+}
+function drawCampfire(f){
+ const s=worldToScreen(f.x,f.y);if(s.x<-50||s.x>W+50||s.y<-50||s.y>H+50)return;
+ const pulse=.8+.2*Math.sin(performance.now()/180+f.phase);
+ ctx.save();ctx.translate(s.x,s.y);ctx.globalAlpha=.18*pulse;ctx.fillStyle="#f4c768";ctx.beginPath();ctx.arc(0,2,30*pulse,0,Math.PI*2);ctx.fill();
+ ctx.globalAlpha=1;ctx.shadowColor="#ffbd55";ctx.shadowBlur=14;ctx.fillStyle="#f6c45f";ctx.beginPath();ctx.moveTo(0,-18*pulse);ctx.quadraticCurveTo(10,0,0,8);ctx.quadraticCurveTo(-10,0,0,-18*pulse);ctx.fill();ctx.fillStyle="#704b35";ctx.fillRect(-13,7,26,5);ctx.restore();
+}
 function drawPlayer(){
  const s=worldToScreen(player.x,player.y);ctx.save();ctx.translate(s.x,s.y);
  const bob=Math.sin(player.walk)*2;
@@ -476,14 +497,15 @@ function attack(){
  let target=null,best=90;
  for(const e of enemies)if(!e.dead){const d=dist(player,e);if(d<best){best=d;target=e}}
  if(!target){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
- const damage=state.equipment.power;
+ state.combo=state.comboTimer>0?Math.min(state.combo+1,5):1;state.comboTimer=.9;
+ const damage=Math.floor(state.equipment.power*(1+Math.max(0,state.combo-1)*.12));
  if(boss&&boss.active&&!boss.dead&&dist(player,boss)<115){
    boss.hp-=damage;boss.hit=.15;player.attack=.32;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
    if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;gainXp(520);state.bag.push("古龙核心");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
    return;
  }
  target.hp-=damage;target.hit=.15;player.attack=.32;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");
- if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
+ if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;state.combo=Math.min(state.combo+1,5);state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
    if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");}
    updateQuestUI();
  }
@@ -518,6 +540,21 @@ function dash(){
 
 function interact(){
  if(!state.started||state.dialogue)return;
+ for(const e of echoes){
+   if(!e.taken&&dist(player,e)<68){
+     e.taken=true;state.echoes++;state.coins+=15;state.bag.push("回声碎片 ×1");
+     emit(e.x,e.y,"#8ee5ed",28);floatText(e.x,e.y-28,"回声碎片 +1","#a8eff5");
+     notify(state.echoes>=9?"九枚回声碎片共鸣，神殿已经开启":"发现回声碎片 "+state.echoes+"/9");
+     if(state.echoes>=9){state.coins+=180;state.equipment.power+=20;notify("回声神殿回应了你 · 攻击力 +20");}
+     saveGame();return;
+   }
+ }
+ for(const f of campfires){
+   if(dist(player,f)<82){
+     state.hp=Math.min(state.maxHp,state.hp+180);player.stamina=100;
+     emit(f.x,f.y,"#f1c96e",32);notify(f.name+"：生命与体力已恢复");updateHP();saveGame();return;
+   }
+ }
  for(const r of resources){
    if(!r.taken&&dist(player,r)<58){
      r.taken=true;
@@ -549,7 +586,6 @@ function interact(){
  for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){if(l.type==="boss"&&!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(l.x,l.y,"#d8666a",30);return}notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI()}return}}
  for(const b of buildings){if(b.name&&dist(player,b)<90){notify(b.name+"：一座安静的建筑");return}}
 }
-
 function updateBoss(dt){
  if(!boss||boss.dead)return;
  const d=dist(player,boss);
@@ -615,7 +651,7 @@ function drawAtmosphere(){
 }
 function saveGame(){
  localStorage.setItem("etheria-save",JSON.stringify({
-  state:{hp:state.hp,maxHp:state.maxHp,stamina:state.stamina,time:state.time,coins:state.coins,wood:state.wood,ore:state.ore,herbs:state.herbs,quest:state.quest,kills:state.kills,bag:state.bag,equipment:state.equipment,chestsOpened:state.chestsOpened,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss},
+  state:{hp:state.hp,maxHp:state.maxHp,stamina:state.stamina,time:state.time,coins:state.coins,wood:state.wood,ore:state.ore,herbs:state.herbs,quest:state.quest,kills:state.kills,bag:state.bag,equipment:state.equipment,chestsOpened:state.chestsOpened,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,echoes:state.echoes},
   player:{x:player.x,y:player.y}
  }));
 }
@@ -645,6 +681,8 @@ function render(){
   ...rocks.map(x=>({y:x.y,fn:()=>drawRock(x)})),
   ...flowers.map(x=>({y:x.y,fn:()=>drawFlower(x)})),
   ...resources.filter(x=>!x.taken).map(x=>({y:x.y,fn:()=>drawResource(x)})),
+  ...campfires.map(x=>({y:x.y,fn:()=>drawCampfire(x)})),
+  ...echoes.filter(x=>!x.taken).map(x=>({y:x.y,fn:()=>drawEcho(x)})),
   ...chests.map(x=>({y:x.y,fn:()=>drawChest(x)})),
   ...gates.map(x=>({y:x.y,fn:()=>drawGate(x)})),
   ...buildings.map(x=>({y:x.y,fn:()=>drawBuilding(x)})),
@@ -669,7 +707,7 @@ function render(){
 function loop(t){
  const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
  move();updateEnemies(dt);updateBoss(dt);updateParticles(dt);updateCamera();
- player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
+ player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);state.comboTimer=Math.max(0,state.comboTimer-dt);if(state.comboTimer<=0)state.combo=0;
  updateClock(dt);updateInteraction();syncInteractButton();render();
  requestAnimationFrame(loop);
 }
@@ -749,6 +787,8 @@ $("interactBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();interact
 function nearestInteractable(){
  let best=null,bd=Infinity;
  const check=(arr,r,fn)=>{for(const x of arr){if(fn&& !fn(x))continue;const d=dist(player,x);if(d<r&&d<bd){bd=d;best=x}}};
+ check(echoes,72,x=>!x.taken);
+ check(campfires,82);
  check(resources,72,x=>!x.taken);
  check(chests,78,x=>!x.opened);
  check(gates,88,x=>!x.open);
@@ -761,7 +801,7 @@ function syncInteractButton(){
  const b=$("interactBtn");if(!b)return;
  const target=nearestInteractable();
  b.classList.toggle("ready",!!target);
- b.textContent=target?"互动":"互动";
+ b.textContent=target?(target.name||({ore:"铁矿",wood:"木材",herb:"晨雾草"}[target.type]||"互动")):"互动";
 }
 
 $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});

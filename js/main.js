@@ -490,7 +490,17 @@ function dash(){
  let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0);
  if(!dx&&!dy){dx=Math.cos(player.dir);dy=Math.sin(player.dir)}
  const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
- player.x=clamp(player.x+dx*115,35,world.w-35);player.y=clamp(player.y+dy*115,35,world.h-35);
+ const ox=player.x,oy=player.y;
+ const tx=clamp(ox+dx*115,35,world.w-35),ty=clamp(oy+dy*115,35,world.h-35);
+ if(!blocked(tx,ty)){
+   player.x=tx;player.y=ty;
+ }else{
+   const steps=8;
+   for(let i=steps;i>0;i--){
+     const d=115*i/steps,px=clamp(ox+dx*d,35,world.w-35),py=clamp(oy+dy*d,35,world.h-35);
+     if(!blocked(px,py)){player.x=px;player.y=py;break}
+   }
+ }
  player.stamina-=22;player.inv=.35;emit(player.x,player.y,"#d7c47d",18);
 }
 

@@ -7,6 +7,11 @@ const state={
  chestsOpened:0,level:7,xp:0,nextXp:240,defeatedBoss:false,echoes:0,combo:0,comboTimer:0
 };
 
+let audio=window.EtheriaAudio||null;
+function sfx(name){
+ try{audio?.[name]?.()}catch(e){}
+}
+
 const canvas=document.createElement("canvas");
 canvas.id="worldCanvas";
 $("game").appendChild(canvas);
@@ -592,7 +597,7 @@ function gainXp(v){
  while(state.xp>=state.nextXp){
    state.xp-=state.nextXp;state.level++;state.nextXp=Math.floor(state.nextXp*1.28);
    state.maxHp+=55;state.hp=state.maxHp;state.equipment.power+=12;
-   notify("升级！ Lv."+state.level+" · 攻击力 +12");emit(player.x,player.y,"#f0cf72",24);
+   sfx("levelUp");notify("升级！ Lv."+state.level+" · 攻击力 +12");emit(player.x,player.y,"#f0cf72",24);
  }
 }
 function attack(){
@@ -603,11 +608,11 @@ function attack(){
  state.combo=state.comboTimer>0?Math.min(state.combo+1,5):1;state.comboTimer=.9;
  const damage=Math.floor(state.equipment.power*(1+Math.max(0,state.combo-1)*.12));
  if(boss&&boss.active&&!boss.dead&&dist(player,boss)<115){
-   boss.hp-=damage;boss.hit=.15;player.attack=.32;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
+   boss.hp-=damage;boss.hit=.15;player.attack=.32;sfx("hit");emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
    if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;gainXp(520);state.bag.push("古龙核心");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
    return;
  }
- target.hp-=damage;target.hit=.15;player.attack=.32;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");
+ target.hp-=damage;target.hit=.15;player.attack=.32;sfx("hit");emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");
  if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;state.combo=Math.min(state.combo+1,5);state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
    if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");}
    updateQuestUI();
@@ -646,7 +651,7 @@ function interact(){
  for(const e of echoes){
    if(!e.taken&&dist(player,e)<68){
      e.taken=true;state.echoes++;state.coins+=15;state.bag.push("回声碎片 ×1");
-     emit(e.x,e.y,"#8ee5ed",28);floatText(e.x,e.y-28,"回声碎片 +1","#a8eff5");
+     sfx("pickup");emit(e.x,e.y,"#8ee5ed",28);floatText(e.x,e.y-28,"回声碎片 +1","#a8eff5");
      notify(state.echoes>=9?"九枚回声碎片共鸣，神殿已经开启":"发现回声碎片 "+state.echoes+"/9");
      if(state.echoes>=9){state.coins+=180;state.equipment.power+=20;notify("回声神殿回应了你 · 攻击力 +20");}
      saveGame();return;
@@ -664,7 +669,7 @@ function interact(){
      if(r.type==="ore"){state.ore++;state.bag.push("铁矿 ×1");notify("获得铁矿 ×1");}
      else if(r.type==="wood"){state.wood++;state.bag.push("木材 ×1");notify("获得木材 ×1");}
      else {state.herbs++;state.bag.push("晨雾草 ×1");notify("获得晨雾草 ×1");}
-     emit(r.x,r.y,"#d6c27d",12);saveGame();return;
+     sfx("pickup");emit(r.x,r.y,"#d6c27d",12);saveGame();return;
    }
  }
  for(const ch of chests){
@@ -672,7 +677,7 @@ function interact(){
      ch.opened=true;state.chestsOpened++;
      if(ch.rare){state.equipment.power+=35;state.bag.push("古代剑刃");state.coins+=120;notify("开启稀有宝箱：古代剑刃 · 攻击力 +35");}
      else {state.coins+=35;state.herbs++;state.bag.push("治疗药草 ×1");notify("开启宝箱：获得 35 金币与药草");}
-     emit(ch.x,ch.y,"#f0d47e",26);saveGame();return;
+     sfx("pickup");emit(ch.x,ch.y,"#f0d47e",26);saveGame();return;
    }
  }
  for(const g of gates){
@@ -697,7 +702,7 @@ function updateBoss(dt){
    const dx=(player.x-boss.x)/(d||1),dy=(player.y-boss.y)/(d||1);
    if(d>115){boss.x+=dx*22*dt;boss.y+=dy*22*dt}
    if(d<150&&boss.attackCd<=0&&player.inv<=0){
-     boss.attackCd=1.5;state.hp-=38;player.inv=.9;floatText(player.x,player.y-45,"-38","#ef8b7f");emit(player.x,player.y,"#c45e6a",14);updateHP();
+     boss.attackCd=1.5;state.hp-=38;player.inv=.9;sfx("hurt");floatText(player.x,player.y-45,"-38","#ef8b7f");emit(player.x,player.y,"#c45e6a",14);updateHP();
    }
    if(Math.sin(boss.phase*1.7)>0.985)emit(boss.x+dx*50,boss.y+dy*50,"#d8666a",16);
  }
@@ -710,7 +715,7 @@ function updateEnemies(dt){
      const dx=(player.x-e.x)/(d||1),dy=(player.y-e.y)/(d||1);
      const sp=e.type==="岩甲兽"?34:52;
      if(d>48){e.x+=dx*sp*dt;e.y+=dy*sp*dt}
-     if(d<52&&player.inv<=0){state.hp-=e.type==="岩甲兽"?24:12;player.inv=.8;floatText(player.x,player.y-40,"-"+(e.type==="岩甲兽"?24:12),"#ef8b7f");emit(player.x,player.y,"#d9675e",8);updateHP()}
+     if(d<52&&player.inv<=0){state.hp-=e.type==="岩甲兽"?24:12;player.inv=.8;sfx("hurt");floatText(player.x,player.y-40,"-"+(e.type==="岩甲兽"?24:12),"#ef8b7f");emit(player.x,player.y,"#d9675e",8);updateHP()}
    }else{
      e.phase+=dt; e.x=e.homeX+Math.sin(e.phase*.55)*28;e.y=e.homeY+Math.cos(e.phase*.45)*22;
    }
@@ -867,6 +872,8 @@ async function enterImmersiveMobile(){
 function startGame(){
  if(state.started)return;
  state.started=true;
+ audio=window.EtheriaAudio||audio;
+ audio?.init?.();
  $("start")?.classList.add("hidden");
  $("hud")?.classList.remove("hidden");
  document.body.classList.add("game-running");

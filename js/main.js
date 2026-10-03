@@ -174,7 +174,7 @@ $("startBtn")?.addEventListener("click",async()=>{
  $("closeMenu")?.addEventListener("click",()=>{state.menuOpen=false;$("menu")?.classList.add("hidden");document.body.classList.remove("menu-open")});
  $("menu")?.addEventListener("click",e=>{if(e.target===$("menu")){$("closeMenu")?.click()}});
  document.querySelectorAll(".menu-nav button").forEach(b=>b.addEventListener("click",()=>{
-   document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
+   document.querySelectorAll(".menu-nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
  }));
  $("dialogueNext")?.addEventListener("click",nextDialogue);
  $("attackBtn")?.addEventListener("click",attack);

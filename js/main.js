@@ -149,8 +149,13 @@ function setLoading(){
 setLoading();
 
 function setupUI(){
- $("startBtn")?.addEventListener("click",()=>{
+ $("startBtn")?.addEventListener("click",async()=>{
    state.started=true;$("start")?.classList.add("hidden");$("hud")?.classList.remove("hidden");
+   document.body.classList.add("game-running");
+   if(matchMedia("(orientation: portrait)").matches){
+     try{await document.documentElement.requestFullscreen?.();await screen.orientation?.lock?.("landscape");}catch(e){}
+   }
+   if(innerWidth<=900)$("mobileControls")?.classList.remove("hidden");
    loadGame();notify("欢迎来到晨雾谷");focusQuest();
  });
  $("menuBtn")?.addEventListener("click",()=>{$("menu")?.classList.remove("hidden");renderTab("map")});
@@ -661,18 +666,26 @@ canvas.addEventListener("click",e=>{
 
 let joyTouch=null,joyOrigin=null;
 const joy=$("joy");
-joy?.addEventListener("touchstart",e=>{
- const t=e.changedTouches[0];joyTouch=t.identifier;joyOrigin={x:t.clientX,y:t.clientY};e.preventDefault();
+joy?.addEventListener("pointerdown",e=>{
+ joyTouch=e.pointerId;joyOrigin={x:e.clientX,y:e.clientY};joy.setPointerCapture?.(e.pointerId);e.preventDefault();
 },{passive:false});
-joy?.addEventListener("touchmove",e=>{
- const t=[...e.changedTouches].find(x=>x.identifier===joyTouch);if(!t)return;
- const dx=t.clientX-joyOrigin.x,dy=t.clientY-joyOrigin.y,d=Math.hypot(dx,dy),r=42;
+joy?.addEventListener("pointermove",e=>{
+ if(e.pointerId!==joyTouch)return;
+ const dx=e.clientX-joyOrigin.x,dy=e.clientY-joyOrigin.y,d=Math.hypot(dx,dy),r=42;
  const nx=clamp(dx/r,-1,1),ny=clamp(dy/r,-1,1);
  keys.a=nx<-.25;keys.d=nx>.25;keys.w=ny<-.25;keys.s=ny>.25;
  const dot=joy.querySelector("i");if(dot){dot.style.transform="translate("+clamp(dx,-42,42)+"px,"+clamp(dy,-42,42)+"px)"}
  e.preventDefault();
 },{passive:false});
-function endJoy(){joyTouch=null;["a","d","w","s"].forEach(k=>keys[k]=false);const dot=joy?.querySelector("i");if(dot)dot.style.transform=""}
-joy?.addEventListener("touchend",endJoy);joy?.addEventListener("touchcancel",endJoy);
+function endJoy(){joyTouch=null;joyOrigin=null;["a","d","w","s"].forEach(k=>keys[k]=false);const dot=joy?.querySelector("i");if(dot)dot.style.transform=""}
+joy?.addEventListener("pointerup",endJoy);joy?.addEventListener("pointercancel",endJoy);joy?.addEventListener("lostpointercapture",endJoy);
 
 updateQuestUI();updateHP();
+function syncMobileUI(){
+ const mobile=innerWidth<=900;
+ if(mobile)$("mobileControls")?.classList.remove("hidden");else $("mobileControls")?.classList.add("hidden");
+ $("rotateHint")?.classList.toggle("show",mobile&&matchMedia("(orientation: portrait)").matches&&state.started);
+}
+addEventListener("resize",syncMobileUI);
+addEventListener("orientationchange",()=>setTimeout(syncMobileUI,120));
+syncMobileUI();

@@ -868,8 +868,6 @@ async function enterImmersiveMobile(){
 function startGame(){
  if(state.started)return;
  state.started=true;
- audio=window.EtheriaAudio||audio;
- audio?.init?.();
  $("start")?.classList.add("hidden");
  $("hud")?.classList.remove("hidden");
  document.body.classList.add("game-running");

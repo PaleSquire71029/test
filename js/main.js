@@ -434,8 +434,20 @@ function blocked(x,y){
  for(const g of gates){if(!g.open&&Math.hypot(x-g.x,y-g.y)<42)return true}
  return false;
 }
+function recoverFromObstacle(){
+ if(!blocked(player.x,player.y))return;
+ const ox=player.x,oy=player.y;
+ for(let radius=18;radius<=120;radius+=12){
+   for(let a=0;a<Math.PI*2;a+=Math.PI/8){
+     const x=clamp(ox+Math.cos(a)*radius,35,world.w-35);
+     const y=clamp(oy+Math.sin(a)*radius,35,world.h-35);
+     if(!blocked(x,y)){player.x=x;player.y=y;notify("已脱离障碍物");return;}
+   }
+ }
+}
 function move(){
  if(!state.started||state.dialogue)return;
+ recoverFromObstacle();
  let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  if(dx||dy){

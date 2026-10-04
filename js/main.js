@@ -1,96 +1,119 @@
 const $=id=>document.getElementById(id);
+const EA=()=>window.EtheriaAudio;
 
+/* ================= 状态 ================= */
 const state={
- started:false,hp:820,maxHp:820,stamina:100,time:6.7,coins:126,wood:0,ore:0,herbs:3,
- quest:0,kills:0,enemy:null,dialogue:false,menuOpen:false,interacting:null,settings:{low:false},
- bag:["旅者短剑","野外地图","晨雾草 ×3"],equipment:{weapon:"旅者短剑",power:95},
- chestsOpened:0,level:7,xp:0,nextXp:240,defeatedBoss:false,echoes:0,combo:0,comboTimer:0
+ started:false,hp:820,maxHp:820,time:8.4,coins:126,
+ quest:0,kills:0,clues:0,echoes:0,
+ dialogue:false,menuOpen:false,panel:false,lore:false,
+ combo:0,comboTimer:0,level:7,xp:0,nextXp:240,defeatedBoss:false,
+ settings:{low:false,vib:true,sfx:true},
+ bag:{sword:1,map:1,herb:3},
+ equipment:{weapon:"旅者短剑",power:95}
 };
+const player={x:980,y:860,dir:0,speed:185,attack:0,inv:0,stamina:100,walk:0};
+const camera={x:0,y:0,zoom:1,tz:1};
+const mouse={x:0,y:0,down:false};
+const keys=Object.create(null);
 
-let dialogueTyping=false;
-let dialogueFullText="";
-let dialogueTypeTimer=0;
+let dialogueTyping=false,dialogueFullText="",dialogueTypeTimer=0;
+let pendingStart=false;
 
+/* ================= 物品定义 ================= */
+const ITEMS={
+ sword:{name:"旅者短剑",cat:"equip"},
+ blade:{name:"古代剑刃",cat:"equip",rare:1},
+ potion:{name:"治疗药草",cat:"use",heal:200},
+ berry:{name:"野果",cat:"use",heal:60},
+ wood:{name:"木材",cat:"mat"},
+ ore:{name:"铁矿",cat:"mat"},
+ crystal:{name:"晶矿",cat:"mat",rare:1},
+ stone:{name:"石材",cat:"mat"},
+ herb:{name:"晨雾草",cat:"mat"},
+ grass:{name:"水草",cat:"mat"},
+ shell:{name:"贝壳",cat:"mat"},
+ shard:{name:"回声碎片",cat:"quest",rare:1},
+ badge:{name:"晨雾谷徽记",cat:"quest",rare:1},
+ core:{name:"古龙核心",cat:"quest",rare:1},
+ map:{name:"野外地图",cat:"quest"},
+ scale:{name:"奇怪的鳞片",cat:"quest"}
+};
+const ICONS={
+ sword:'<svg viewBox="0 0 24 24"><path d="M5 19l3-3M7 14l3 3M19 4l-9.5 9.5M19 4l-1 4M19 4l-4 1"/></svg>',
+ blade:'<svg viewBox="0 0 24 24"><path d="M5 19l3-3M7 14l3 3M19 4l-9.5 9.5M19 4l-1 4M19 4l-4 1"/><circle cx="17" cy="7" r="1.2"/></svg>',
+ potion:'<svg viewBox="0 0 24 24"><path d="M10 3h4M11 3v4l-4 9a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4l-4-9V3"/><path d="M8 14h8"/></svg>',
+ berry:'<svg viewBox="0 0 24 24"><circle cx="9" cy="13" r="3"/><circle cx="15" cy="14" r="3"/><circle cx="12" cy="9" r="3"/><path d="M12 6V3"/></svg>',
+ wood:'<svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="7" rx="3"/><circle cx="8" cy="12.5" r="1.6"/><path d="M12 10v5M16 10v5"/></svg>',
+ ore:'<svg viewBox="0 0 24 24"><path d="M7 18L5 11l5-6 7 2 2 7-5 4z"/><path d="M10 5l2 5 5-1"/></svg>',
+ crystal:'<svg viewBox="0 0 24 24"><path d="M12 3l5 6-5 12-5-12z"/><path d="M12 3v18M7 9h10"/></svg>',
+ stone:'<svg viewBox="0 0 24 24"><path d="M5 15l2-7 6-3 6 4v6l-5 4H8z"/></svg>',
+ herb:'<svg viewBox="0 0 24 24"><path d="M12 21V10"/><path d="M12 12C12 8 9 6 5 6c0 4 3 6 7 6zM12 12c0-4 3-6 7-6 0 4-3 6-7 6zM12 18c0-3 2-5 5-5 0 3-2 5-5 5z"/></svg>',
+ grass:'<svg viewBox="0 0 24 24"><path d="M6 21c0-6 2-9 2-13M12 21c0-7-1-10 0-15M18 21c0-6-2-9-2-13"/></svg>',
+ shell:'<svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0-8-8c2-4 5-6 8-6s6 2 8 6a8 8 0 0 0-8 8z"/><path d="M12 20V6M7 13l5 7M17 13l-5 7"/></svg>',
+ shard:'<svg viewBox="0 0 24 24"><path d="M12 3l5 9-5 9-5-9z"/></svg>',
+ badge:'<svg viewBox="0 0 24 24"><circle cx="12" cy="11" r="7"/><path d="M12 7v4l3 2M9 21l3-3 3 3"/></svg>',
+ core:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
+ map:'<svg viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2zM9 4v14M15 6v14"/></svg>',
+ scale:'<svg viewBox="0 0 24 24"><path d="M12 3c4 4 6 8 6 11a6 6 0 0 1-12 0c0-3 2-7 6-11z"/></svg>'
+};
+function addItem(id,n=1){
+ state.bag[id]=(state.bag[id]||0)+n;
+}
+function removeItem(id,n=1){
+ if(!state.bag[id])return;
+ state.bag[id]-=n;if(state.bag[id]<=0)delete state.bag[id];
+}
+function useItem(id){
+ const it=ITEMS[id];if(!it||it.cat!=="use")return;
+ if(it.heal&&state.hp>=state.maxHp){notify("生命值已满");return}
+ if(it.heal){state.hp=Math.min(state.maxHp,state.hp+it.heal);updateHP();EA()?.pickup();notify("使用 "+it.name+" · 恢复 "+it.heal+" 生命");}
+ removeItem(id);renderInventory();saveGame();
+}
+
+/* ================= 特效层 ================= */
 function ensureFxLayer(){
-  if($("fxLayer"))return;
-  const layer=document.createElement("div");
-  layer.id="fxLayer";
-  layer.innerHTML='<div id="fxFlash"></div>';
-  document.body.appendChild(layer);
+ if($("fxLayer"))return;
+ const layer=document.createElement("div");
+ layer.id="fxLayer";
+ layer.innerHTML='<div id="fxFlash"></div>';
+ document.body.appendChild(layer);
 }
 function playNumberPop(el){
-  if(!el)return;
-  el.classList.remove("hud-number-pop");
-  void el.offsetWidth;
-  el.classList.add("hud-number-pop");
-}
-function setHudText(id,value){
-  const el=$(id);if(!el)return;
-  const next=String(value);
-  if(el.textContent!==next){el.textContent=next;playNumberPop(el);}
+ if(!el)return;
+ el.classList.remove("hud-number-pop");void el.offsetWidth;el.classList.add("hud-number-pop");
 }
 function playRewardFx(title,detail=""){
-  ensureFxLayer();
-  const flash=$("fxFlash");if(flash){flash.classList.remove("play");void flash.offsetWidth;flash.classList.add("play");}
-  const old=document.querySelector(".fx-reward-popup");
-  old?.remove();
-  const p=document.createElement("div");
-  p.className="fx-reward-popup";
-  p.innerHTML="<small>NEW DISCOVERY</small><b>"+title+"</b>"+(detail?"<span>"+detail+"</span>":"");
-  $("fxLayer").appendChild(p);
-  setTimeout(()=>p.classList.add("out"),1050);
-  setTimeout(()=>p.remove(),1420);
+ ensureFxLayer();
+ const flash=$("fxFlash");if(flash){flash.classList.remove("play");void flash.offsetWidth;flash.classList.add("play");}
+ document.querySelector(".fx-reward-popup")?.remove();
+ const p=document.createElement("div");
+ p.className="fx-reward-popup";
+ p.innerHTML="<small>NEW DISCOVERY</small><b>"+title+"</b>"+(detail?"<span>"+detail+"</span>":"");
+ $("fxLayer").appendChild(p);
+ setTimeout(()=>p.classList.add("out"),1050);
+ setTimeout(()=>p.remove(),1420);
 }
 function triggerButtonFx(button,held=false){
-  if(!button)return;
-  if(held)button.classList.add("is-held");
-  const ripple=document.createElement("i");
-  ripple.className="game-action-ripple";
-  button.appendChild(ripple);
-  setTimeout(()=>ripple.remove(),520);
+ if(!button)return;
+ if(held)button.classList.add("is-held");
+ const ripple=document.createElement("i");
+ ripple.className="game-action-ripple";
+ button.appendChild(ripple);
+ setTimeout(()=>ripple.remove(),520);
 }
-function typeDialogueText(text){
-  clearInterval(dialogueTypeTimer);
-  const el=$("dialogueText");if(!el)return;
-  dialogueTyping=true;dialogueFullText=text;el.classList.add("dialogue-text-typing");el.textContent="";
-  let i=0;
-  const step=()=>{
-    i++;
-    el.textContent=text.slice(0,i);
-    if(i>=text.length){clearInterval(dialogueTypeTimer);dialogueTyping=false;el.classList.remove("dialogue-text-typing");}
-  };
-  dialogueTypeTimer=setInterval(step,Math.max(16,Math.min(42,900/Math.max(1,text.length))));
-}
+function vibrate(ms){if(state.settings.vib&&navigator.vibrate)navigator.vibrate(ms)}
 
-
-
+/* ================= 画布与世界 ================= */
 const canvas=document.createElement("canvas");
 canvas.id="worldCanvas";
 $("game").appendChild(canvas);
 const ctx=canvas.getContext("2d",{alpha:false});
 let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,2);
-const keys=Object.create(null);
-const mouse={x:0,y:0,down:false};
-const camera={x:0,y:0};
-const player={x:980,y:860,dir:0,speed:185,attack:0,dash:0,inv:0,stamina:100,walk:0};
-const particles=[];
-const texts=[];
-const enemies=[];
-const npcs=[];
-const landmarks=[];
-const trees=[];
-const rocks=[];
-const flowers=[];
-const fireflies=[];
-const buildings=[];
-const resources=[];
-const chests=[];
-const gates=[];
-const echoes=[];
-const campfires=[];
-const interactionObjects=[];
-let boss=null;
 const world={w:3000,h:2200};
+
+const particles=[],texts=[],enemies=[],npcs=[],landmarks=[],trees=[],rocks=[],grassTufts=[],flowers=[],fireflies=[],buildings=[],resources=[],chests=[],gates=[],echoes=[],campfires=[],clues=[];
+let boss=null;
+const bossRings=[],hazards=[];
 
 const zones=[
  {x:0,y:0,w:3000,h:2200,c:"#76986f",name:"晨雾谷"},
@@ -112,412 +135,584 @@ function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function hash(x,y){const n=Math.sin(x*12.9898+y*78.233)*43758.5453;return n-Math.floor(n)}
 function roadY(x){return 1050+Math.sin(x*.002)*80}
 function roadX(y){return 1180+Math.sin(y*.0025)*70}
-function isLake(x,y){return x>1830&&y>1350}
+function isLake(x,y){const dx=(x-2320)/620,dy=(y-1770)/480;return dx*dx+dy*dy<1}
 function zoneAt(x,y){
- if(isLake(x,y))return "暮潮湖畔";
+ if(isLake(x,y)||(x>1700&&y>1250))return "暮潮湖畔";
  if(x<950)return "静谧森林";
  if(x>2050&&y<900)return "风痕高地";
  return "晨雾谷";
 }
+function isNight(){const h=state.time%24;return h<5.5||h>19}
 function notify(s){
  const t=$("toast");if(!t)return;
  t.textContent=s;t.classList.add("show");clearTimeout(notify.t);
- notify.t=setTimeout(()=>t.classList.remove("show"),1800);
+ notify.t=setTimeout(()=>t.classList.remove("show"),1900);
 }
 
-function addTree(x,y,s=1){
- trees.push({x,y,s,variant:Math.floor(rnd(0,3)),shade:rnd(.85,1.15)});
+/* ---------- 世界坐标 <-> 屏幕坐标（带镜头缩放） ---------- */
+function worldToScreen(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
+/* 视觉坐标（含缩放）：用于 HUD 定位 */
+function worldToVisual(x,y){return{x:(x-camera.x)*camera.zoom+W/2,y:(y-camera.y)*camera.zoom+H/2}}
+function screenToWorld(x,y){return{x:(x-W/2)/camera.zoom+camera.x,y:(y-H/2)/camera.zoom+camera.y}}
+
+/* ---------- 战争迷雾 ---------- */
+const FOG_CELL=150,FOG_COLS=Math.ceil(world.w/FOG_CELL),FOG_ROWS=Math.ceil(world.h/FOG_CELL);
+const exploredSet=new Set();
+let fogLastCell=-1;
+function markExplored(){
+ const cx=Math.floor(player.x/FOG_CELL),cy=Math.floor(player.y/FOG_CELL);
+ const idx=cx+cy*FOG_COLS;
+ if(idx===fogLastCell)return;
+ fogLastCell=idx;
+ for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+  const x=cx+dx,y=cy+dy;
+  if(x>=0&&y>=0&&x<FOG_COLS&&y<FOG_ROWS)exploredSet.add(x+y*FOG_COLS);
+ }
+ for(const l of landmarks)if(l.type!=="stone"&&dist(player,l)<330)l.seen=true;
+ for(const f of campfires)if(dist(player,f)<320)f.seen=true;
 }
+
+/* ---------- 生成世界 ---------- */
+function addTree(x,y,s=1){trees.push({x,y,s,variant:Math.floor(rnd(0,3)),shade:rnd(.85,1.15)})}
 function addRock(x,y,s=1){rocks.push({x,y,s,rot:rnd(0,Math.PI*2)})}
 function addFlower(x,y,c){flowers.push({x,y,c})}
-function addBuilding(x,y,w,h,type,name){
- buildings.push({x,y,w,h,type,name});
-}
-function addNPC(x,y,name,role,color){
- npcs.push({x,y,name,role,color,phase:rnd(0,6),homeX:x,homeY:y});
-}
+function addGrass(x,y){grassTufts.push({x,y,l:Math.floor(rnd(0,3)),p:rnd(0,6)})}
+function addBuilding(x,y,w,h,type,name){buildings.push({x,y,w,h,type,name})}
+function addNPC(x,y,name,role,color){npcs.push({x,y,name,role,color,phase:rnd(0,6)})}
 function addEnemy(x,y,type="荒原狼"){
- enemies.push({x,y,type,hp:type==="岩甲兽"?360:180,max:type==="岩甲兽"?360:180,homeX:x,homeY:y,phase:rnd(0,6),hit:0,dead:false});
+ const c=ETYPE[type];
+ enemies.push({x,y,type,hp:c.hp,max:c.hp,homeX:x,homeY:y,phase:rnd(0,6),hit:0,dead:false,windup:0,recover:0,cd:0,wx:0,wy:0});
 }
-function addLandmark(x,y,type,name){
- landmarks.push({x,y,type,name});
-}
-function addResource(x,y,type){
- resources.push({x,y,type,taken:false,phase:rnd(0,6)});
-}
-function addChest(x,y,rare=false){
- chests.push({x,y,opened:false,rare,phase:rnd(0,6)});
-}
-function addGate(x,y,name){
- gates.push({x,y,name,open:false});
-}
-function addEcho(x,y){echoes.push({x,y,taken:false,phase:rnd(0,6)});}
-function addCampfire(x,y,name="营火"){campfires.push({x,y,name,phase:rnd(0,6)});}
+function addLandmark(x,y,type,name){landmarks.push({x,y,type,name,seen:false})}
+function addResource(x,y,type){resources.push({x,y,type,taken:false,phase:rnd(0,6)})}
+function addChest(x,y,kind="normal"){chests.push({x,y,kind,opened:false,found:kind!=="hidden",phase:rnd(0,6)})}
+function addGate(x,y,name){gates.push({x,y,name,open:false})}
+function addEcho(x,y){echoes.push({x,y,taken:false,phase:rnd(0,6)})}
+function addCampfire(x,y,name="营火"){campfires.push({x,y,name,phase:rnd(0,6),seen:false})}
+function addClue(x,y,type,name,lore,give){clues.push({x,y,type,name,lore,give,found:false,phase:rnd(0,6)})}
+
+/* 敌人类型：攻击方式 + 行为特点 */
+const ETYPE={
+ "荒原狼":{hp:180,sp:56,aggro:320,range:52,wind:.5,cd:1.2,dmg:12,xp:40,coin:18,lunge:92,lv:5},
+ "岩甲兽":{hp:360,sp:34,aggro:300,range:64,wind:.85,cd:1.8,dmg:24,xp:90,coin:30,lv:8},
+ "岩甲兽·精英":{hp:560,sp:38,aggro:350,range:70,wind:.8,cd:1.5,dmg:30,xp:170,coin:60,elite:true,lv:10}
+};
+
+/* 回声碎片叙事：玩家不知道总数，每一块讲一点故事 */
+const FRAG_LORE=[
+ "“这里曾经有人来过。”",
+ "“他们在寻找同一个声音。”",
+ "“声音来自地下。”",
+ "“有人在雾里留下了一盏灯。”",
+ "“湖水记得每一次回响。”",
+ "“岩石也在倾听。”",
+ "“他们不是第一批旅人。”",
+ "“回声越来越近了。”",
+ "“当它醒来时，大陆会记得你的名字。”"
+];
 
 function generateWorld(){
- // forest
+ // 森林
  for(let i=0;i<145;i++)addTree(rnd(70,900),rnd(80,2080),rnd(.75,1.35));
- // highland trees / rocks
+ // 高地树木
  for(let i=0;i<55;i++)addTree(rnd(2000,2940),rnd(80,980),rnd(.7,1.15));
  for(let i=0;i<95;i++)addRock(rnd(80,2920),rnd(80,2100),rnd(.6,1.25));
  for(let i=0;i<180;i++)addFlower(rnd(70,2920),rnd(70,2080),["#d6b86a","#e8d9a2","#b6d19c","#d98f86"][i%4]);
- // village
+ // 三层草
+ for(let i=0;i<240;i++){const x=rnd(60,2940),y=rnd(60,2140);if(!isLake(x,y))addGrass(x,y)}
+ // 村庄
  addBuilding(1120,770,170,125,"house","村长宅邸");
  addBuilding(1330,735,145,110,"house","旅店");
  addBuilding(1120,990,150,105,"house","工坊");
  addBuilding(1350,990,130,100,"house","杂货铺");
  addBuilding(1500,825,100,80,"well","村井");
  addBuilding(1270,575,210,95,"hall","晨雾谷礼堂");
- // roads
+ // 道路石
  for(let i=0;i<24;i++)addLandmark(1050+i*42,roadY(1050+i*42),"stone","道路");
- // landmarks
+ // 地标
  addLandmark(430,420,"ruin","旧灯塔");
  addLandmark(720,1590,"ruin","藤蔓遗迹");
  addLandmark(1550,430,"shrine","回声神殿");
  addLandmark(2150,1500,"shrine","潮汐祭坛");
- // NPCs
+ // NPC
  addNPC(1260,820,"艾琳","村庄向导","#e7b85b");
  addNPC(1390,900,"诺安","铁匠","#b87b62");
  addNPC(1190,1040,"米娅","杂货商","#86a98e");
  addNPC(1510,760,"莱恩","巡林者","#7895ae");
- // enemies
+ // 敌人：普通 / 强敌 / 精英
  addEnemy(520,650,"荒原狼");addEnemy(650,780,"荒原狼");addEnemy(800,520,"荒原狼");
  addEnemy(620,1450,"荒原狼");addEnemy(840,1660,"荒原狼");
- addEnemy(2220,520,"岩甲兽");addEnemy(2450,720,"岩甲兽");addEnemy(2700,430,"荒原狼");
- addEnemy(1900,1160,"荒原狼");addEnemy(2250,1190,"荒原狼");
- // resources / chests / gates
- for(let i=0;i<42;i++)addResource(rnd(180,1750),rnd(180,1980),i%3===0?"ore":i%3===1?"wood":"herb");
- for(let i=0;i<8;i++)addChest([560,880,1020,1580,1660,2100,2500,2780][i],[360,1380,620,1840,1180,1580,640,820][i],i>5);
+ addEnemy(1900,1160,"荒原狼");addEnemy(2250,1190,"荒原狼");addEnemy(2700,430,"荒原狼");
+ addEnemy(2220,520,"岩甲兽");addEnemy(2450,720,"岩甲兽");
+ addEnemy(2560,540,"岩甲兽·精英");
+ // 资源按生态分布：森林木材草药野果 / 山地铁矿晶矿石材 / 湖边水草贝壳
+ for(let i=0;i<16;i++)addResource(rnd(120,900),rnd(140,2000),["wood","herb","berry"][i%3]);
+ for(let i=0;i<14;i++)addResource(rnd(2060,2920),rnd(120,960),["ore","crystal","stone"][i%3]);
+ for(let i=0;i<12;i++){const a=rnd(0,Math.PI*2),r=rnd(.62,.92);addResource(2320+Math.cos(a)*620*r,1770+Math.sin(a)*480*r,i%2?"grass":"shell")}
+ for(let i=0;i<14;i++)addResource(rnd(1000,1750),rnd(300,1900),["herb","wood","ore"][i%3]);
+ // 宝箱：普通 / 精致（精英看守） / 隐藏（不显示）
+ addChest(560,360);addChest(880,1380);addChest(1020,620);addChest(1580,1840);addChest(1660,1180);addChest(2100,1580);
+ addChest(2580,470,"rare");
+ addChest(690,1665,"hidden");addChest(2810,1500,"hidden");
+ // 石门
  addGate(930,1120,"森林石门");
  addGate(1760,1250,"湖畔古门");
- // hidden echoes and rest points
+ // 9 枚回声碎片
  [[300,300],[880,310],[1020,1510],[1480,390],[1640,1060],[2010,1040],[2380,930],[2700,900],[2820,1420]].forEach(p=>addEcho(p[0],p[1]));
+ // 营火（恢复 + 传送点）
  addCampfire(1040,920,"晨雾谷营火");addCampfire(2020,1180,"湖畔营火");addCampfire(2570,760,"高地营火");
- addChest(2580,470,true);
- // Boss arena
+ // 环境叙事线索（第一章）
+ addClue(610,545,"claw","树上的抓痕","树干上留着三道深深的抓痕，边缘泛着微弱的光。有什么东西从这里经过。",null);
+ addClue(775,700,"camp","被毁的营地","营地被翻得一片狼藉。熄灭的火堆旁，散落着几枚奇怪的鳞片。","scale");
+ // Boss
  addLandmark(2700,1650,"boss","古龙巢穴");
- boss={x:2700,y:1650,type:"暮岩古龙",hp:1800,max:1800,hit:0,phase:0,active:false,dead:false,attackCd:0};
- // fireflies
+ boss={x:2700,y:1650,type:"暮岩古龙",hp:1800,max:1800,hit:0,phase:0,active:false,dead:false,attackCd:0,ringCd:3,hazardCd:2};
+ // 萤火虫
  for(let i=0;i<70;i++)fireflies.push({x:rnd(300,1800),y:rnd(250,1900),p:rnd(0,6),s:rnd(.4,1)});
 }
 generateWorld();
-interactionObjects.push(...npcs,...landmarks,...buildings);
+markExplored();
 
+/* ================= 加载屏 ================= */
 function setLoading(){
  const bar=$("loadBar"),txt=$("loadText"),loading=$("loading");
  if(!loading)return;
  let p=0,finished=false;
- const finish=()=>{
-   if(finished)return;
-   finished=true;
-   loading.classList.add("hidden");
-   loading.setAttribute("aria-hidden","true");
- };
- // The loading screen is presentation only; it must never block the game.
+ const finish=()=>{if(finished)return;finished=true;loading.classList.add("hidden");loading.setAttribute("aria-hidden","true")};
  const timer=setInterval(()=>{
-   p=Math.min(100,p+20);
-   if(bar)bar.style.width=p+"%";
-   if(txt)txt.textContent=p<45?"正在绘制晨雾谷…":p<80?"正在唤醒居民与野兽…":"世界已准备完成";
-   if(p>=100){clearInterval(timer);finish();}
+  p=Math.min(100,p+20);
+  if(bar)bar.style.width=p+"%";
+  if(txt)txt.textContent=p<45?"正在绘制晨雾谷…":p<80?"正在唤醒居民与野兽…":"世界已准备完成";
+  if(p>=100){clearInterval(timer);finish();}
  },80);
- // Hard fallback in case a mobile browser throttles the interval.
- setTimeout(()=>{clearInterval(timer);finish();},1200);
+ setTimeout(()=>{clearInterval(timer);finish();},1400);
 }
 setLoading();
 
-function setupUI(){
- $("startBtn")?.addEventListener("click",startGame);
- $("characterBtn")?.addEventListener("click",()=>openFullPanel("characterPanel"));
- $("inventoryBtn")?.addEventListener("click",()=>openFullPanel("inventoryPanel"));
- $("questBtn")?.addEventListener("click",()=>openFullPanel("questPanel"));
- document.querySelectorAll("[data-close-panel]").forEach(b=>b.addEventListener("click",()=>closeFullPanel(b.dataset.closePanel)));
- $("menuBtn")?.addEventListener("click",()=>{
-  ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));
-  state.menuOpen=true;$("menu")?.classList.remove("hidden");document.body.classList.add("menu-open");renderTab("map");
-});
- $("closeMenu")?.addEventListener("click",()=>{state.menuOpen=false;$("menu")?.classList.add("hidden");document.body.classList.remove("menu-open")});
- $("menu")?.addEventListener("click",e=>{if(e.target===$("menu")){$("closeMenu")?.click()}});
- document.querySelectorAll(".menu-nav button").forEach(b=>b.addEventListener("click",()=>{
-   document.querySelectorAll(".menu-nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderTab(b.dataset.tab);
- }));
- $("dialogueNext")?.addEventListener("click",nextDialogue);
+/* ================= 任务系统（第一章：晨雾谷的回声） ================= */
+const QUESTS=[
+ {t:"初见晨雾谷",h:"与艾琳交谈，了解晨雾谷最近的异常",d:"晨雾谷最近总能听见森林深处传来奇怪的回声。村庄向导艾琳似乎知道些什么。"},
+ {t:"森林异动",h:"调查森林中的异常痕迹",d:"森林里出现了不属于任何野兽的痕迹。顺着小径往深处走，看看那里留下了什么。"},
+ {t:"森林中的威胁",h:"击败森林中的荒原狼",d:"狼群被某种声音惊扰，变得狂躁。让它们安静下来。"},
+ {t:"旧灯塔",h:"前往森林深处的旧灯塔",d:"抓痕的尽头指向一座熄灭的旧灯塔。那里是最早出现异常的地方。"},
+ {t:"回声的源头",h:"前往潮汐祭坛，寻找回声的源头",d:"灯塔的回声指向湖的另一边。潮汐祭坛在等你。"},
+ {t:"回到晨雾谷",h:"回到晨雾谷，向艾琳报告发现",d:"祭坛的回声比想象中更深。先回村庄，把发现告诉艾琳。"},
+ {t:"新的回声",h:"第一章已完成 · 继续自由探索这片大陆",d:"晨雾谷的调查暂告一段落，但更远的回声还在路上。"}
+];
+function questTitle(){return QUESTS[state.quest].t}
+function questHint(){return QUESTS[state.quest].h}
+function questDesc(){return QUESTS[state.quest].d}
+function questProg(){
+ if(state.quest===1)return state.clues+" / 2";
+ if(state.quest===2)return state.kills+" / 3";
+ return "";
+}
+function questTarget(){
+ if(state.quest===0||state.quest===5)return npcs.find(n=>n.name==="艾琳")||null;
+ if(state.quest===1){const l=clues.filter(c=>!c.found);return l.sort((a,b)=>dist(player,a)-dist(player,b))[0]||null}
+ if(state.quest===2){const l=enemies.filter(e=>!e.dead&&e.type==="荒原狼");return l.sort((a,b)=>dist(player,a)-dist(player,b))[0]||null}
+ if(state.quest===3)return landmarks.find(l=>l.name==="旧灯塔")||null;
+ if(state.quest===4)return landmarks.find(l=>l.name==="潮汐祭坛")||null;
+ return null;
+}
+function questObjectives(){
+ const q=state.quest;
+ if(q===0)return[["与艾琳交谈",false,""]];
+ if(q===1)return[["调查树上的抓痕",clues[0]?.found,""],["调查被毁的营地",clues[1]?.found,""]];
+ if(q===2)return[["击败荒原狼",state.kills>=3,state.kills+" / 3"]];
+ if(q===3)return [["查看旧灯塔",false,""]];
+ if(q===4)return [["查看潮汐祭坛",false,""]];
+ if(q===5)return [["向艾琳报告",false,""]];
+ return [["自由探索",false,""],["收集回声碎片",false,state.echoes+""]];
+}
+function advanceQuest(n,msg){
+ state.quest=n;
+ const qt=$("questTrack");
+ if(qt){qt.classList.remove("flash");void qt.offsetWidth;qt.classList.add("flash")}
+ notify(msg||("任务更新："+questTitle()));
+ updateQuestUI();saveGame();
+}
+function updateQuestUI(){
+ const t=$("questTitle"),h=$("questHint"),p=$("questProg");
+ if(t)t.textContent=questTitle();
+ if(h)h.textContent=questHint();
+ if(p){const s=questProg();p.textContent=s;p.style.display=s?"":"none"}
+ const lt=$("levelText");if(lt)lt.textContent="Lv. "+state.level;
 }
 
-function openFullPanel(id){
- state.menuOpen=true;
- document.body.classList.add("menu-open");
- ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));
- $(id)?.classList.remove("hidden");
- if(id==="inventoryPanel")renderInventoryPanel();
- if(id==="questPanel"){ $("questPanelTitle").textContent=questTitle();$("questPanelHint").textContent=questHint(); }
- if(id==="characterPanel"){$("charPower").textContent=state.equipment.power}
-}
-function closeFullPanel(id){
- $(id)?.classList.add("hidden");state.menuOpen=false;document.body.classList.remove("menu-open");
-}
-function renderInventoryPanel(){
- const box=$("inventoryPanelGrid");if(!box)return;
- box.innerHTML=state.bag.map((x,i)=>'<div class="inventory-item"><b>'+x+'</b><span>'+((i===0)?'装备 · '+state.equipment.power+' 攻击':'持有')+'</span></div>').join("");
-}
-setupUI();
-
-document.addEventListener("pointerdown",e=>{
-  const b=e.target.closest("button");
-  if(!b)return;
-  triggerButtonFx(b,false);
-  if(b.closest(".mobile-actions"))triggerButtonFx(b,true);
-},{passive:true});
-document.addEventListener("pointerup",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
-document.addEventListener("pointercancel",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
-document.addEventListener("pointerleave",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
-
+/* ================= 对话 ================= */
 let dialogueQueue=[];
 function talk(npc){
  state.dialogue=true;
  if(npc.name==="艾琳"){
-   if(state.quest===0){
-    dialogueQueue=[
-      ["艾琳","村庄向导","你终于来了。晨雾谷最近总能听见森林深处传来奇怪的回声。"],
-      ["艾琳","村庄向导","先别急着追问。去旧灯塔看看，那里是最早出现异常的地方。"],
-      ["艾琳","村庄向导","如果遇到野兽，记得观察它们的行动，不要只顾着冲上去。"]
-    ];
-   }else{
-    dialogueQueue=[
-      ["艾琳","村庄向导","森林里的路最近安静了不少。可那个声音……还在。"],
-      ["艾琳","村庄向导","顺着水边继续走吧。也许答案就在潮汐祭坛。"]
-    ];
-   }
+  if(state.quest===0){
+   dialogueQueue=[
+    ["艾琳","村庄向导","你终于来了。晨雾谷最近总能听见森林深处传来奇怪的回声。"],
+    ["艾琳","村庄向导","先别急着追问。顺着西边的小径往森林里走，留意树干和地面——异常最先出现在那里。"],
+    ["艾琳","村庄向导","如果遇到野兽，看清它们的动作再出手。它们扑上来之前，总会先压低身子。"]
+   ];
+  }else if(state.quest===5){
+   dialogueQueue=[
+    ["艾琳","村庄向导","你回来了。脸色这么难看……祭坛那边，你看到了什么？"],
+    ["艾琳","村庄向导","湖底的声音……原来回声不是从森林里来的。它一直都在更深的地方。"],
+    ["艾琳","村庄向导","拿着这个。晨雾谷欠你一次。以后无论走到哪里，这里都是你的村庄。"]
+   ];
+  }else{
+   dialogueQueue=[
+    ["艾琳","村庄向导","森林里的路最近安静了不少。可那个声音……还在。"],
+    ["艾琳","村庄向导","顺着水边继续走吧。也许答案就在潮汐祭坛。"]
+   ];
+  }
  }else if(npc.name==="诺安"){
-   dialogueQueue=[["诺安","铁匠","你的剑刃磨损得厉害。野外可不是只有风景。"],["诺安","铁匠","收集矿石和木材，我可以替你做些实用的东西。"]];
+  dialogueQueue=[["诺安","铁匠","你的剑刃磨损得厉害。野外可不是只有风景。"],["诺安","铁匠","高地上能挖到铁矿和晶矿。攒够了材料，我替你打一把真正的剑。"]];
  }else if(npc.name==="米娅"){
-   dialogueQueue=[["米娅","杂货商","晨雾草在湖畔也能找到。它们的花瓣在夜里会发光。"]];
+  dialogueQueue=[["米娅","杂货商","晨雾草在湖畔也能找到。它们的花瓣在夜里会发光。"],["米娅","杂货商","湖边的贝壳别嫌多，总有人愿意收。"]];
  }else{
-   dialogueQueue=[["莱恩","巡林者","别往北面的高地走太深。那里的岩甲兽比看起来更难对付。"]];
+  dialogueQueue=[["莱恩","巡林者","别往北面的高地走太深。那里的岩甲兽比看起来更难对付。"],["莱恩","巡林者","听到岩石滚动的声音就闪开。它们挥下来之前，地面会先红。"]];
  }
  renderDialogue();
 }
 function renderDialogue(){
- if(!dialogueQueue.length){state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue")?.classList.add("hidden");return}
+ if(!dialogueQueue.length){endDialogue();return}
  const d=dialogueQueue[0];
  $("dialogueRole").textContent=d[1];$("dialogueName").textContent=d[0];typeDialogueText(d[2]);
  $("dialogue").classList.remove("hidden");document.body.classList.add("dialogue-open");
 }
+function typeDialogueText(text){
+ clearInterval(dialogueTypeTimer);
+ const el=$("dialogueText");if(!el)return;
+ dialogueTyping=true;dialogueFullText=text;el.classList.add("dialogue-text-typing");el.textContent="";
+ let i=0;
+ const step=()=>{
+  i++;
+  el.textContent=text.slice(0,i);
+  if(i>=text.length){clearInterval(dialogueTypeTimer);dialogueTyping=false;el.classList.remove("dialogue-text-typing")}
+ };
+ dialogueTypeTimer=setInterval(step,Math.max(16,Math.min(42,900/Math.max(1,text.length))));
+}
+function endDialogue(){
+ state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue")?.classList.add("hidden");
+ if(state.quest===0)advanceQuest(1);
+ else if(state.quest===5){
+  state.coins+=120;addItem("badge");
+  playRewardFx("晨雾谷徽记","第一章 · 晨雾谷的回声 完成 · +120 金币");
+  advanceQuest(6,"第一章完成：晨雾谷的回声");
+ }
+}
 function nextDialogue(){
  if(dialogueTyping){
-   clearInterval(dialogueTypeTimer);
-   $("dialogueText").textContent=dialogueFullText;
-   $("dialogueText").classList.remove("dialogue-text-typing");
-   dialogueTyping=false;
-   return;
+  clearInterval(dialogueTypeTimer);
+  $("dialogueText").textContent=dialogueFullText;
+  $("dialogueText").classList.remove("dialogue-text-typing");
+  dialogueTyping=false;return;
  }
  dialogueQueue.shift();
- if(!dialogueQueue.length){
-   state.dialogue=false;document.body.classList.remove("dialogue-open");$("dialogue").classList.add("hidden");
-   if(state.quest===0){
-     state.quest=1;notify("任务更新：清理森林中的威胁");updateQuestUI();
-   }else if(state.quest===3){
-     state.quest=4;state.coins+=120;state.bag.push("晨雾谷徽记");
-     playRewardFx("晨雾谷徽记","完成晨雾谷调查 · +120 金币");
-     notify("任务完成：晨雾谷的回声");
-     updateQuestUI();saveGame();
-   }
- }else renderDialogue();
+ renderDialogue();
 }
 
-function renderTab(tab){
- const box=$("tabContent");if(!box)return;
- if(tab==="map"){
-   box.innerHTML='<section class="menu-page"><div class="page-head"><small>WORLD MAP</small><h3>晨雾谷</h3><p>探索范围与当前任务目标。</p></div><div class="map-overview"><div class="map-grid"></div><span class="map-pin" style="left:42%;top:38%"></span><span class="map-pin" style="left:69%;top:68%"></span><span class="map-pin" style="left:51%;top:49%"></span></div><div class="info-grid"><div><small>区域</small><b>'+zoneAt(player.x,player.y)+'</b></div><div><small>探索度</small><b>'+Math.round(exploredPercent())+'%</b></div><div><small>任务目标</small><b>'+questTitle()+'</b></div></div></section>';
- }
- if(tab==="quests"){
-   box.innerHTML='<section class="menu-page"><div class="page-head"><small>QUESTS</small><h3>任务</h3><p>选择正在进行的任务，目标会同步到地图与场景。</p></div><div class="quest-list"><div class="quest-card active"><div><small>当前任务</small><h4>'+questTitle()+'</h4><p>'+questHint()+'</p></div><span class="tag">追踪中</span></div><div class="quest-card"><div><small>探索记录</small><h4>未知地标</h4><p>发现旧灯塔、藤蔓遗迹与潮汐祭坛</p></div><span class="tag">'+landmarks.filter(l=>l.type!=="stone").length+'处</span></div></div></section>';
- }
- if(tab==="bag"){
-   box.innerHTML='<section class="menu-page"><div class="page-head"><small>INVENTORY</small><h3>背包</h3><p>旅途中获得的道具与资源。</p></div><div class="inventory-grid">'+state.bag.map(x=>'<div class="inventory-item"><b>'+x+'</b><span>持有</span></div>').join("")+'</div><div class="resource-strip"><span>金币 <b>'+state.coins+'</b></span><span>木材 <b>'+state.wood+'</b></span><span>矿石 <b>'+state.ore+'</b></span><span>草药 <b>'+state.herbs+'</b></span></div></section>';
- }
- if(tab==="settings"){
-   box.innerHTML='<section class="menu-page"><div class="page-head"><small>SETTINGS</small><h3>设置</h3><p>调整设备适配与画面表现。</p></div><div class="settings-card"><label><span><b>低画质模式</b><small>减少特效与绘制负担</small></span><input type="checkbox" id="lowToggle" '+(state.settings.low?"checked":"")+'></label><label><span><b>屏幕震动</b><small>互动与战斗反馈</small></span><input type="checkbox" id="vibToggle" checked></label></div></section>';
- }
- $("lowToggle")?.addEventListener("change",e=>state.settings.low=e.target.checked);
- $("vibToggle")?.addEventListener("change",e=>state.settings.vibration=e.target.checked);
-}
-function exploredPercent(){
- const d=Math.hypot(player.x-980,player.y-860);
- return clamp(100-d/22,8,100);
+/* ================= 回声碎片叙事卡 ================= */
+function showLore(text,after){
+ state.lore=true;
+ $("loreText").textContent=text;
+ $("lore").classList.remove("hidden");
+ $("loreOk").onclick=()=>{
+  $("lore").classList.add("hidden");state.lore=false;
+  if(after)after();
+ };
 }
 
-function questTitle(){
- if(state.quest===0)return"初见晨雾谷";
- if(state.quest===1)return"森林中的威胁";
- if(state.quest===2)return"回声的源头";
- if(state.quest===3)return"回到晨雾谷";
- return"新的回声";
+/* ================= 面板（第三层） ================= */
+const PANELS=["characterPanel","inventoryPanel","questPanel","mapPanel"];
+let invCat="all";
+function openFullPanel(id){
+ closeMenu();
+ state.panel=true;
+ PANELS.forEach(x=>$(x)?.classList.add("hidden"));
+ $(id)?.classList.remove("hidden");
+ if(id==="characterPanel")renderCharacter();
+ if(id==="inventoryPanel")renderInventory();
+ if(id==="questPanel")renderQuestPanel();
+ if(id==="mapPanel")drawMapPanel();
 }
-function questHint(){
- if(state.quest===0)return"与艾琳交谈，了解晨雾谷最近的异常";
- if(state.quest===1)return"击败森林中的野兽（"+state.kills+"/2）";
- if(state.quest===2)return"前往潮汐祭坛，寻找回声的源头";
- if(state.quest===3)return"回到晨雾谷，向艾琳报告发现";
- return"晨雾谷的调查已经结束，继续探索更远的地方";
+function closeFullPanel(id){
+ $(id)?.classList.add("hidden");
+ if(!PANELS.some(x=>!$(x)?.classList.contains("hidden")))state.panel=false;
 }
-function updateQuestUI(){
- $("questTitle").textContent=questTitle();$("questHint").textContent=questHint();syncProgressHUD();
+function closeAllPanels(){PANELS.forEach(x=>$(x)?.classList.add("hidden"));state.panel=false}
+
+function renderCharacter(){
+ $("charLevel").textContent="Lv. "+state.level+" · "+zoneAt(player.x,player.y)+"的旅人";
+ $("charHp").textContent=Math.ceil(state.hp)+" / "+state.maxHp;
+ $("charPower").textContent=state.equipment.power;
+ $("charSp").textContent=Math.floor(player.stamina);
+ $("charXp").textContent=state.xp+" / "+state.nextXp;
+ $("charEcho").textContent=state.echoes;
+ $("charWeapon").textContent=state.equipment.weapon;
+}
+function renderInventory(){
+ const box=$("invGrid");if(!box)return;
+ const ids=Object.keys(state.bag).filter(id=>ITEMS[id]&&(invCat==="all"||ITEMS[id].cat===invCat));
+ if(!ids.length){box.innerHTML='<div class="inv-empty">这一栏还空着</div>';return}
+ box.innerHTML=ids.map(id=>{
+  const it=ITEMS[id],n=state.bag[id];
+  return '<div class="inv-slot'+(it.cat==="use"?" inv-use":"")+(it.rare?" inv-rare":"")+'" data-item="'+id+'" title="'+(it.cat==="use"?"点击使用":"")+'">'+ICONS[id]+'<span class="inv-name">'+it.name+'</span>'+(n>1?'<span class="inv-n">×'+n+'</span>':"")+'</div>';
+ }).join("");
+ box.querySelectorAll("[data-item]").forEach(el=>el.addEventListener("click",()=>useItem(el.dataset.item)));
+}
+function renderQuestPanel(){
+ $("qpTitle").textContent=questTitle();
+ $("qpDesc").textContent=questDesc();
+ $("qpObjectives").innerHTML=questObjectives().map(o=>'<div class="'+(o[1]?"done":"")+'"><i>'+(o[1]?"✓":"○")+'</i>'+o[0]+(o[2]?"<em>"+o[2]+"</em>":"")+"</div>").join("");
+ const rw=[];
+ if(state.quest===2)rw.push("经验","金币","材料");
+ if(state.quest>=3&&state.quest<=5)rw.push("回声线索","金币");
+ $("qpRewards").textContent=rw.length?("可能的收获："+rw.join(" · ")):"";
+ const seen=landmarks.filter(l=>l.seen&&l.type!=="stone");
+ const log=seen.map(l=>"<span>"+l.name+"</span>").join("")+'<span>回声碎片 × '+state.echoes+"</span>";
+ $("exploreLog").innerHTML=log||"<span>还没有探索记录</span>";
 }
 
-function focusQuest(){
- updateQuestUI();
+/* ================= 系统菜单（第四层） ================= */
+function openMenu(){
+ closeAllPanels();
+ state.menuOpen=true;
+ $("menu")?.classList.remove("hidden");
+ $("menuHelp")?.classList.add("hidden");
+ const lt=$("lowToggle");if(lt)lt.checked=state.settings.low;
+ const vt=$("vibToggle");if(vt)vt.checked=state.settings.vib;
+ const st=$("sfxToggle");if(st)st.checked=state.settings.sfx;
+}
+function closeMenu(){
+ state.menuOpen=false;$("menu")?.classList.add("hidden");
 }
 
-function questTarget(){
- if(state.quest===0)return npcs.find(n=>n.name==="艾琳")||null;
- if(state.quest===1){
-   const living=enemies.filter(e=>!e.dead);
-   return living.sort((a,b)=>dist(player,a)-dist(player,b))[0]||null;
- }
- if(state.quest===2)return landmarks.find(l=>l.name==="潮汐祭坛")||null;
- if(state.quest===3)return npcs.find(n=>n.name==="艾琳")||null;
- return null;
-}
-function updateQuestGuide(){
- const guide=$("questGuide"),arrow=guide?.querySelector(".guide-arrow"),label=$("guideDistance"),target=questTarget();
- if(!guide||!arrow||!label||!state.started||state.dialogue||state.menuOpen||!target){guide?.classList.add("hidden");return}
- const dx=target.x-player.x,dy=target.y-player.y,d=Math.hypot(dx,dy);
- if(d<90){guide.classList.add("hidden");return}
- const p=worldToScreen(target.x,target.y);
- const onScreen=p.x>44&&p.x<W-44&&p.y>44&&p.y<H-44;
- if(onScreen){guide.classList.add("hidden");return}
- const angle=Math.atan2(dy,dx);
- arrow.style.transform="rotate("+angle+"rad)";
- const meters=d/5;
- label.textContent=meters>=1000?("目标 · "+(meters/1000).toFixed(1)+" km"):("目标 · "+Math.max(1,Math.round(meters))+" m");
- guide.classList.remove("hidden");
-}
-function drawQuestWorldMarker(){
- const target=questTarget();
- if(!target||state.dialogue||state.menuOpen)return;
- const p=worldToScreen(target.x,target.y),inside=p.x>-30&&p.x<W+30&&p.y>-30&&p.y<H+30;
- if(!inside)return;
- const pulse=8+Math.sin(performance.now()/260)*2;
- ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);
- ctx.strokeStyle="#f0cf75";ctx.lineWidth=2;ctx.globalAlpha=.95;ctx.strokeRect(-pulse/2,-pulse/2,pulse,pulse);
- ctx.globalAlpha=.35;ctx.strokeRect(-pulse*1.5/2,-pulse*1.5/2,pulse*1.5,pulse*1.5);
- ctx.restore();
-}
-function drawMiniMap(){
- const c=$("miniMapCanvas");if(!c||!state.started||state.dialogue||state.menuOpen)return;
- const m=c.getContext("2d"),mw=c.width,mh=c.height,scale=.15,ox=player.x,oy=player.y;
- m.clearRect(0,0,mw,mh);
- m.fillStyle="#718c72";m.fillRect(0,0,mw,mh);
- const toX=x=>mw/2+(x-ox)*scale,toY=y=>mh/2+(y-oy)*scale;
- // local terrain blocks
- for(const z of zones){
-   const x=toX(z.x),y=toY(z.y),w=z.w*scale,h=z.h*scale;
-   m.globalAlpha=.7;m.fillStyle=z.c;m.fillRect(x,y,w,h);
- }
+/* ================= 雷达小地图（左上，只显示附近） ================= */
+function drawRadar(){
+ const c=$("miniMapCanvas");if(!c||!state.started||state.dialogue||state.menuOpen||state.panel)return;
+ const m=c.getContext("2d"),S=c.width,cx=S/2,cy=S/2,R=380,k=(S/2-4)/R;
+ m.clearRect(0,0,S,S);
+ m.save();
+ m.beginPath();m.arc(cx,cy,S/2-2,0,Math.PI*2);m.clip();
+ m.fillStyle="#0b181f";m.fillRect(0,0,S,S);
+ const toX=x=>cx+(x-player.x)*k,toY=y=>cy+(y-player.y)*k;
+ // 地形色块
+ for(const z of zones){m.globalAlpha=.55;m.fillStyle=z.c;m.fillRect(toX(z.x),toY(z.y),z.w*k,z.h*k)}
  m.globalAlpha=1;
- // lake
- m.fillStyle="#3a7180";m.beginPath();m.ellipse(toX(2320),toY(1770),620*scale,480*scale,0,0,Math.PI*2);m.fill();
- // roads
- m.strokeStyle="#c5a879";m.lineWidth=3;m.beginPath();m.moveTo(toX(0),toY(roadY(0)));for(let x=0;x<=world.w;x+=80)m.lineTo(toX(x),toY(roadY(x)));m.stroke();
- m.strokeStyle="#d5be91";m.lineWidth=2;m.beginPath();m.moveTo(toX(roadX(0)),toY(0));for(let y=0;y<=world.h;y+=80)m.lineTo(toX(roadX(y)),toY(y));m.stroke();
- // points of interest
- for(const l of landmarks){if(l.type==="stone")continue;const x=toX(l.x),y=toY(l.y);if(x<-8||x>mw+8||y<-8||y>mh+8)continue;m.fillStyle=l.name===questTarget()?.name?"#f0cf75":"#d8d4b8";m.beginPath();m.arc(x,y,2.4,0,Math.PI*2);m.fill()}
- for(const n of npcs){const x=toX(n.x),y=toY(n.y);if(x>=0&&x<=mw&&y>=0&&y<=mh){m.fillStyle="#e7b85b";m.beginPath();m.arc(x,y,2.1,0,Math.PI*2);m.fill()}}
- for(const f of campfires){const x=toX(f.x),y=toY(f.y);if(x>=0&&x<=mw&&y>=0&&y<=mh){m.fillStyle="#f3c65f";m.beginPath();m.arc(x,y,2.3,0,Math.PI*2);m.fill()}}
- const target=questTarget();
- if(target){const x=toX(target.x),y=toY(target.y);if(x>=0&&x<=mw&&y>=0&&y<=mh){m.strokeStyle="#f0cf75";m.lineWidth=1.5;m.beginPath();m.arc(x,y,5,0,Math.PI*2);m.stroke()}}
- // player and facing
- m.save();m.translate(mw/2,mh/2);m.rotate(player.dir);m.fillStyle="#fff";m.beginPath();m.moveTo(0,-6);m.lineTo(4,5);m.lineTo(0,3);m.lineTo(-4,5);m.closePath();m.fill();m.restore();
-}function worldToScreen(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
-function screenToWorld(x,y){return{x:x-camera.x+W/2,y:y-camera.y+H/2}}
+ // 湖
+ m.fillStyle="#2e6474";m.beginPath();m.ellipse(toX(2320),toY(1770),620*k,480*k,0,0,Math.PI*2);m.fill();
+ // 道路
+ m.strokeStyle="rgba(213,190,145,.5)";m.lineWidth=2;
+ m.beginPath();m.moveTo(toX(0),toY(roadY(0)));for(let x=0;x<=world.w;x+=120)m.lineTo(toX(x),toY(roadY(x)));m.stroke();
+ m.beginPath();m.moveTo(toX(roadX(0)),toY(0));for(let y=0;y<=world.h;y+=120)m.lineTo(toX(roadX(y)),toY(y));m.stroke();
+ // 兴趣点
+ const inR=o=>dist(player,o)<R+40;
+ for(const f of campfires)if(inR(f)){m.fillStyle="#f3c65f";m.beginPath();m.arc(toX(f.x),toY(f.y),2.6,0,Math.PI*2);m.fill()}
+ for(const n of npcs)if(inR(n)){m.fillStyle="#e7b85b";m.beginPath();m.arc(toX(n.x),toY(n.y),2.2,0,Math.PI*2);m.fill()}
+ for(const e of enemies)if(!e.dead&&inR(e)){m.fillStyle="#d96a5e";m.beginPath();m.arc(toX(e.x),toY(e.y),2.2,0,Math.PI*2);m.fill()}
+ for(const ch of chests)if(!ch.opened&&ch.found&&inR(ch)){m.fillStyle="#e8c77b";m.fillRect(toX(ch.x)-2,toY(ch.y)-2,4,4)}
+ for(const e of echoes)if(!e.taken&&inR(e)){m.fillStyle="#8ee5ed";m.beginPath();m.arc(toX(e.x),toY(e.y),2,0,Math.PI*2);m.fill()}
+ for(const l of landmarks)if(l.type!=="stone"&&l.seen&&inR(l)){m.fillStyle="#d8d4b8";m.beginPath();m.arc(toX(l.x),toY(l.y),2.4,0,Math.PI*2);m.fill()}
+ if(boss&&!boss.dead&&inR(boss)){m.fillStyle="#b05a72";m.beginPath();m.arc(toX(boss.x),toY(boss.y),3.4,0,Math.PI*2);m.fill()}
+ // 任务目标：金色菱形
+ const t=questTarget();
+ if(t){
+  const x=clamp(toX(t.x),10,S-10),y=clamp(toY(t.y),10,S-10);
+  const p=4+Math.sin(performance.now()/300)*1.2;
+  m.strokeStyle="#f0cf75";m.lineWidth=1.6;
+  m.beginPath();m.moveTo(x,y-p);m.lineTo(x+p,y);m.lineTo(x,y+p);m.lineTo(x-p,y);m.closePath();m.stroke();
+ }
+ // 玩家朝向
+ m.save();m.translate(cx,cy);m.rotate(player.dir);
+ m.fillStyle="#fff";m.beginPath();m.moveTo(6,0);m.lineTo(-4,4);m.lineTo(-2,0);m.lineTo(-4,-4);m.closePath();m.fill();
+ m.restore();
+ m.restore();
+ // 外圈
+ m.strokeStyle="rgba(232,199,123,.35)";m.lineWidth=1;
+ m.beginPath();m.arc(cx,cy,S/2-2,0,Math.PI*2);m.stroke();
+}
 
+/* ================= 世界地图（迷雾） ================= */
+function drawMapPanel(){
+ const c=$("mapCanvas");if(!c)return;
+ const m=c.getContext("2d"),mw=c.width,mh=c.height,k=mw/world.w;
+ const toX=x=>x*k,toY=y=>y*k;
+ m.clearRect(0,0,mw,mh);
+ // 地形
+ for(const z of zones){m.fillStyle=z.c;m.fillRect(toX(z.x),toY(z.y),z.w*k,z.h*k)}
+ const grad=m.createLinearGradient(1800*k,1350*k,2700*k,2200*k);grad.addColorStop(0,"#477e8c");grad.addColorStop(1,"#285f72");
+ m.fillStyle=grad;m.beginPath();m.ellipse(toX(2320),toY(1770),620*k,480*k,0,0,Math.PI*2);m.fill();
+ // 道路
+ m.strokeStyle="#c5a879";m.lineWidth=3;m.beginPath();m.moveTo(0,toY(roadY(0)));for(let x=0;x<=world.w;x+=80)m.lineTo(toX(x),toY(roadY(x)));m.stroke();
+ m.strokeStyle="#d5be91";m.lineWidth=2;m.beginPath();m.moveTo(toX(roadX(0)),0);for(let y=0;y<=world.h;y+=80)m.lineTo(toX(roadX(y)),toY(y));m.stroke();
+ // 迷雾：未探索区域保持未知
+ m.fillStyle="rgba(5,11,15,.93)";
+ for(let cy=0;cy<FOG_ROWS;cy++)for(let cx=0;cx<FOG_COLS;cx++){
+  if(!exploredSet.has(cx+cy*FOG_COLS))m.fillRect(cx*FOG_CELL*k,cy*FOG_CELL*k,FOG_CELL*k+1,FOG_CELL*k+1);
+ }
+ // 已发现地点
+ m.textAlign="center";m.font="11px 'Noto Serif SC',serif";
+ for(const l of landmarks){
+  if(l.type==="stone"||!l.seen)continue;
+  m.fillStyle=l.type==="boss"?"#b05a72":"#f0e5ca";
+  m.beginPath();m.arc(toX(l.x),toY(l.y),3,0,Math.PI*2);m.fill();
+  m.shadowColor="#000";m.shadowBlur=4;m.fillText(l.name,toX(l.x),toY(l.y)-7);m.shadowBlur=0;
+ }
+ // NPC（已探索区域）
+ for(const n of npcs){
+  const ci=Math.floor(n.x/FOG_CELL)+Math.floor(n.y/FOG_CELL)*FOG_COLS;
+  if(!exploredSet.has(ci))continue;
+  m.fillStyle="#e7b85b";m.beginPath();m.arc(toX(n.x),toY(n.y),2.4,0,Math.PI*2);m.fill();
+ }
+ // 营火（传送点）
+ for(const f of campfires){
+  if(!f.seen)continue;
+  m.fillStyle="#f3c65f";m.shadowColor="#f3c65f";m.shadowBlur=8;
+  m.beginPath();m.arc(toX(f.x),toY(f.y),4,0,Math.PI*2);m.fill();m.shadowBlur=0;
+  m.fillStyle="#f0e5ca";m.fillText(f.name,toX(f.x),toY(f.y)+14);
+ }
+ // 任务目标
+ const t=questTarget();
+ if(t){
+  m.strokeStyle="#f0cf75";m.lineWidth=2;
+  const x=toX(t.x),y=toY(t.y);
+  m.beginPath();m.moveTo(x,y-7);m.lineTo(x+7,y);m.lineTo(x,y+7);m.lineTo(x-7,y);m.closePath();m.stroke();
+ }
+ // 玩家
+ m.save();m.translate(toX(player.x),toY(player.y));m.rotate(player.dir);
+ m.fillStyle="#fff";m.beginPath();m.moveTo(7,0);m.lineTo(-5,4.5);m.lineTo(-5,-4.5);m.closePath();m.fill();m.restore();
+}
+
+/* ================= 绘制：世界 ================= */
 function drawBackground(){
  ctx.fillStyle="#708d72";ctx.fillRect(0,0,W,H);
- const sx=Math.floor(camera.x-W/2-100),sy=Math.floor(camera.y-H/2-100);
- // broad zone overlays
  ctx.save();ctx.translate(W/2-camera.x,H/2-camera.y);
  ctx.fillStyle="#678666";ctx.fillRect(0,0,950,world.h);
  ctx.fillStyle="#81976d";ctx.fillRect(2050,0,950,900);
  ctx.fillStyle="#789581";ctx.fillRect(1700,1250,1300,950);
- // lake
+ // 湖：渐变 + 岸边 + 波纹
  const grad=ctx.createLinearGradient(1800,1350,2700,2200);grad.addColorStop(0,"#477e8c");grad.addColorStop(1,"#285f72");
  ctx.fillStyle=grad;ctx.beginPath();ctx.ellipse(2320,1770,620,480,0,0,Math.PI*2);ctx.fill();
- // shore
- ctx.strokeStyle="#c8bd8b";ctx.lineWidth=18;ctx.globalAlpha=.55;ctx.stroke();
- // roads
- ctx.globalAlpha=1;ctx.strokeStyle="#c0a679";ctx.lineWidth=48;ctx.beginPath();ctx.moveTo(-100,1050);ctx.quadraticCurveTo(1300,960,3100,1100);ctx.stroke();
+ ctx.strokeStyle="#c8bd8b";ctx.lineWidth=18;ctx.globalAlpha=.55;ctx.stroke();ctx.globalAlpha=1;
+ // 湖面反光
+ ctx.fillStyle="rgba(255,255,255,.06)";ctx.beginPath();ctx.ellipse(2180,1620,320,190,-.4,0,Math.PI*2);ctx.fill();
+ // 波纹
+ if(!state.settings.low){
+  const t=performance.now()/1000;
+  ctx.strokeStyle="rgba(220,240,240,.18)";ctx.lineWidth=2;
+  for(let i=0;i<3;i++){
+   const ph=(t*.35+i*.33)%1;
+   ctx.globalAlpha=.22*(1-ph);
+   ctx.beginPath();ctx.ellipse(2320,1770,620*(.35+.6*ph),480*(.35+.6*ph),0,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+ }
+ // 道路
+ ctx.strokeStyle="#c0a679";ctx.lineWidth=48;ctx.beginPath();ctx.moveTo(-100,1050);ctx.quadraticCurveTo(1300,960,3100,1100);ctx.stroke();
  ctx.strokeStyle="#d3bc91";ctx.lineWidth=32;ctx.beginPath();ctx.moveTo(1180,-50);ctx.quadraticCurveTo(1250,650,1180,2250);ctx.stroke();
  ctx.restore();
- // texture dots
- ctx.globalAlpha=.11;for(let i=0;i<130;i++){const x=hash(i,3)*W,y=hash(i,7)*H;ctx.fillStyle=i%2?"#fff":"#244d38";ctx.fillRect(x,y,2,2)}ctx.globalAlpha=1;
+ // 地面纹理
+ if(!state.settings.low){ctx.globalAlpha=.1;for(let i=0;i<110;i++){const x=hash(i,3)*W,y=hash(i,7)*H;ctx.fillStyle=i%2?"#fff":"#244d38";ctx.fillRect(x,y,2,2)}ctx.globalAlpha=1}
 }
 
 function drawTree(t){
- const s=worldToScreen(t.x,t.y);if(s.x<-60||s.x>W+60||s.y<-100||s.y>H+100)return;
+ const s=worldToScreen(t.x,t.y);if(s.x<-70||s.x>W+70||s.y<-120||s.y>H+120)return;
  const q=t.s;
  ctx.save();ctx.translate(s.x,s.y);
- ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(0,16*q,25*q,9*q,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=t.variant===0?"#4d6f4c":t.variant===1?"#3f6848":"#56794f";
- ctx.beginPath();ctx.arc(0,-18*q,25*q,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#6d8d59";ctx.beginPath();ctx.arc(-12*q,-29*q,17*q,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#385c43";ctx.beginPath();ctx.arc(13*q,-25*q,16*q,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#6d503b";ctx.fillRect(-5*q,-2*q,10*q,25*q);
+ // 地面阴影
+ ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(3,16*q,26*q,9*q,0,0,Math.PI*2);ctx.fill();
+ // 树干
+ ctx.fillStyle="#6d503b";ctx.beginPath();ctx.moveTo(-5*q,18*q);ctx.lineTo(-3*q,-8*q);ctx.lineTo(3*q,-8*q);ctx.lineTo(5*q,18*q);ctx.closePath();ctx.fill();
+ // 枝杈
+ ctx.strokeStyle="#634a37";ctx.lineWidth=2.4*q;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(0,-4*q);ctx.lineTo(-11*q,-16*q);ctx.moveTo(1,-6*q);ctx.lineTo(11*q,-18*q);ctx.stroke();
+ // 层次树冠
+ const c0=t.variant===0?"#4d6f4c":t.variant===1?"#3f6848":"#56794f";
+ ctx.fillStyle=c0;ctx.beginPath();ctx.arc(0,-26*q,24*q,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#6d8d59";ctx.beginPath();ctx.arc(-12*q,-36*q,16*q,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#385c43";ctx.beginPath();ctx.arc(13*q,-33*q,15*q,0,Math.PI*2);ctx.fill();
+ // 顶部受光
+ ctx.fillStyle="rgba(233,215,157,.35)";ctx.beginPath();ctx.arc(-5*q,-42*q,9*q,0,Math.PI*2);ctx.fill();
  ctx.restore();
 }
 function drawRock(r){
  const s=worldToScreen(r.x,r.y);if(s.x<-50||s.x>W+50||s.y<-50||s.y>H+50)return;
  const q=r.s;
  ctx.save();ctx.translate(s.x,s.y);
- // shadow stays on the ground; it never rotates with the stone
  ctx.fillStyle="#15251d55";ctx.beginPath();ctx.ellipse(3,9*q,22*q,7*q,0,0,Math.PI*2);ctx.fill();
  ctx.translate(0,-5*q);
  const rot=r.rot*.35;ctx.rotate(rot);
- // grounded low-poly silhouette
  ctx.fillStyle="#5b625f";ctx.beginPath();ctx.moveTo(-18*q,7*q);ctx.lineTo(-14*q,-8*q);ctx.lineTo(-4*q,-17*q);ctx.lineTo(10*q,-14*q);ctx.lineTo(18*q,-2*q);ctx.lineTo(12*q,9*q);ctx.lineTo(-3*q,13*q);ctx.closePath();ctx.fill();
- // warm top plane
  ctx.fillStyle="#9ca095";ctx.beginPath();ctx.moveTo(-14*q,-8*q);ctx.lineTo(-4*q,-17*q);ctx.lineTo(10*q,-14*q);ctx.lineTo(3*q,-3*q);ctx.lineTo(-8*q,1*q);ctx.closePath();ctx.fill();
- // cool side plane
  ctx.fillStyle="#707772";ctx.beginPath();ctx.moveTo(10*q,-14*q);ctx.lineTo(18*q,-2*q);ctx.lineTo(12*q,9*q);ctx.lineTo(3*q,-3*q);ctx.closePath();ctx.fill();
- // small chipped highlight
  ctx.fillStyle="#c0c2b4";ctx.globalAlpha=.48;ctx.beginPath();ctx.moveTo(-5*q,-13*q);ctx.lineTo(3*q,-12*q);ctx.lineTo(0,-8*q);ctx.lineTo(-8*q,-9*q);ctx.closePath();ctx.fill();
  ctx.restore();
-}function drawResource(r){
+}
+function drawGrass(g){
+ const s=worldToScreen(g.x,g.y);if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20)return;
+ const sway=Math.sin(performance.now()/900+g.p)*1.6;
+ ctx.save();ctx.translate(s.x,s.y);
+ if(g.l===0){ctx.strokeStyle="rgba(90,120,80,.5)";ctx.lineWidth=1}
+ else if(g.l===1){ctx.strokeStyle="rgba(110,145,95,.7)";ctx.lineWidth=1.4}
+ else{ctx.strokeStyle="rgba(139,170,110,.85)";ctx.lineWidth=1.8}
+ ctx.beginPath();
+ for(let i=-1;i<=1;i++){ctx.moveTo(i*3,0);ctx.quadraticCurveTo(i*3+sway,-6-g.l*2,i*4+sway,-9-g.l*3)}
+ ctx.stroke();ctx.restore();
+}
+function drawFlower(f){
+ const s=worldToScreen(f.x,f.y);if(s.x<0||s.x>W||s.y<0||s.y>H)return;
+ ctx.fillStyle=f.c;ctx.globalAlpha=.75;ctx.beginPath();ctx.arc(s.x,s.y,2.3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+}
+const RES_STYLE={
+ ore:"#7d8e9b",crystal:"#8ee5ed",stone:"#8b8f8a",wood:"#7b5d42",herb:"#6d9b69",berry:"#c96a5e",grass:"#5fa8a0",shell:"#e0cfa8"
+};
+const RES_NAME={ore:"铁矿",crystal:"晶矿",stone:"石材",wood:"木材",herb:"晨雾草",berry:"野果",grass:"水草",shell:"贝壳"};
+function drawResource(r){
  if(r.taken)return;
  const s=worldToScreen(r.x,r.y);if(s.x<-30||s.x>W+30||s.y<-30||s.y>H+30)return;
- const pulse=1+Math.sin(performance.now()/500+r.phase)*.12;
- ctx.save();ctx.translate(s.x,s.y);
+ const pulse=1+Math.sin(performance.now()/500+r.phase)*.1;
+ ctx.save();ctx.translate(s.x,s.y);ctx.scale(pulse,pulse);
  ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,8,13,5,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=r.type==="ore"?"#7d8e9b":r.type==="wood"?"#7b5d42":"#6d9b69";
- if(r.type==="ore"){ctx.beginPath();ctx.moveTo(-10,5);ctx.lineTo(-5,-12);ctx.lineTo(5,-18);ctx.lineTo(13,-3);ctx.lineTo(5,8);ctx.closePath();ctx.fill();}
- else if(r.type==="wood"){ctx.fillRect(-5,-15,10,25);ctx.beginPath();ctx.arc(-9,-14,9,0,Math.PI*2);ctx.arc(8,-10,10,0,Math.PI*2);ctx.fill();}
- else {for(let i=0;i<5;i++){const a=i*1.25;ctx.beginPath();ctx.ellipse(Math.cos(a)*7,-7+Math.sin(a)*5,5,9,a,0,Math.PI*2);ctx.fill()}}
- if(dist(player,r)<58){ctx.fillStyle="#fff";ctx.font="11px sans-serif";ctx.textAlign="center";ctx.shadowColor="#000";ctx.shadowBlur=5;ctx.fillText("E 采集",0,28)}
+ ctx.fillStyle=RES_STYLE[r.type]||"#999";
+ if(r.type==="ore"||r.type==="stone"){ctx.beginPath();ctx.moveTo(-10,5);ctx.lineTo(-5,-12);ctx.lineTo(5,-16);ctx.lineTo(13,-3);ctx.lineTo(5,8);ctx.closePath();ctx.fill()}
+ else if(r.type==="crystal"){ctx.shadowColor="#8ee5ed";ctx.shadowBlur=10;ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(7,-2);ctx.lineTo(0,8);ctx.lineTo(-7,-2);ctx.closePath();ctx.fill();ctx.shadowBlur=0}
+ else if(r.type==="wood"){ctx.fillRect(-5,-14,10,24);ctx.beginPath();ctx.arc(-9,-13,8,0,Math.PI*2);ctx.arc(8,-10,9,0,Math.PI*2);ctx.fill()}
+ else if(r.type==="berry"){for(let i=0;i<4;i++){const a=i*1.6;ctx.beginPath();ctx.arc(Math.cos(a)*6,-8+Math.sin(a)*4,4,0,Math.PI*2);ctx.fill()}ctx.fillStyle="#5a7a4e";ctx.beginPath();ctx.arc(0,-4,9,0,Math.PI,Math.PI*2);ctx.fill()}
+ else if(r.type==="shell"){ctx.beginPath();ctx.moveTo(0,6);ctx.arc(0,6,11,Math.PI,Math.PI*2);ctx.closePath();ctx.fill();ctx.strokeStyle="#b8a67e";ctx.lineWidth=1;for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(0,6);ctx.lineTo(i*4.5,-4);ctx.stroke()}}
+ else{for(let i=0;i<5;i++){const a=i*1.25;ctx.beginPath();ctx.ellipse(Math.cos(a)*7,-7+Math.sin(a)*5,5,9,a,0,Math.PI*2);ctx.fill()}}
  ctx.restore();
 }
 function drawChest(ch){
+ if(!ch.found)return;
  const s=worldToScreen(ch.x,ch.y);if(s.x<-40||s.x>W+40||s.y<-40||s.y>H+40)return;
- ctx.save();ctx.translate(s.x,s.y);ctx.fillStyle="#0005";ctx.fillRect(-18,7,36,8);
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.fillStyle="#0005";ctx.fillRect(-18,7,36,8);
  ctx.fillStyle=ch.opened?"#6e5d45":"#9a663d";ctx.fillRect(-20,-8,40,20);
  ctx.fillStyle=ch.opened?"#806d53":"#c18a4e";ctx.fillRect(-20,-15,40,10);
  ctx.fillStyle="#e2c56d";ctx.fillRect(-3,-4,6,10);
- if(ch.rare){ctx.shadowColor="#f1d16c";ctx.shadowBlur=18;ctx.fillStyle="#f0d16f";ctx.beginPath();ctx.arc(0,-20,4+Math.sin(performance.now()/300)*1.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0}
- if(!ch.opened&&dist(player,ch)<65){ctx.fillStyle="#fff";ctx.font="11px sans-serif";ctx.textAlign="center";ctx.fillText("E 开启",0,32)}
+ if(ch.kind!=="normal"&&!ch.opened){ctx.shadowColor="#f1d16c";ctx.shadowBlur=16;ctx.fillStyle="#f0d16f";ctx.beginPath();ctx.arc(0,-20,4+Math.sin(performance.now()/300)*1.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0}
  ctx.restore();
 }
-function drawBoss(){
- if(!boss||boss.dead)return;
- const s=worldToScreen(boss.x,boss.y);if(s.x<-150||s.x>W+150||s.y<-150||s.y>H+150)return;
- const pulse=1+Math.sin(performance.now()/260)*.04;
- ctx.save();ctx.translate(s.x,s.y);ctx.scale(pulse,pulse);
- ctx.fillStyle="#0007";ctx.beginPath();ctx.ellipse(0,46,76,24,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#514c59";ctx.beginPath();ctx.moveTo(-70,25);ctx.lineTo(-55,-45);ctx.lineTo(-20,-72);ctx.lineTo(0,-55);ctx.lineTo(30,-78);ctx.lineTo(66,-38);ctx.lineTo(75,28);ctx.lineTo(30,55);ctx.lineTo(-30,55);ctx.closePath();ctx.fill();
- ctx.fillStyle="#796a7b";ctx.beginPath();ctx.moveTo(-42,-45);ctx.lineTo(-20,-92);ctx.lineTo(-5,-52);ctx.lineTo(-25,-28);ctx.closePath();ctx.fill();
- ctx.beginPath();ctx.moveTo(25,-48);ctx.lineTo(48,-88);ctx.lineTo(52,-34);ctx.lineTo(34,-20);ctx.closePath();ctx.fill();
- ctx.fillStyle="#e36a61";ctx.shadowColor="#e36a61";ctx.shadowBlur=14;ctx.beginPath();ctx.arc(-23,-27,6,0,Math.PI*2);ctx.arc(23,-27,6,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
- ctx.fillStyle="#d6b56d";ctx.beginPath();ctx.moveTo(-8,-3);ctx.lineTo(0,14);ctx.lineTo(8,-3);ctx.closePath();ctx.fill();
+function drawClue(c){
+ if(c.found)return;
+ const s=worldToScreen(c.x,c.y);if(s.x<-60||s.x>W+60||s.y<-60||s.y>H+60)return;
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,10,20,6,0,0,Math.PI*2);ctx.fill();
+ if(c.type==="claw"){
+  // 抓痕：三道发光的裂口
+  ctx.strokeStyle="#cfe8dd";ctx.lineWidth=3;ctx.lineCap="round";ctx.shadowColor="#9cebd0";ctx.shadowBlur=8;
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-12+i*9,-14);ctx.lineTo(-16+i*9,10);ctx.stroke()}
+  ctx.shadowBlur=0;
+ }else{
+  // 被毁的营地：倒塌的木架 + 冷火堆
+  ctx.strokeStyle="#5d4a3a";ctx.lineWidth=4;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(-14,8);ctx.lineTo(-4,-12);ctx.moveTo(14,8);ctx.lineTo(4,-12);ctx.stroke();
+  ctx.fillStyle="#3a3f3d";ctx.beginPath();ctx.arc(0,6,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#6f7d78";ctx.beginPath();ctx.arc(2,4,3,0,Math.PI*2);ctx.fill();
+ }
+ // 调查提示的微光
+ const a=.4+.3*Math.sin(performance.now()/400+c.phase);
+ ctx.globalAlpha=a;ctx.fillStyle="#f0cf75";ctx.beginPath();ctx.arc(0,-26,3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
  ctx.restore();
- const bw=150;ctx.fillStyle="#0009";ctx.fillRect(s.x-bw/2,s.y-115,bw,8);ctx.fillStyle="#c85e67";ctx.fillRect(s.x-bw/2,s.y-115,bw*clamp(boss.hp/boss.max,0,1),8);
- ctx.fillStyle="#fff";ctx.font="bold 12px sans-serif";ctx.textAlign="center";ctx.fillText("暮岩古龙 · Lv. 12",s.x,s.y-125);
 }
 function drawGate(g){
  const s=worldToScreen(g.x,g.y);ctx.save();ctx.translate(s.x,s.y);
@@ -525,44 +720,42 @@ function drawGate(g){
  if(!g.open){ctx.strokeStyle="#c29d62";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-18,20);ctx.lineTo(18,-20);ctx.moveTo(18,20);ctx.lineTo(-18,-20);ctx.stroke()}
  ctx.restore();
 }
-function drawFlower(f){
- const s=worldToScreen(f.x,f.y);if(s.x<0||s.x>W||s.y<0||s.y>H)return;
- ctx.fillStyle=f.c;ctx.globalAlpha=.75;ctx.beginPath();ctx.arc(s.x,s.y,2.3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-}
 function drawBuilding(b){
  const s=worldToScreen(b.x,b.y);if(s.x<-180||s.x>W+180||s.y<-150||s.y>H+150)return;
  ctx.save();ctx.translate(s.x,s.y);
  ctx.fillStyle="#0004";ctx.fillRect(-b.w/2+8,-b.h/2+10,b.w,b.h);
  if(b.type==="well"){
-   ctx.fillStyle="#8d765c";ctx.beginPath();ctx.arc(0,0,38,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#416c78";ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#8d765c";ctx.beginPath();ctx.arc(0,0,38,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#416c78";ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.fill();
  }else{
-   ctx.fillStyle=b.type==="hall"?"#d7c39a":"#cbb18a";ctx.fillRect(-b.w/2,-b.h/2,b.w,b.h);
-   ctx.fillStyle=b.type==="hall"?"#745047":"#80564d";ctx.beginPath();ctx.moveTo(-b.w/2-12,-b.h/2);ctx.lineTo(0,-b.h/2-55);ctx.lineTo(b.w/2+12,-b.h/2);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#4b3832";ctx.fillRect(-13,b.h/2-42,26,42);
-   ctx.fillStyle="#9ec1c2";ctx.fillRect(-b.w/2+18,-b.h/2+25,24,20);ctx.fillRect(b.w/2-42,-b.h/2+25,24,20);
+  ctx.fillStyle=b.type==="hall"?"#d7c39a":"#cbb18a";ctx.fillRect(-b.w/2,-b.h/2,b.w,b.h);
+  ctx.fillStyle=b.type==="hall"?"#745047":"#80564d";ctx.beginPath();ctx.moveTo(-b.w/2-12,-b.h/2);ctx.lineTo(0,-b.h/2-55);ctx.lineTo(b.w/2+12,-b.h/2);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#4b3832";ctx.fillRect(-13,b.h/2-42,26,42);
+  // 夜晚亮灯
+  const lit=isNight();
+  ctx.fillStyle=lit?"#ffd98a":"#9ec1c2";
+  if(lit){ctx.shadowColor="#ffce6a";ctx.shadowBlur=14}
+  ctx.fillRect(-b.w/2+18,-b.h/2+25,24,20);ctx.fillRect(b.w/2-42,-b.h/2+25,24,20);
+  ctx.shadowBlur=0;
  }
  if(b.name&&b.type!=="house"){ctx.font="12px 'Noto Serif SC',sans-serif";ctx.textAlign="center";ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=5;ctx.fillText(b.name,0,b.h/2+25)}
  ctx.restore();
 }
-
 function drawLandmark(l){
  if(l.type==="stone")return;
  const s=worldToScreen(l.x,l.y);if(s.x<-100||s.x>W+100||s.y<-100||s.y>H+100)return;
  ctx.save();ctx.translate(s.x,s.y);
  ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,22,42,13,0,0,Math.PI*2);ctx.fill();
  if(l.type==="shrine"){
-   ctx.fillStyle="#8d8170";ctx.fillRect(-42,0,84,22);ctx.fillRect(-28,-18,56,18);
-   ctx.fillStyle="#d9c36f";ctx.shadowColor="#ffe18a";ctx.shadowBlur=20;ctx.beginPath();ctx.moveTo(0,-65);ctx.lineTo(24,-22);ctx.lineTo(0,5);ctx.lineTo(-24,-22);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#8d8170";ctx.fillRect(-42,0,84,22);ctx.fillRect(-28,-18,56,18);
+  ctx.fillStyle="#d9c36f";ctx.shadowColor="#ffe18a";ctx.shadowBlur=20;ctx.beginPath();ctx.moveTo(0,-65);ctx.lineTo(24,-22);ctx.lineTo(0,5);ctx.lineTo(-24,-22);ctx.closePath();ctx.fill();
  }else{
-   ctx.fillStyle="#806e5c";ctx.fillRect(-22,-72,44,94);
-   ctx.fillStyle="#9b896e";ctx.fillRect(-35,-84,70,18);ctx.fillStyle="#bba37c";ctx.fillRect(-14,-50,28,8);
-   if(l.name==="旧灯塔"){ctx.fillStyle="#e6c66d";ctx.shadowColor="#ffd873";ctx.shadowBlur=25;ctx.beginPath();ctx.arc(0,-60,8,0,Math.PI*2);ctx.fill()}
+  ctx.fillStyle="#806e5c";ctx.fillRect(-22,-72,44,94);
+  ctx.fillStyle="#9b896e";ctx.fillRect(-35,-84,70,18);ctx.fillStyle="#bba37c";ctx.fillRect(-14,-50,28,8);
+  if(l.name==="旧灯塔"){ctx.fillStyle="#e6c66d";ctx.shadowColor="#ffd873";ctx.shadowBlur=25;ctx.beginPath();ctx.arc(0,-60,8,0,Math.PI*2);ctx.fill()}
  }
- if(dist(player,l)<100){ctx.font="13px 'Noto Serif SC'";ctx.textAlign="center";ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=6;ctx.fillText(l.name,0,-100)}
  ctx.restore();
 }
-
 function drawNPC(n){
  const bob=Math.sin(performance.now()/500+n.phase)*2;
  const s=worldToScreen(n.x,n.y);if(s.x<-40||s.x>W+40||s.y<-70||s.y>H+70)return;
@@ -571,29 +764,44 @@ function drawNPC(n){
  ctx.fillStyle=n.color;ctx.beginPath();ctx.arc(0,-6,15,0,Math.PI*2);ctx.fill();
  ctx.fillStyle="#f0c9a0";ctx.beginPath();ctx.arc(0,-25,11,0,Math.PI*2);ctx.fill();
  ctx.fillStyle="#493b38";ctx.beginPath();ctx.arc(0,-29,11,Math.PI,Math.PI*2);ctx.fill();
- if(dist(player,n)<90){ctx.fillStyle="#fff";ctx.font="12px 'Noto Serif SC'";ctx.textAlign="center";ctx.shadowColor="#000";ctx.shadowBlur=5;ctx.fillText(n.name,0,-45);ctx.fillStyle="#e7c36f";ctx.font="10px sans-serif";ctx.fillText("E 互动",0,-31)}
  ctx.restore();
 }
-
 function drawEnemy(e){
- if(e.dead)return;const s=worldToScreen(e.x,e.y);if(s.x<-60||s.x>W+60||s.y<-60||s.y>H+60)return;
- const r=e.type==="岩甲兽"?25:20;
+ if(e.dead)return;
+ const s=worldToScreen(e.x,e.y);if(s.x<-80||s.x>W+80||s.y<-80||s.y>H+80)return;
+ const cfg=ETYPE[e.type];
+ const elite=!!cfg.elite;
+ const r=(e.type==="荒原狼"?20:25)*(elite?1.25:1);
  ctx.save();ctx.translate(s.x,s.y);
  ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(0,r*.55,r*1.1,r*.4,0,0,Math.PI*2);ctx.fill();
- if(e.type==="岩甲兽"){
-   ctx.fillStyle="#66706e";ctx.beginPath();ctx.moveTo(-28,10);ctx.lineTo(-19,-22);ctx.lineTo(0,-31);ctx.lineTo(23,-18);ctx.lineTo(29,12);ctx.lineTo(10,25);ctx.lineTo(-16,22);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#8c9690";ctx.beginPath();ctx.moveTo(-12,-22);ctx.lineTo(3,-28);ctx.lineTo(13,-12);ctx.lineTo(-5,-9);ctx.closePath();ctx.fill();
+ // 攻击前摇：红色范围提示，玩家可以躲
+ if(e.windup>0){
+  const p=1-e.windup/cfg.wind;
+  ctx.globalAlpha=.25+.45*p;
+  ctx.fillStyle="#d94f43";
+  if(cfg.lunge){
+   ctx.save();ctx.rotate(Math.atan2(e.wy,e.wx));
+   ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(cfg.range+cfg.lunge+18,-10);ctx.lineTo(cfg.range+cfg.lunge+18,10);ctx.lineTo(0,16);ctx.closePath();ctx.fill();
+   ctx.restore();
+  }else{
+   ctx.beginPath();ctx.arc(0,0,cfg.range+16,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+ }
+ if(e.type==="荒原狼"){
+  ctx.fillStyle="#574c48";ctx.beginPath();ctx.ellipse(0,2,24,15,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#6c5b54";ctx.beginPath();ctx.moveTo(-19,-4);ctx.lineTo(-24,-25);ctx.lineTo(-7,-13);ctx.lineTo(4,-24);ctx.lineTo(13,-7);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#d65f55";ctx.fillRect(-10,-1,5,3);ctx.fillRect(5,-1,5,3);
  }else{
-   ctx.fillStyle="#574c48";ctx.beginPath();ctx.ellipse(0,2,24,15,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#6c5b54";ctx.beginPath();ctx.moveTo(-19,-4);ctx.lineTo(-24,-25);ctx.lineTo(-7,-13);ctx.lineTo(4,-24);ctx.lineTo(13,-7);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#d65f55";ctx.fillRect(-10,-1,5,3);ctx.fillRect(5,-1,5,3);
+  ctx.scale(elite?1.25:1,elite?1.25:1);
+  ctx.fillStyle=elite?"#5d5a6b":"#66706e";ctx.beginPath();ctx.moveTo(-28,10);ctx.lineTo(-19,-22);ctx.lineTo(0,-31);ctx.lineTo(23,-18);ctx.lineTo(29,12);ctx.lineTo(10,25);ctx.lineTo(-16,22);ctx.closePath();ctx.fill();
+  ctx.fillStyle=elite?"#9d93b8":"#8c9690";ctx.beginPath();ctx.moveTo(-12,-22);ctx.lineTo(3,-28);ctx.lineTo(13,-12);ctx.lineTo(-5,-9);ctx.closePath();ctx.fill();
+  if(elite){ctx.fillStyle="#e8c77b";ctx.beginPath();ctx.moveTo(0,-31);ctx.lineTo(6,-44);ctx.lineTo(10,-29);ctx.closePath();ctx.fill()}
  }
  if(e.hit>0){ctx.strokeStyle="#ffe6a0";ctx.lineWidth=3;ctx.strokeRect(-r-4,-r-4,r*2+8,r*2+8)}
  ctx.restore();
- // hp
  if(e.hp<e.max){const w=48;ctx.fillStyle="#0008";ctx.fillRect(s.x-w/2,s.y-r-13,w,4);ctx.fillStyle="#d9685d";ctx.fillRect(s.x-w/2,s.y-r-13,w*clamp(e.hp/e.max,0,1),4)}
 }
-
 function drawEcho(e){
  const s=worldToScreen(e.x,e.y);if(s.x<-40||s.x>W+40||s.y<-40||s.y>H+40)return;
  const pulse=.75+.25*Math.sin(performance.now()/260+e.phase);
@@ -603,10 +811,13 @@ function drawEcho(e){
  ctx.restore();
 }
 function drawCampfire(f){
- const s=worldToScreen(f.x,f.y);if(s.x<-50||s.x>W+50||s.y<-50||s.y>H+50)return;
+ const s=worldToScreen(f.x,f.y);if(s.x<-60||s.x>W+60||s.y<-60||s.y>H+60)return;
+ const night=isNight();
  const pulse=.8+.2*Math.sin(performance.now()/180+f.phase);
- ctx.save();ctx.translate(s.x,s.y);ctx.globalAlpha=.18*pulse;ctx.fillStyle="#f4c768";ctx.beginPath();ctx.arc(0,2,30*pulse,0,Math.PI*2);ctx.fill();
- ctx.globalAlpha=1;ctx.shadowColor="#ffbd55";ctx.shadowBlur=14;ctx.fillStyle="#f6c45f";ctx.beginPath();ctx.moveTo(0,-18*pulse);ctx.quadraticCurveTo(10,0,0,8);ctx.quadraticCurveTo(-10,0,0,-18*pulse);ctx.fill();ctx.fillStyle="#704b35";ctx.fillRect(-13,7,26,5);ctx.restore();
+ ctx.save();ctx.translate(s.x,s.y);
+ ctx.globalAlpha=(night?.34:.16)*pulse;ctx.fillStyle="#f4c768";ctx.beginPath();ctx.arc(0,2,(night?46:30)*pulse,0,Math.PI*2);ctx.fill();
+ ctx.globalAlpha=1;ctx.shadowColor="#ffbd55";ctx.shadowBlur=14;ctx.fillStyle="#f6c45f";ctx.beginPath();ctx.moveTo(0,-18*pulse);ctx.quadraticCurveTo(10,0,0,8);ctx.quadraticCurveTo(-10,0,0,-18*pulse);ctx.fill();
+ ctx.fillStyle="#704b35";ctx.fillRect(-13,7,26,5);ctx.restore();
 }
 function drawPlayer(){
  const s=worldToScreen(player.x,player.y);ctx.save();ctx.translate(s.x,s.y);
@@ -617,19 +828,44 @@ function drawPlayer(){
  ctx.fillStyle="#d8bd7c";ctx.beginPath();ctx.arc(0,-27,12,0,Math.PI*2);ctx.fill();
  ctx.fillStyle="#3b3432";ctx.beginPath();ctx.arc(0,-31,12,Math.PI,Math.PI*2);ctx.fill();
  ctx.fillStyle="#e5cc8a";ctx.fillRect(-17,-2,34,4);
- // sword
+ // 剑
  ctx.save();ctx.rotate(player.dir);ctx.strokeStyle="#e9edf0";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(38,0);ctx.stroke();ctx.strokeStyle="#b48b4d";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(10,-7);ctx.lineTo(10,7);ctx.stroke();ctx.restore();
  if(player.attack>0){ctx.save();ctx.rotate(player.dir);ctx.strokeStyle="rgba(238,211,125,"+clamp(player.attack*4,0,1)+")";ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,47,-.8,.8);ctx.stroke();ctx.restore()}
+ // 冲刺无敌帧残影提示
+ if(player.inv>0){ctx.strokeStyle="rgba(142,229,237,"+clamp(player.inv*2,0,.8)+")";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-6,26,0,Math.PI*2);ctx.stroke()}
  ctx.restore();
 }
-
-function drawCombatFeedback(){
- if(!state.started||state.combo<=0)return;
- const a=clamp(state.comboTimer/.9,0,1);
- ctx.save();ctx.globalAlpha=.45+.5*a;ctx.textAlign="center";ctx.font="700 16px sans-serif";
- ctx.fillStyle="#f4d27e";ctx.shadowColor="#f4d27e";ctx.shadowBlur=12;
- ctx.fillText("COMBO ×"+state.combo,W-120,H-150);
- ctx.font="11px sans-serif";ctx.shadowBlur=0;ctx.globalAlpha=.55;ctx.fillText("连续命中提升伤害",W-120,H-132);ctx.restore();
+function drawBoss(){
+ if(!boss||boss.dead)return;
+ const s=worldToScreen(boss.x,boss.y);if(s.x<-160||s.x>W+160||s.y<-160||s.y>H+160)return;
+ const phase=bossPhase();
+ const pulse=1+Math.sin(performance.now()/260)*.04;
+ ctx.save();ctx.translate(s.x,s.y);ctx.scale(pulse,pulse);
+ ctx.fillStyle="#0007";ctx.beginPath();ctx.ellipse(0,46,76,24,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=phase===3?"#5e4450":"#514c59";ctx.beginPath();ctx.moveTo(-70,25);ctx.lineTo(-55,-45);ctx.lineTo(-20,-72);ctx.lineTo(0,-55);ctx.lineTo(30,-78);ctx.lineTo(66,-38);ctx.lineTo(75,28);ctx.lineTo(30,55);ctx.lineTo(-30,55);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#796a7b";ctx.beginPath();ctx.moveTo(-42,-45);ctx.lineTo(-20,-92);ctx.lineTo(-5,-52);ctx.lineTo(-25,-28);ctx.closePath();ctx.fill();
+ ctx.beginPath();ctx.moveTo(25,-48);ctx.lineTo(48,-88);ctx.lineTo(52,-34);ctx.lineTo(34,-20);ctx.closePath();ctx.fill();
+ ctx.fillStyle=phase===3?"#ff8a5e":"#e36a61";ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=14;ctx.beginPath();ctx.arc(-23,-27,6,0,Math.PI*2);ctx.arc(23,-27,6,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+ ctx.fillStyle="#d6b56d";ctx.beginPath();ctx.moveTo(-8,-3);ctx.lineTo(0,14);ctx.lineTo(8,-3);ctx.closePath();ctx.fill();
+ ctx.restore();
+ // 冲击波（第二阶段）
+ for(const r of bossRings){
+  const rs=worldToScreen(boss.x,boss.y);
+  ctx.strokeStyle="rgba(224,110,90,"+clamp(1-r.r/260,0,1)+")";ctx.lineWidth=10;
+  ctx.beginPath();ctx.arc(rs.x,rs.y,r.r,0,Math.PI*2);ctx.stroke();
+ }
+ // 落石（第三阶段）
+ for(const h of hazards){
+  const hs=worldToScreen(h.x,h.y);
+  const p=clamp(1-h.t/1.1,0,1);
+  ctx.fillStyle="rgba(217,79,67,"+(.2+.35*p)+")";ctx.beginPath();ctx.arc(hs.x,hs.y,55,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="rgba(255,160,120,.8)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(hs.x,hs.y,55,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="#4a4640";ctx.beginPath();ctx.arc(hs.x,hs.y-140*(1-p),12,0,Math.PI*2);ctx.fill();
+ }
+ // 血条
+ const bw=150;ctx.fillStyle="#0009";ctx.fillRect(s.x-bw/2,s.y-115,bw,8);ctx.fillStyle="#c85e67";ctx.fillRect(s.x-bw/2,s.y-115,bw*clamp(boss.hp/boss.max,0,1),8);
+ ctx.fillStyle="#fff";ctx.font="bold 12px sans-serif";ctx.textAlign="center";ctx.shadowColor="#000";ctx.shadowBlur=4;
+ ctx.fillText("暮岩古龙 · Lv. 12 · 第"+["一","二","三"][phase-1]+"阶段",s.x,s.y-125);ctx.shadowBlur=0;
 }
 function drawParticles(){
  for(const p of particles){const s=worldToScreen(p.x,p.y);ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(s.x,s.y,p.size,0,Math.PI*2);ctx.fill()}
@@ -637,12 +873,76 @@ function drawParticles(){
  for(const t of texts){const s=worldToScreen(t.x,t.y);ctx.globalAlpha=clamp(t.life,0,1);ctx.font="bold 15px sans-serif";ctx.textAlign="center";ctx.fillStyle=t.color;ctx.fillText(t.text,s.x,s.y)}
  ctx.globalAlpha=1;
 }
+function drawCombatFeedback(){
+ if(!state.started||state.combo<=0)return;
+ const a=clamp(state.comboTimer/.9,0,1);
+ ctx.save();ctx.globalAlpha=.4+.5*a;ctx.textAlign="center";ctx.font="700 15px sans-serif";
+ ctx.fillStyle="#f4d27e";ctx.shadowColor="#f4d27e";ctx.shadowBlur=12;
+ ctx.fillText("连击 ×"+state.combo,W-110,H-140);
+ ctx.restore();
+}
+function drawAtmosphere(){
+ const hour=state.time%24;
+ if(isNight()){
+  ctx.fillStyle="rgba(15,27,58,.48)";ctx.fillRect(0,0,W,H);
+  if(!state.settings.low){
+   for(const f of fireflies){const s=worldToVisual(f.x,f.y);if(s.x<0||s.x>W||s.y<0||s.y>H)continue;const a=.35+.3*Math.sin(performance.now()/700+f.p);ctx.globalAlpha=a;ctx.fillStyle="#f1df8b";ctx.shadowColor="#f1df8b";ctx.shadowBlur=10;ctx.beginPath();ctx.arc(s.x,s.y,1.7*f.s,0,Math.PI*2);ctx.fill()}
+   ctx.shadowBlur=0;ctx.globalAlpha=1;
+  }
+ }else if(hour<8||hour>17){
+  ctx.fillStyle="rgba(235,180,105,.14)";ctx.fillRect(0,0,W,H);
+ }
+ // 森林雾气
+ if(zoneAt(player.x,player.y)==="静谧森林"){
+  ctx.fillStyle="rgba(190,210,200,.08)";ctx.fillRect(0,0,W,H);
+  if(!state.settings.low){
+   const t=performance.now()/10000;
+   ctx.fillStyle="rgba(200,215,205,.06)";
+   for(let i=0;i<4;i++){
+    const fx=((hash(i,11)+t*(.05+i*.02))%1.2-.1)*W;
+    const fy=(hash(i,17)*.7+.15)*H;
+    ctx.beginPath();ctx.ellipse(fx,fy,190,44,0,0,Math.PI*2);ctx.fill();
+   }
+  }
+ }
+}
+/* 任务目标：视野内世界标记 */
+function drawQuestWorldMarker(){
+ const t=questTarget();
+ if(!t||state.dialogue||state.menuOpen||state.panel)return;
+ const v=worldToVisual(t.x,t.y);
+ if(v.x<-30||v.x>W+30||v.y<-30||v.y>H+30)return;
+ const pulse=8+Math.sin(performance.now()/260)*2;
+ ctx.save();ctx.translate(v.x,v.y-56);
+ ctx.rotate(Math.PI/4);
+ ctx.strokeStyle="#f0cf75";ctx.lineWidth=2;ctx.globalAlpha=.95;ctx.strokeRect(-pulse/2,-pulse/2,pulse,pulse);
+ ctx.globalAlpha=.35;ctx.strokeRect(-pulse*.75,-pulse*.75,pulse*1.5,pulse*1.5);
+ ctx.rotate(-Math.PI/4);
+ ctx.globalAlpha=1;ctx.font="11px 'Noto Serif SC',serif";ctx.textAlign="center";ctx.fillStyle="#f0e5ca";ctx.shadowColor="#000";ctx.shadowBlur=6;
+ ctx.fillText(t.name||t.type||"目标",0,-14);
+ ctx.restore();
+}
+/* 最近可互动对象的世界内提示 */
+function drawWorldLabel(){
+ const t=nearestInteractable();
+ if(!t||state.dialogue||state.menuOpen||state.panel||!state.started)return;
+ const p=worldToVisual(t.x,t.y);
+ ctx.save();ctx.textAlign="center";
+ ctx.font="600 12px 'Noto Serif SC',serif";ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=6;
+ ctx.fillText(t.name,p.x,p.y-46);
+ ctx.font="10px sans-serif";ctx.fillStyle="#e7c36f";
+ ctx.fillText(matchMedia("(pointer:coarse)").matches?t.verb:"E · "+t.verb,p.x,p.y-32);
+ ctx.restore();
+}
 
+/* ================= 粒子 / 飘字 ================= */
 function emit(x,y,color="#f0c66f",n=12){
+ if(state.settings.low)n=Math.ceil(n/2);
  for(let i=0;i<n;i++)particles.push({x,y,vx:rnd(-70,70),vy:rnd(-100,20),life:rnd(.35,.8),max:.8,size:rnd(1,4),color});
 }
 function floatText(x,y,text,color="#f5d27e"){texts.push({x,y,text,color,life:1.1})}
 
+/* ================= 碰撞 / 移动 ================= */
 function blocked(x,y){
  if(x<35||y<35||x>world.w-35||y>world.h-35)return true;
  if(isLake(x,y))return true;
@@ -656,242 +956,417 @@ function recoverFromObstacle(){
  if(!blocked(player.x,player.y))return;
  const ox=player.x,oy=player.y;
  for(let radius=18;radius<=120;radius+=12){
-   for(let a=0;a<Math.PI*2;a+=Math.PI/8){
-     const x=clamp(ox+Math.cos(a)*radius,35,world.w-35);
-     const y=clamp(oy+Math.sin(a)*radius,35,world.h-35);
-     if(!blocked(x,y)){player.x=x;player.y=y;notify("已脱离障碍物");return;}
-   }
+  for(let a=0;a<Math.PI*2;a+=Math.PI/8){
+   const x=clamp(ox+Math.cos(a)*radius,35,world.w-35);
+   const y=clamp(oy+Math.sin(a)*radius,35,world.h-35);
+   if(!blocked(x,y)){player.x=x;player.y=y;return}
+  }
  }
 }
+function uiBlocking(){return state.dialogue||state.menuOpen||state.panel||state.lore}
 function move(){
- if(!state.started||state.dialogue||state.menuOpen)return;
+ if(!state.started||uiBlocking())return;
  recoverFromObstacle();
  let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
  let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
  if(dx||dy){
-   const len=Math.hypot(dx,dy);dx/=len;dy/=len;
-   const sprint=keys.shift&&player.stamina>3;
-   const speed=player.speed*(sprint?1.72:1);
-   const nx=player.x+dx*speed/60,ny=player.y+dy*speed/60;
-   if(!blocked(nx,player.y))player.x=nx;
-   if(!blocked(player.x,ny))player.y=ny;
-   player.dir=Math.atan2(dy,dx);player.walk+=.25;
-   if(sprint)player.stamina-=.7;else player.stamina=Math.min(100,player.stamina+.25);
+  const len=Math.hypot(dx,dy);dx/=len;dy/=len;
+  const sprint=keys.shift&&player.stamina>3;
+  const speed=player.speed*(sprint?1.72:1);
+  const nx=player.x+dx*speed/60,ny=player.y+dy*speed/60;
+  if(!blocked(nx,player.y))player.x=nx;
+  if(!blocked(player.x,ny))player.y=ny;
+  player.dir=Math.atan2(dy,dx);player.walk+=.25;
+  if(sprint)player.stamina-=.7;else player.stamina=Math.min(100,player.stamina+.25);
  }else player.stamina=Math.min(100,player.stamina+.55);
  player.x=clamp(player.x,35,world.w-35);player.y=clamp(player.y,35,world.h-35);
+ markExplored();
 }
 
+/* ================= 成长 ================= */
 function gainXp(v){
  state.xp+=v;
  while(state.xp>=state.nextXp){
-   state.xp-=state.nextXp;state.level++;state.nextXp=Math.floor(state.nextXp*1.28);
-   state.maxHp+=55;state.hp=state.maxHp;state.equipment.power+=12;
-   updateHP();playRewardFx("等级提升","Lv. "+state.level+" · 最大生命值 +55 · 攻击力 +12");
-   notify("升级！ Lv."+state.level+" · 攻击力 +12");emit(player.x,player.y,"#f0cf72",24);
+  state.xp-=state.nextXp;state.level++;state.nextXp=Math.floor(state.nextXp*1.28);
+  state.maxHp+=55;state.hp=state.maxHp;state.equipment.power+=12;
+  updateHP();playRewardFx("等级提升","Lv. "+state.level+" · 最大生命值 +55 · 攻击力 +12");
+  EA()?.levelUp();emit(player.x,player.y,"#f0cf72",24);
  }
 }
+
+/* ================= 战斗 ================= */
 function attack(){
- if(!state.started||state.dialogue||state.menuOpen||player.attack>0)return;
+ if(!state.started||uiBlocking()||player.attack>0)return;
  let target=null,best=90;
  for(const e of enemies)if(!e.dead){const d=dist(player,e);if(d<best){best=d;target=e}}
  const bossInRange=!!(boss&&boss.active&&!boss.dead&&dist(player,boss)<115);
  if(!target&&!bossInRange){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
  state.combo=state.comboTimer>0?Math.min(state.combo+1,5):1;state.comboTimer=.9;
  const damage=Math.floor(state.equipment.power*(1+Math.max(0,state.combo-1)*.12));
+ player.attack=.32;
  if(bossInRange){
-   boss.hp-=damage;boss.hit=.15;player.attack=.32;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");
-   if(boss.hp<=0){boss.dead=true;state.defeatedBoss=true;state.coins+=600;playNumberPop($("coins"));gainXp(520);state.bag.push("古龙核心");playRewardFx("古龙核心","击败暮岩古龙 · +600 金币");notify("暮岩古龙已击败！获得古龙核心");saveGame();}
-   return;
+  boss.hp-=damage;boss.hit=.15;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");EA()?.hit();
+  if(boss.hp<=0){
+   boss.dead=true;state.defeatedBoss=true;state.coins+=600;addItem("core");
+   gainXp(520);playRewardFx("古龙核心","击败暮岩古龙 · +600 金币");
+   notify("暮岩古龙已击败！获得古龙核心");saveGame();
+  }
+  return;
  }
- target.hp-=damage;target.hit=.15;player.attack=.32;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");
- if(target.hp<=0){target.dead=true;state.kills++;state.coins+=18;playNumberPop($("coins"));state.combo=Math.min(state.combo+1,5);state.wood+=Math.random()<.35?1:0;floatText(target.x,target.y-50,"+18 金币","#f2d074");notify("击败 "+target.type);
-   if(state.quest===1&&state.kills>=2){state.quest=2;playRewardFx("任务更新","前往潮汐祭坛");notify("任务更新：前往潮汐祭坛");}
-   updateQuestUI();
- }
+ target.hp-=damage;target.hit=.15;emit(target.x,target.y,"#f4d18a",10);floatText(target.x,target.y-32,"-"+damage,"#ffe1a1");EA()?.hit();
+ if(target.hp<=0)killEnemy(target);
 }
-
+function killEnemy(e){
+ const cfg=ETYPE[e.type];
+ e.dead=true;
+ if(e.type==="荒原狼")state.kills++;
+ state.coins+=cfg.coin;
+ state.combo=Math.min(state.combo+1,5);
+ if(Math.random()<.35)addItem("wood");
+ floatText(e.x,e.y-50,"+"+cfg.coin+" 金币","#f2d074");
+ gainXp(cfg.xp);
+ notify("击败 "+e.type);
+ if(state.quest===2&&state.kills>=3)advanceQuest(3);
+ updateQuestUI();saveGame();
+}
 function skill(){
- if(!state.started||state.dialogue||state.menuOpen||state.stamina<30)return;
- state.stamina-=30;player.attack=.5;
- emit(player.x,player.y,"#79c8d4",35);
- for(const e of enemies)if(!e.dead&&dist(player,e)<105){e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");if(e.hp<=0){e.dead=true;state.kills++;state.coins+=18;playNumberPop($("coins"));}
- if(state.quest===1&&state.kills>=2){state.quest=2;notify("任务更新：前往潮汐祭坛");updateQuestUI()}
+ if(!state.started||uiBlocking()||player.stamina<30)return;
+ player.stamina-=30;player.attack=.5;
+ emit(player.x,player.y,"#79c8d4",35);EA()?.pickup();vibrate(20);
+ for(const e of enemies)if(!e.dead&&dist(player,e)<105){
+  e.hp-=150;e.hit=.25;floatText(e.x,e.y-35,"元素爆发 -150","#8ee5ed");
+  if(e.hp<=0)killEnemy(e);
  }
+ if(boss&&boss.active&&!boss.dead&&dist(player,boss)<130){boss.hp-=120;boss.hit=.2;floatText(boss.x,boss.y-90,"-120","#8ee5ed")}
 }
-
 function dash(){
- if(!state.started||state.dialogue||state.menuOpen||player.stamina<22)return;
+ if(!state.started||uiBlocking()||player.stamina<22)return;
  let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0);
  if(!dx&&!dy){dx=Math.cos(player.dir);dy=Math.sin(player.dir)}
  const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
  const ox=player.x,oy=player.y;
  const tx=clamp(ox+dx*115,35,world.w-35),ty=clamp(oy+dy*115,35,world.h-35);
- if(!blocked(tx,ty)){
-   player.x=tx;player.y=ty;
- }else{
-   const steps=8;
-   for(let i=steps;i>0;i--){
-     const d=115*i/steps,px=clamp(ox+dx*d,35,world.w-35),py=clamp(oy+dy*d,35,world.h-35);
-     if(!blocked(px,py)){player.x=px;player.y=py;break}
-   }
+ if(!blocked(tx,ty)){player.x=tx;player.y=ty}
+ else{
+  for(let i=8;i>0;i--){
+   const d=115*i/8,px=clamp(ox+dx*d,35,world.w-35),py=clamp(oy+dy*d,35,world.h-35);
+   if(!blocked(px,py)){player.x=px;player.y=py;break}
+  }
  }
  player.stamina-=22;player.inv=.35;emit(player.x,player.y,"#d7c47d",18);
 }
 
-function interact(){
- if(!state.started||state.dialogue||state.menuOpen)return;
- for(const e of echoes){
-   if(!e.taken&&dist(player,e)<68){
-     e.taken=true;state.echoes++;state.coins+=15;state.bag.push("回声碎片 ×1");playNumberPop($("coins"));playRewardFx("回声碎片","发现第 "+state.echoes+" 枚碎片");
-     emit(e.x,e.y,"#8ee5ed",28);floatText(e.x,e.y-28,"回声碎片 +1","#a8eff5");
-     notify(state.echoes>=9?"九枚回声碎片共鸣，神殿已经开启":"发现回声碎片 "+state.echoes+"/9");
-     if(state.echoes>=9){state.coins+=180;playNumberPop($("coins"));state.equipment.power+=20;playRewardFx("神殿回应","攻击力 +20 · +180 金币");notify("回声神殿回应了你 · 攻击力 +20");}
-     saveGame();return;
-   }
- }
- for(const f of campfires){
-   if(dist(player,f)<82){
-     state.hp=Math.min(state.maxHp,state.hp+180);player.stamina=100;
-     emit(f.x,f.y,"#f1c96e",32);notify(f.name+"：生命与体力已恢复");updateHP();saveGame();return;
-   }
- }
- for(const r of resources){
-   if(!r.taken&&dist(player,r)<58){
-     r.taken=true;
-     if(r.type==="ore"){state.ore++;state.bag.push("铁矿 ×1");playRewardFx("获得铁矿","材料 +1");notify("获得铁矿 ×1");}
-     else if(r.type==="wood"){state.wood++;state.bag.push("木材 ×1");playRewardFx("获得木材","材料 +1");notify("获得木材 ×1");}
-     else {state.herbs++;state.bag.push("晨雾草 ×1");playRewardFx("获得晨雾草","材料 +1");notify("获得晨雾草 ×1");}
-     emit(r.x,r.y,"#d6c27d",12);saveGame();return;
-   }
- }
- for(const ch of chests){
-   if(!ch.opened&&dist(player,ch)<65){
-     ch.opened=true;state.chestsOpened++;
-     if(ch.rare){state.equipment.power+=35;state.bag.push("古代剑刃");state.coins+=120;playNumberPop($("coins"));playRewardFx("古代剑刃","稀有宝箱 · 攻击力 +35");notify("开启稀有宝箱：古代剑刃 · 攻击力 +35");}
-     else {state.coins+=35;state.herbs++;state.bag.push("治疗药草 ×1");playNumberPop($("coins"));playRewardFx("宝箱奖励","+35 金币 · 治疗药草 ×1");notify("开启宝箱：获得 35 金币与药草");}
-     emit(ch.x,ch.y,"#f0d47e",26);saveGame();return;
-   }
- }
- for(const g of gates){
-   if(dist(player,g)<72){
-     if(g.open){notify(g.name+"已经开启");return}
-     if(state.level>=8||state.ore>=3){g.open=true;notify(g.name+"已开启");emit(g.x,g.y,"#7dd1cf",22);saveGame();}
-     else notify(g.name+"需要 Lv.8 或 3块矿石");
-     return;
-   }
- }
- let best=null,bd=95;
- for(const n of npcs){const d=dist(player,n);if(d<bd){bd=d;best=n}}
- if(best){talk(best);return}
- for(const l of landmarks){if(l.type!=="stone"&&dist(player,l)<100){if(l.type==="boss"&&!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(l.x,l.y,"#d8666a",30);return}notify(l.name+"：这里似乎留下了某种回声");emit(l.x,l.y,"#dfc56e",16);if(l.name==="潮汐祭坛"&&state.quest===2){state.quest=3;state.coins+=80;notify("任务完成：回声的源头");state.bag.push("回声碎片");updateQuestUI();saveGame()}return}}
- for(const b of buildings){if(b.name&&dist(player,b)<90){notify(b.name+"：一座安静的建筑");return}}
-}
-function updateBoss(dt){
- if(!boss||boss.dead)return;
- const d=dist(player,boss);
- if(d<520&&state.started&&!state.dialogue&&!state.menuOpen){
-   boss.active=true;boss.phase+=dt;boss.attackCd-=dt;
-   const dx=(player.x-boss.x)/(d||1),dy=(player.y-boss.y)/(d||1);
-   if(d>115){boss.x+=dx*22*dt;boss.y+=dy*22*dt}
-   if(d<150&&boss.attackCd<=0&&player.inv<=0){
-     boss.attackCd=1.5;state.hp-=38;player.inv=.9;floatText(player.x,player.y-45,"-38","#ef8b7f");emit(player.x,player.y,"#c45e6a",14);updateHP();
-   }
-   if(Math.sin(boss.phase*1.7)>0.985)emit(boss.x+dx*50,boss.y+dy*50,"#d8666a",16);
- }
+/* ================= 敌人 AI（前摇 + 红色范围提示） ================= */
+function hurtPlayer(dmg){
+ state.hp-=dmg;player.inv=.8;
+ floatText(player.x,player.y-40,"-"+dmg,"#ef8b7f");
+ emit(player.x,player.y,"#d9675e",8);
+ EA()?.hurt();vibrate(35);
+ updateHP();
 }
 function updateEnemies(dt){
  for(const e of enemies){
-   if(e.dead)continue;e.hit=Math.max(0,e.hit-dt);
-   const d=dist(player,e);
-   if(d<310&&!state.dialogue&&!state.menuOpen){
-     const dx=(player.x-e.x)/(d||1),dy=(player.y-e.y)/(d||1);
-     const sp=e.type==="岩甲兽"?34:52;
-     if(d>48){e.x+=dx*sp*dt;e.y+=dy*sp*dt}
-     if(d<52&&player.inv<=0){state.hp-=e.type==="岩甲兽"?24:12;player.inv=.8;floatText(player.x,player.y-40,"-"+(e.type==="岩甲兽"?24:12),"#ef8b7f");emit(player.x,player.y,"#d9675e",8);updateHP()}
-   }else{
-     e.phase+=dt; e.x=e.homeX+Math.sin(e.phase*.55)*28;e.y=e.homeY+Math.cos(e.phase*.45)*22;
+  if(e.dead)continue;
+  e.hit=Math.max(0,e.hit-dt);
+  const cfg=ETYPE[e.type];
+  const d=dist(player,e);
+  if(e.windup>0){
+   e.windup-=dt;
+   if(e.windup<=0){
+    // 出手瞬间判定：玩家已逃出范围则打空
+    if(cfg.lunge){
+     const nx=clamp(e.x+e.wx*cfg.lunge,35,world.w-35),ny=clamp(e.y+e.wy*cfg.lunge,35,world.h-35);
+     e.x=nx;e.y=ny;
+     if(dist(player,e)<cfg.range+18&&player.inv<=0)hurtPlayer(cfg.dmg);
+    }else{
+     if(dist(player,e)<cfg.range+16&&player.inv<=0)hurtPlayer(cfg.dmg);
+    }
+    e.recover=.55;e.cd=cfg.cd;
    }
+   continue;
+  }
+  if(e.recover>0){e.recover-=dt;continue}
+  if(d<cfg.aggro&&state.started&&!uiBlocking()){
+   const dx=(player.x-e.x)/(d||1),dy=(player.y-e.y)/(d||1);
+   e.cd-=dt;
+   if(d>cfg.range){e.x+=dx*cfg.sp*dt;e.y+=dy*cfg.sp*dt}
+   if(d<cfg.range+8&&e.cd<=0){e.windup=cfg.wind;e.wx=dx;e.wy=dy}
+  }else{
+   e.phase+=dt;e.x=e.homeX+Math.sin(e.phase*.55)*28;e.y=e.homeY+Math.cos(e.phase*.45)*22;
+  }
  }
 }
+function bossPhase(){return boss.hp>1200?1:boss.hp>600?2:3}
+function updateBoss(dt){
+ if(!boss||boss.dead)return;
+ const d=dist(player,boss);
+ if(!boss.active&&d<520&&state.started&&!uiBlocking()){boss.active=true;notify("暮岩古龙苏醒了");emit(boss.x,boss.y,"#d8666a",30)}
+ if(!boss.active||uiBlocking())return;
+ const phase=bossPhase();
+ boss.phase+=dt;boss.attackCd-=dt;boss.ringCd-=dt;boss.hazardCd-=dt;
+ const dx=(player.x-boss.x)/(d||1),dy=(player.y-boss.y)/(d||1);
+ const sp=phase===3?34:22;
+ if(d>115){boss.x+=dx*sp*dt;boss.y+=dy*sp*dt}
+ // 近战
+ if(d<150&&boss.attackCd<=0&&player.inv<=0){
+  boss.attackCd=phase===3?1.0:1.5;
+  hurtPlayer(phase===3?46:38);
+ }
+ // 第二阶段：范围冲击波
+ if(phase>=2&&boss.ringCd<=0){
+  boss.ringCd=4;bossRings.push({r:40,hit:false});
+  emit(boss.x,boss.y,"#d8666a",22);notify("古龙积蓄了冲击波——远离它！");
+ }
+ for(let i=bossRings.length-1;i>=0;i--){
+  const r=bossRings[i];r.r+=260*dt;
+  if(!r.hit&&Math.abs(dist(player,boss)-r.r)<22&&player.inv<=0){r.hit=true;hurtPlayer(30)}
+  if(r.r>300)bossRings.splice(i,1);
+ }
+ // 第三阶段：场地落石
+ if(phase===3&&boss.hazardCd<=0){
+  boss.hazardCd=2.6;
+  for(let i=0;i<3;i++)hazards.push({x:clamp(player.x+rnd(-160,160),60,world.w-60),y:clamp(player.y+rnd(-160,160),60,world.h-60),t:1.1});
+ }
+ for(let i=hazards.length-1;i>=0;i--){
+  const h=hazards[i];h.t-=dt;
+  if(h.t<=0){
+   emit(h.x,h.y,"#8a8073",18);
+   if(Math.hypot(player.x-h.x,player.y-h.y)<55&&player.inv<=0)hurtPlayer(34);
+   hazards.splice(i,1);
+  }
+ }
+}
+
+/* ================= 互动 ================= */
+function nearestInteractable(){
+ let best=null,bd=Infinity;
+ const consider=(o,r,name,verb)=>{const d=dist(player,o);if(d<r&&d<bd){bd=d;best={x:o.x,y:o.y,name,verb,obj:o}}};
+ for(const e of echoes)if(!e.taken)consider(e,68,"回声碎片","拾取");
+ for(const f of campfires)consider(f,82,f.name,"休息");
+ for(const r of resources)if(!r.taken)consider(r,58,RES_NAME[r.type],"采集");
+ for(const ch of chests)if(!ch.opened&&ch.found)consider(ch,65,ch.kind==="rare"?"精致宝箱":"宝箱","开启");
+ for(const g of gates)consider(g,76,g.name,g.open?"查看":"开启");
+ for(const c of clues)if(!c.found)consider(c,72,c.name,"调查");
+ for(const n of npcs)consider(n,95,n.name,"交谈");
+ for(const l of landmarks)if(l.type!=="stone")consider(l,100,l.name,l.type==="boss"?"挑战":"查看");
+ for(const b of buildings)if(b.name)consider(b,90,b.name,"查看");
+ return best;
+}
+function interact(){
+ if(!state.started||uiBlocking())return;
+ const t=nearestInteractable();
+ if(!t)return;
+ const o=t.obj;
+ // 回声碎片：每一块讲一点故事
+ if(echoes.includes(o)){
+  o.taken=true;state.echoes++;state.coins+=15;addItem("shard");
+  emit(o.x,o.y,"#8ee5ed",28);EA()?.shard();
+  gainXp(25);
+  const idx=state.echoes-1;
+  showLore(FRAG_LORE[idx]||FRAG_LORE[0],()=>{
+   if(state.echoes>=9){
+    state.coins+=180;state.equipment.power+=20;
+    playRewardFx("神殿回应","九枚碎片彼此共鸣 · 攻击力 +20 · +180 金币");
+   }
+   saveGame();
+  });
+  updateQuestUI();return;
+ }
+ // 营火：恢复
+ if(campfires.includes(o)){
+  state.hp=state.maxHp;player.stamina=100;
+  emit(o.x,o.y,"#f1c96e",32);EA()?.pickup();
+  notify(o.name+"：生命与体力已恢复");updateHP();saveGame();return;
+ }
+ // 资源采集
+ if(resources.includes(o)){
+  o.taken=true;
+  const map={ore:"ore",wood:"wood",herb:"herb",crystal:"crystal",stone:"stone",berry:"berry",grass:"grass",shell:"shell"};
+  const id=map[o.type]||"herb";
+  addItem(id);playRewardFx("获得"+ITEMS[id].name,"材料 +1");
+  emit(o.x,o.y,"#d6c27d",12);EA()?.pickup();saveGame();return;
+ }
+ // 宝箱
+ if(chests.includes(o)){
+  if(o.kind==="rare"){
+   const guard=enemies.find(e=>!e.dead&&ETYPE[e.type].elite&&dist(e,o)<320);
+   if(guard){notify("宝箱被强大的岩甲兽看守着");return}
+  }
+  o.opened=true;state.chestsOpened++;
+  if(o.kind==="rare"){
+   state.equipment.power+=35;state.equipment.weapon="古代剑刃";addItem("blade");state.coins+=120;
+   playRewardFx("古代剑刃","精致宝箱 · 攻击力 +35 · +120 金币");
+  }else if(o.kind==="hidden"){
+   state.coins+=80;addItem("crystal",2);
+   playRewardFx("隐藏宝箱","晶矿 ×2 · +80 金币");
+  }else{
+   state.coins+=35;addItem("potion");
+   playRewardFx("宝箱奖励","+35 金币 · 治疗药草 ×1");
+  }
+  emit(o.x,o.y,"#f0d47e",26);EA()?.pickup();saveGame();return;
+ }
+ // 石门
+ if(gates.includes(o)){
+  if(o.open){notify(o.name+"已经开启");return}
+  if(state.level>=8||(state.bag.ore||0)>=3){o.open=true;notify(o.name+"已开启");emit(o.x,o.y,"#7dd1cf",22);saveGame()}
+  else notify(o.name+"需要 Lv.8 或 3 块铁矿");
+  return;
+ }
+ // 环境叙事线索
+ if(clues.includes(o)){
+  o.found=true;state.clues++;
+  emit(o.x,o.y,"#cfe8dd",18);EA()?.pickup();
+  gainXp(30);
+  showLore(o.lore,()=>{
+   if(o.give){addItem(o.give);playRewardFx("获得"+ITEMS[o.give].name,"任务物品");}
+   if(state.quest===1&&state.clues>=2)advanceQuest(2);
+   saveGame();
+  });
+  updateQuestUI();return;
+ }
+ // NPC
+ if(npcs.includes(o)){talk(o);return}
+ // 地标
+ if(landmarks.includes(o)){
+  if(o.type==="boss"){
+   if(!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(o.x,o.y,"#d8666a",30)}
+   else notify("巢穴安静了下来。");
+   return;
+  }
+  o.seen=true;
+  emit(o.x,o.y,"#dfc56e",16);EA()?.pickup();
+  if(o.name==="旧灯塔"&&state.quest===3){
+   gainXp(50);
+   showLore("灯塔顶端的灯芯早已熄灭，但石壁上刻着一行字：“回声不在风里，在水下。”",()=>advanceQuest(4));
+   return;
+  }
+  if(o.name==="潮汐祭坛"&&state.quest===4){
+   state.coins+=80;gainXp(80);
+   playRewardFx("回声的源头","任务完成 · +80 金币");
+   advanceQuest(5);
+   return;
+  }
+  notify(o.name+"：这里似乎留下了某种回声");return;
+ }
+ // 建筑
+ if(o.name)notify(o.name+"：一座安静的建筑");
+}
+
+/* ================= HUD 更新 ================= */
 function updateHP(){
  const p=clamp(state.hp/state.maxHp,0,1);
- const fill=$("hpFill"),text=$("hpText");
+ const fill=$("hpFill");
  if(fill)fill.style.width=(p*100)+"%";
- setHudText("hpText",Math.max(0,Math.ceil(state.hp))+" / "+state.maxHp);
- const card=document.querySelector(".player-card");
- card?.classList.toggle("low-health",p<=.3);
- if(state.hp<=0){state.hp=state.maxHp;player.x=1260;player.y=850;notify("你在村庄醒来，旅途还没有结束");}
+ document.querySelector(".player-card")?.classList.toggle("low-health",p<=.3);
+ if(state.hp<=0){
+  state.hp=state.maxHp;player.x=1260;player.y=850;
+  notify("你在村庄醒来，旅途还没有结束");
+ }
 }
-function updateInteraction(){
- let near=null,bd=90;
- for(const r of resources)if(!r.taken&&dist(player,r)<bd){bd=dist(player,r);near=r}
- for(const ch of chests)if(!ch.opened&&dist(player,ch)<bd){bd=dist(player,ch);near=ch}
- for(const g of gates)if(dist(player,g)<bd){bd=dist(player,g);near=g}
-
- for(const o of interactionObjects)if(o.name){const d=dist(player,o);if(d<bd){bd=d;near=o}}
- const box=$("interact");
- if(near){box.classList.remove("hidden");$("interactName").textContent=near.name||({ore:"铁矿",wood:"木材",herb:"晨雾草"}[near.type]||"宝箱")}else box.classList.add("hidden");
- $("combat").classList.add("hidden");
+function updateSP(){
+ const sp=$("spFill");if(sp)sp.style.width=clamp(player.stamina,0,100)+"%";
+}
+function updateClockHUD(){
+ const tag=$("regionTag");if(tag)tag.textContent=zoneAt(player.x,player.y);
+}
+function updateCombatHUD(){
+ const box=$("combat");if(!box)return;
  let en=enemies.find(e=>!e.dead&&dist(player,e)<170);
- if(en){$("combat").classList.remove("hidden");$("enemyName").textContent=en.type;$("enemyLevel").textContent=en.type==="岩甲兽"?"Lv. 8":"Lv. 5";$("enemyHp").style.width=(100*en.hp/en.max)+"%"}
+ if(boss&&boss.active&&!boss.dead&&dist(player,boss)<260){
+  box.classList.remove("hidden");
+  $("enemyName").textContent="暮岩古龙";$("enemyLevel").textContent="Lv. 12";
+  $("enemyHp").style.width=(100*clamp(boss.hp/boss.max,0,1))+"%";
+  return;
+ }
+ if(en){
+  const cfg=ETYPE[en.type];
+  box.classList.remove("hidden");
+  $("enemyName").textContent=en.type;$("enemyLevel").textContent="Lv. "+cfg.lv;
+  $("enemyHp").style.width=(100*clamp(en.hp/en.max,0,1))+"%";
+ }else box.classList.add("hidden");
+}
+/* 屏幕外目标：金色方向符号 + 真实游戏距离 */
+function updateQuestGuide(){
+ const guide=$("questGuide"),label=$("guideDistance"),t=questTarget();
+ if(!guide||!label||!state.started||uiBlocking()||!t){guide?.classList.add("hidden");return}
+ const v=worldToVisual(t.x,t.y);
+ const onScreen=v.x>44&&v.x<W-44&&v.y>44&&v.y<H-44;
+ const d=dist(player,t);
+ if(onScreen||d<90){guide.classList.add("hidden");return}
+ const ex=clamp(v.x,56,W-56),ey=clamp(v.y,64,H-64);
+ guide.style.left=ex+"px";guide.style.top=ey+"px";
+ guide.style.transform="translate(-50%,-50%)";
+ label.textContent=(t.name||t.type||"目标")+" · "+Math.max(1,Math.round(d/2))+" m";
+ guide.classList.remove("hidden");
+}
+/* 隐藏宝箱：靠近才会现身 */
+function updateHiddenChests(){
+ for(const ch of chests){
+  if(ch.kind==="hidden"&&!ch.found&&dist(player,ch)<95){
+   ch.found=true;emit(ch.x,ch.y,"#f0d47e",22);
+   playRewardFx("发现隐藏宝箱","有些宝箱不会主动现身");EA()?.pickup();
+  }
+ }
+}
+/* 移动端互动按钮：只有靠近时才出现 */
+function syncInteractButton(){
+ const b=$("interactBtn");if(!b)return;
+ const t=nearestInteractable();
+ const show=!!t&&state.started&&!uiBlocking();
+ b.classList.toggle("hidden",!show);
+ if(show)b.textContent=t.verb;
+}
+function syncAudioScene(){
+ const dx=(player.x-2320)/620,dy=(player.y-1770)/480;
+ const water=clamp(1.35-Math.hypot(dx,dy),0,1);
+ let ruin=0;
+ for(const l of landmarks)if(l.type==="ruin"||l.type==="shrine")ruin=Math.max(ruin,clamp(1-dist(player,l)/380,0,1));
+ EA()?.setScene(water,ruin);
+}
+
+/* ================= 镜头 ================= */
+function inCombatView(){
+ if(boss&&boss.active&&!boss.dead)return true;
+ return enemies.some(e=>!e.dead&&dist(player,e)<300&&e.windup>=0&&dist(player,e)<ETYPE[e.type].aggro);
 }
 function updateCamera(){
- const tx=clamp(player.x, W/2, world.w-W/2),ty=clamp(player.y,H/2,world.h-H/2);
- camera.x+=(tx-camera.x)*.12;camera.y+=(ty-camera.y)*.12;
+ // 战斗拉远，Boss 战进一步拉远
+ camera.tz=(boss&&boss.active&&!boss.dead)?0.8:(inCombatView()?0.92:1);
+ camera.zoom+=(camera.tz-camera.zoom)*.05;
+ const zw=W/(2*camera.zoom),zh=H/(2*camera.zoom);
+ const tx=clamp(player.x,zw,world.w-zw),ty=clamp(player.y,zh,world.h-zh);
+ camera.x+=(tx-camera.x)*.1;camera.y+=(ty-camera.y)*.1;
 }
-function updateParticles(dt){
+
+/* ================= 主循环 ================= */
+let audioSceneTimer=0;
+function loop(t){
+ const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
+ const portraitBlock=matchMedia("(pointer:coarse)").matches&&!matchMedia("(orientation: landscape)").matches&&state.started;
+ if(!portraitBlock){
+  move();updateEnemies(dt);updateBoss(dt);updateHiddenChests();
+  player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
+  state.comboTimer=Math.max(0,state.comboTimer-dt);if(state.comboTimer<=0)state.combo=0;
+  state.time=(state.time+dt*.22)%24;
+  updateCamera();
+  updateParticles2(dt);
+  updateHP();updateSP();updateClockHUD();updateCombatHUD();updateQuestGuide();syncInteractButton();
+  audioSceneTimer-=dt;if(audioSceneTimer<=0){audioSceneTimer=.4;syncAudioScene()}
+ }
+ render();
+ requestAnimationFrame(loop);
+}
+function updateParticles2(dt){
  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=100*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
  for(let i=texts.length-1;i>=0;i--){texts[i].y-=24*dt;texts[i].life-=dt;if(texts[i].life<=0)texts.splice(i,1)}
 }
-
-function drawAtmosphere(){
- const hour=state.time%24;
- let night=hour<5.5||hour>19;
- if(night){
-   ctx.fillStyle="rgba(15,27,58,.48)";ctx.fillRect(0,0,W,H);
-   for(const f of fireflies){const s=worldToScreen(f.x,f.y);if(s.x<0||s.x>W||s.y<0||s.y>H)continue;const a=.35+.3*Math.sin(performance.now()/700+f.p);ctx.globalAlpha=a;ctx.fillStyle="#f1df8b";ctx.shadowColor="#f1df8b";ctx.shadowBlur=10;ctx.beginPath();ctx.arc(s.x,s.y,1.7*f.s,0,Math.PI*2);ctx.fill()}ctx.shadowBlur=0;ctx.globalAlpha=1;
- }else if(hour<8||hour>17){
-   ctx.fillStyle="rgba(235,180,105,.14)";ctx.fillRect(0,0,W,H);
- }
-}
-function saveGame(){
- localStorage.setItem("etheria-save",JSON.stringify({
-  state:{hp:state.hp,maxHp:state.maxHp,stamina:state.stamina,time:state.time,coins:state.coins,wood:state.wood,ore:state.ore,herbs:state.herbs,quest:state.quest,kills:state.kills,bag:state.bag,equipment:state.equipment,chestsOpened:state.chestsOpened,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,echoes:state.echoes,echoTaken:echoes.map(x=>x.taken)},
-  player:{x:player.x,y:player.y}
- }));
-}
-function loadGame(){
- try{
-  const s=JSON.parse(localStorage.getItem("etheria-save")||"null");if(!s)return;
-  Object.assign(state,s.state||{});Object.assign(player,s.player||{});
-  if(Array.isArray(s.state?.echoTaken))s.state.echoTaken.forEach((v,i)=>{if(echoes[i])echoes[i].taken=!!v});
-  let n=0;for(const ch of chests)if(ch.opened)n++;
-  chests.slice(0,n).forEach(x=>x.opened=true);
-  updateHP();updateQuestUI();notify("已恢复上次旅程");
- }catch(e){}
-}
-
-function syncProgressHUD(){
-  setHudText("coins",state.coins);
-  setHudText("xpText",state.xp+" / "+state.nextXp);
-  setHudText("levelText","Lv. "+state.level);
-}
-
-function updateClock(dt){
- state.time=(state.time+dt*.22)%24;
- const hh=Math.floor(state.time),mm=Math.floor((state.time-hh)*60);
- $("clock").textContent=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
- $("regionName").textContent=zoneAt(player.x,player.y);
- $("weatherDot").style.background=state.time>19||state.time<6?"#8299d6":"#dfc77e";
-}
-
 function render(){
  ctx.clearRect(0,0,W,H);
+ ctx.save();
+ ctx.translate(W/2,H/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-W/2,-H/2);
  drawBackground();
- // depth sort
  const list=[
-  ...trees.map(x=>({y:x.y,fn:()=>drawTree(x)})),
-  ...rocks.map(x=>({y:x.y,fn:()=>drawRock(x)})),
+  ...grassTufts.filter(g=>g.l===0).map(x=>({y:x.y,fn:()=>drawGrass(x)})),
   ...flowers.map(x=>({y:x.y,fn:()=>drawFlower(x)})),
   ...resources.filter(x=>!x.taken).map(x=>({y:x.y,fn:()=>drawResource(x)})),
   ...campfires.map(x=>({y:x.y,fn:()=>drawCampfire(x)})),
@@ -899,47 +1374,53 @@ function render(){
   ...chests.map(x=>({y:x.y,fn:()=>drawChest(x)})),
   ...gates.map(x=>({y:x.y,fn:()=>drawGate(x)})),
   ...buildings.map(x=>({y:x.y,fn:()=>drawBuilding(x)})),
-  ...(boss&&!boss.dead?[{y:boss.y,fn:drawBoss}]:[]),
+  ...grassTufts.filter(g=>g.l>0).map(x=>({y:x.y,fn:()=>drawGrass(x)})),
+  ...clues.map(x=>({y:x.y,fn:()=>drawClue(x)})),
   ...landmarks.map(x=>({y:x.y,fn:()=>drawLandmark(x)})),
+  ...trees.map(x=>({y:x.y,fn:()=>drawTree(x)})),
+  ...rocks.map(x=>({y:x.y,fn:()=>drawRock(x)})),
+  ...(boss&&!boss.dead?[{y:boss.y,fn:drawBoss}]:[]),
   ...npcs.map(x=>({y:x.y,fn:()=>drawNPC(x)})),
   ...enemies.filter(e=>!e.dead).map(x=>({y:x.y,fn:()=>drawEnemy(x)})),
   {y:player.y,fn:drawPlayer}
  ];
  list.sort((a,b)=>a.y-b.y);for(const o of list)o.fn();
- drawParticles();drawCombatFeedback();drawAtmosphere();
- drawQuestWorldMarker();updateQuestGuide();drawMiniMap();
-
-}
-
-function loop(t){
- const dt=Math.min(.033,(t-(loop.last||t))/1000);loop.last=t;
- move();updateEnemies(dt);updateBoss(dt);updateParticles(dt);updateCamera();
- player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);state.comboTimer=Math.max(0,state.comboTimer-dt);if(state.comboTimer<=0)state.combo=0;
- updateClock(dt);syncProgressHUD();updateInteraction();syncInteractButton();render();
- requestAnimationFrame(loop);
+ drawParticles();drawCombatFeedback();
+ ctx.restore();
+ drawAtmosphere();
+ drawQuestWorldMarker();drawWorldLabel();drawRadar();
 }
 requestAnimationFrame(loop);
 
+/* ================= 输入 ================= */
 addEventListener("keydown",e=>{
  const k=e.key.toLowerCase();keys[k]=true;
  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k))e.preventDefault();
- if(k==="e")interact();if(k==="q")skill();if(k==="k")saveGame();if(k===" "){attack()}
+ if(k==="e")interact();
+ if(k==="q")skill();
+ if(k===" ")attack();
+ if(k==="m"&&state.started&&!uiBlocking())openFullPanel("mapPanel");
+ else if(k==="m")closeAllPanels();
+ if(k==="k"){saveGame();notify("进度已保存")}
  if(k==="escape"){
-  $("menu")?.classList.add("hidden");$("dialogue")?.classList.add("hidden");
-  ["characterPanel","inventoryPanel","questPanel"].forEach(x=>$(x)?.classList.add("hidden"));
-  state.dialogue=false;state.menuOpen=false;document.body.classList.remove("dialogue-open","menu-open");
-}
+  if(state.lore){$("loreOk")?.click()}
+  else if(state.dialogue){dialogueQueue=[];endDialogue()}
+  else if(PANELS.some(x=>!$(x)?.classList.contains("hidden")))closeAllPanels();
+  else if(state.menuOpen)closeMenu();
+  else if(state.started)openMenu();
+ }
 });
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-
 canvas.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
 canvas.addEventListener("mousedown",e=>{mouse.down=true;if(state.started&&e.button===0)attack()});
 addEventListener("mouseup",()=>mouse.down=false);
 canvas.addEventListener("click",e=>{
- if(!state.started||state.dialogue)return;
- const p=screenToWorld(e.clientX,e.clientY);player.dir=Math.atan2(p.y-player.y,p.x-player.x);
+ if(!state.started||uiBlocking())return;
+ const p=screenToWorld(e.clientX,e.clientY);
+ player.dir=Math.atan2(p.y-player.y,p.x-player.x);
 });
 
+/* 摇杆 */
 let joyTouch=null,joyOrigin=null;
 const joy=$("joy"),JOY_R=48,JOY_DEAD=.12;
 function setJoy(dx,dy){
@@ -969,117 +1450,151 @@ joy?.addEventListener("pointerup",endJoy);
 joy?.addEventListener("pointercancel",endJoy);
 joy?.addEventListener("lostpointercapture",endJoy);
 
-updateQuestUI();updateHP();
-async function enterImmersiveMobile(){
- const touch=matchMedia("(pointer:coarse)").matches;
- if(!touch)return true;
-
- // The Enter World button is a user gesture, so request both permissions
- // before changing the game state. Fullscreen must come first because
- // Android browsers generally only allow orientation locking in fullscreen.
- try{
-  if(!document.fullscreenElement){
-   await document.documentElement.requestFullscreen?.({navigationUI:"hide"});
-  }
- }catch(e){
-  console.warn("Fullscreen request was denied:",e);
- }
-
- try{
-  await screen.orientation?.lock?.("landscape");
- }catch(e){
-  console.warn("Landscape lock was denied:",e);
- }
-
- // Give the browser a moment to apply the orientation change.
- await new Promise(resolve=>setTimeout(resolve,180));
- return !touch || matchMedia("(orientation: landscape)").matches;
-}
-async function startGame(){
- if(state.started)return;
-
- const touch=matchMedia("(pointer:coarse)").matches;
- const landscape=matchMedia("(orientation: landscape)").matches;
-
- // On touch devices, entering the world is only allowed after the
- // fullscreen + landscape transition has completed.
- if(touch&&!landscape){
-  const ready=await enterImmersiveMobile();
-  if(!ready){
-   syncMobileUI();
-   return;
-  }
- }
-
- ensureFxLayer();
- state.started=true;
- $("start")?.classList.add("hidden");
- $("hud")?.classList.remove("hidden");
- document.body.classList.add("game-running");
- enterImmersiveMobile();
- $("mobileControls")?.classList.remove("hidden");
- loadGame();
- notify("欢迎来到晨雾谷");
- focusQuest();
- syncMobileUI();
-}
+/* 移动端按钮 */
 $("attackBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();attack()},{passive:false});
 $("dashBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();dash()},{passive:false});
 $("skillBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();skill()},{passive:false});
 $("interactBtn")?.addEventListener("pointerdown",e=>{e.preventDefault();interact()},{passive:false});
-function nearestInteractable(){
- let best=null,bd=Infinity;
- const check=(arr,r,fn)=>{for(const x of arr){if(fn&& !fn(x))continue;const d=dist(player,x);if(d<r&&d<bd){bd=d;best=x}}};
- check(echoes,72,x=>!x.taken);
- check(campfires,82);
- check(resources,72,x=>!x.taken);
- check(chests,78,x=>!x.opened);
- check(gates,88,x=>!x.open);
- check(npcs,110);
- check(landmarks,115,x=>x.type!=="stone");
- check(buildings,105,x=>!!x.name);
- return best;
-}
-function syncInteractButton(){
- const b=$("interactBtn");if(!b)return;
- const target=nearestInteractable();
- b.classList.toggle("ready",!!target);
- b.textContent="互动";
-}
+document.addEventListener("pointerdown",e=>{
+ const b=e.target.closest("button");
+ if(!b)return;
+ triggerButtonFx(b,false);
+ if(b.closest(".mobile-actions"))triggerButtonFx(b,true);
+},{passive:true});
+document.addEventListener("pointerup",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
+document.addEventListener("pointercancel",e=>e.target.closest("button")?.classList.remove("is-held"),{passive:true});
 
-addEventListener("fullscreenchange",syncMobileUI);
-addEventListener("resize",()=>{if(state.started&&(innerWidth<=900||matchMedia("(pointer:coarse)").matches))enterImmersiveMobile()});
+/* ================= 面板 / 菜单绑定 ================= */
+function setupUI(){
+ $("startBtn")?.addEventListener("click",startGame);
+ $("characterBtn")?.addEventListener("click",()=>openFullPanel("characterPanel"));
+ $("inventoryBtn")?.addEventListener("click",()=>openFullPanel("inventoryPanel"));
+ $("questBtn")?.addEventListener("click",()=>openFullPanel("questPanel"));
+ $("miniMap")?.addEventListener("click",()=>openFullPanel("mapPanel"));
+ document.querySelectorAll("[data-close-panel]").forEach(b=>b.addEventListener("click",()=>closeFullPanel(b.dataset.closePanel)));
+ $("menuBtn")?.addEventListener("click",openMenu);
+ $("dialogueNext")?.addEventListener("click",nextDialogue);
+ document.querySelectorAll("#invCats button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#invCats button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");invCat=b.dataset.cat;renderInventory();
+ }));
+ document.querySelectorAll(".menu-list button").forEach(b=>b.addEventListener("click",()=>{
+  const act=b.dataset.act;
+  if(act==="resume")closeMenu();
+  if(act==="save"){saveGame();notify("进度已保存")}
+  if(act==="help")$("menuHelp")?.classList.toggle("hidden");
+  if(act==="title"){saveGame();location.reload()}
+ }));
+ $("menu")?.addEventListener("click",e=>{if(e.target===$("menu"))closeMenu()});
+ $("lowToggle")?.addEventListener("change",e=>state.settings.low=e.target.checked);
+ $("vibToggle")?.addEventListener("change",e=>state.settings.vib=e.target.checked);
+ $("sfxToggle")?.addEventListener("change",e=>{state.settings.sfx=e.target.checked;EA()?.setEnabled(e.target.checked)});
+ // 地图传送：点击已点亮的营火
+ $("mapCanvas")?.addEventListener("click",e=>{
+  const c=$("mapCanvas"),r=c.getBoundingClientRect();
+  const wx=(e.clientX-r.left)/r.width*c.width/(c.width/world.w);
+  const wy=(e.clientY-r.top)/r.height*c.height/(c.height/world.h);
+  for(const f of campfires){
+   if(f.seen&&Math.hypot(wx-f.x,wy-f.y)<60){
+    player.x=f.x;player.y=f.y+56;markExplored();
+    closeAllPanels();notify("传送至 "+f.name);saveGame();return;
+   }
+  }
+ });
+}
+setupUI();
 
+/* ================= 存档（v2） ================= */
+function saveGame(){
+ try{
+  localStorage.setItem("etheria-save-v2",JSON.stringify({
+   v:2,
+   state:{hp:state.hp,maxHp:state.maxHp,time:state.time,coins:state.coins,quest:state.quest,kills:state.kills,clues:state.clues,echoes:state.echoes,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,chestsOpened:state.chestsOpened,bag:state.bag,equipment:state.equipment,settings:state.settings},
+   player:{x:player.x,y:player.y,stamina:player.stamina},
+   echoTaken:echoes.map(x=>x.taken),
+   chestOpened:chests.map(x=>x.opened),
+   chestFound:chests.map(x=>x.found),
+   clueFound:clues.map(x=>x.found),
+   landmarkSeen:landmarks.map(x=>!!x.seen),
+   campfireSeen:campfires.map(x=>!!x.seen),
+   gateOpen:gates.map(x=>x.open),
+   enemyDead:enemies.map(x=>x.dead),
+   bossHp:boss?boss.hp:0,
+   bossDead:boss?boss.dead:true,
+   explored:[...exploredSet]
+  }));
+ }catch(e){}
+}
+function loadGame(){
+ try{
+  const s=JSON.parse(localStorage.getItem("etheria-save-v2")||"null");if(!s)return;
+  Object.assign(state,s.state||{});
+  state.dialogue=false;state.menuOpen=false;state.panel=false;state.lore=false;state.started=true;
+  if(s.player)Object.assign(player,s.player);
+  s.echoTaken?.forEach((v,i)=>{if(echoes[i])echoes[i].taken=!!v});
+  s.chestOpened?.forEach((v,i)=>{if(chests[i])chests[i].opened=!!v});
+  s.chestFound?.forEach((v,i)=>{if(chests[i])chests[i].found=!!v});
+  s.clueFound?.forEach((v,i)=>{if(clues[i])clues[i].found=!!v});
+  s.landmarkSeen?.forEach((v,i)=>{if(landmarks[i])landmarks[i].seen=!!v});
+  s.campfireSeen?.forEach((v,i)=>{if(campfires[i])campfires[i].seen=!!v});
+  s.gateOpen?.forEach((v,i)=>{if(gates[i])gates[i].open=!!v});
+  s.enemyDead?.forEach((v,i)=>{if(enemies[i])enemies[i].dead=!!v});
+  if(boss){boss.dead=!!s.bossDead;if(!boss.dead&&typeof s.bossHp==="number")boss.hp=s.bossHp}
+  if(Array.isArray(s.explored))s.explored.forEach(i=>exploredSet.add(i));
+  EA()?.setEnabled(state.settings.sfx);
+  updateHP();updateQuestUI();
+  notify("已恢复上次旅程");
+ }catch(e){}
+}
+setInterval(()=>{if(state.started&&!uiBlocking())saveGame()},20000);
+
+/* ================= 移动端进入流程 ================= */
+async function enterImmersiveMobile(){
+ const touch=matchMedia("(pointer:coarse)").matches;
+ if(!touch)return true;
+ try{
+  if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.({navigationUI:"hide"});
+ }catch(e){}
+ try{await screen.orientation?.lock?.("landscape")}catch(e){}
+ await new Promise(r=>setTimeout(r,180));
+ return !touch||matchMedia("(orientation: landscape)").matches;
+}
+async function startGame(){
+ if(state.started)return;
+ const touch=matchMedia("(pointer:coarse)").matches;
+ const landscape=matchMedia("(orientation: landscape)").matches;
+ if(touch&&!landscape){
+  const ready=await enterImmersiveMobile();
+  if(!ready){pendingStart=true;$("rotateHint")?.classList.add("show");return}
+ }
+ beginWorld();
+}
+function beginWorld(){
+ pendingStart=false;
+ $("rotateHint")?.classList.remove("show");
+ ensureFxLayer();
+ state.started=true;
+ $("start")?.classList.add("hidden");
+ document.body.classList.add("game-running");
+ EA()?.init();EA()?.setEnabled(state.settings.sfx);
+ loadGame();
+ notify("欢迎来到晨雾谷");
+ updateQuestUI();updateHP();
+ setTimeout(()=>$("hint")?.classList.add("fade"),7000);
+ syncMobileUI();
+}
 function syncMobileUI(){
  const touch=matchMedia("(pointer:coarse)").matches;
  const landscape=matchMedia("(orientation: landscape)").matches;
- const controls=$("mobileControls");
- const hud=$("hud");
- const start=$("start");
- const rotate=$("rotateHint");
-
- /* Mobile has two mutually exclusive states:
-    portrait = entry screen only
-    landscape = actual game only after pressing Enter World */
- if(touch&& !landscape && state.started){
-  saveGame();
-  state.started=false;
-  state.dialogue=false;
-  state.menuOpen=false;
-  document.body.classList.remove("game-running","landscape-game");
- }
-
  const playable=state.started&&(!touch||landscape);
- const entry=!state.started;
-
- if(start)start.classList.toggle("hidden",!entry);
- if(hud)hud.classList.toggle("hidden",!playable);
- if(controls)controls.classList.toggle("hidden",!playable);
- if(rotate)rotate.classList.remove("show");
-
- document.body.classList.toggle("game-running",playable);
- document.body.classList.toggle("landscape-game",playable&&touch&&landscape);
+ if(pendingStart&&touch&&landscape){beginWorld();return}
+ if(touch&&state.started&&!landscape)$("rotateHint")?.classList.add("show");
+ else if(!pendingStart)$("rotateHint")?.classList.remove("show");
+ $("hud")?.classList.toggle("hidden",!playable);
+ $("mobileControls")?.classList.toggle("hidden",!(playable&&touch));
 }
 addEventListener("resize",syncMobileUI);
 addEventListener("orientationchange",()=>setTimeout(syncMobileUI,120));
-syncMobileUI();
+addEventListener("fullscreenchange",syncMobileUI);
+
+updateQuestUI();updateHP();syncMobileUI();

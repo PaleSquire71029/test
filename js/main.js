@@ -7,6 +7,7 @@ const state={
  quest:0,kills:0,clues:0,echoes:0,
  dialogue:false,menuOpen:false,panel:false,lore:false,
  combo:0,comboTimer:0,level:7,xp:0,nextXp:240,defeatedBoss:false,
+ fishing:false,craft:false,buff:null,achievements:{},
  settings:{low:false,vib:true,sfx:true},
  bag:{sword:1,map:1,herb:3},
  equipment:{weapon:"旅者短剑",power:95}
@@ -25,6 +26,9 @@ const ITEMS={
  blade:{name:"古代剑刃",cat:"equip",rare:1},
  potion:{name:"治疗药草",cat:"use",heal:200},
  berry:{name:"野果",cat:"use",heal:60},
+ fish:{name:"鱼",cat:"use",heal:80,desc:"湖里的鲜鱼，烤一烤更香。恢复 80 点生命。"},
+ grilledFish:{name:"烤鱼",cat:"use",heal:150,desc:"外焦里嫩的烤鱼，恢复 150 点生命。需要 鱼 + 木材 在营火合成。"},
+ strengthPotion:{name:"力量药剂",cat:"use",buff:{atk:10,dur:60},desc:"攻击 +10，持续 60 秒。需要 晶矿 + 晨雾草 在营火合成。"},
  wood:{name:"木材",cat:"mat"},
  ore:{name:"铁矿",cat:"mat"},
  crystal:{name:"晶矿",cat:"mat",rare:1},
@@ -54,7 +58,11 @@ const ICONS={
  badge:'<svg viewBox="0 0 24 24"><circle cx="12" cy="11" r="7"/><path d="M12 7v4l3 2M9 21l3-3 3 3"/></svg>',
  core:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
  map:'<svg viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2zM9 4v14M15 6v14"/></svg>',
- scale:'<svg viewBox="0 0 24 24"><path d="M12 3c4 4 6 8 6 11a6 6 0 0 1-12 0c0-3 2-7 6-11z"/></svg>'
+ scale:'<svg viewBox="0 0 24 24"><path d="M12 3c4 4 6 8 6 11a6 6 0 0 1-12 0c0-3 2-7 6-11z"/></svg>',
+ /* 新物品图标：鱼 / 烤鱼 / 力量药剂 */
+ fish:'<svg viewBox="0 0 24 24"><path d="M3 12c3-4.5 7-6.5 10-6.5 3.5 0 6 2.5 8 6.5-2 4-4.5 6.5-8 6.5-3 0-7-2-10-6.5z"/><circle cx="16.5" cy="11" r="1"/><path d="M3 12l-2-3M3 12l-2 3"/></svg>',
+ grilledFish:'<svg viewBox="0 0 24 24"><path d="M4 12c3-4 6.5-5.5 9.5-5.5 3 0 5 2 6.5 5.5-1.5 3.5-3.5 5.5-6.5 5.5-3 0-6.5-1.5-9.5-5.5z"/><path d="M4 12l-2-2.5M4 12l-2 2.5"/><path d="M9 9.5c1 1.5 1 3.5 0 5M13 9.5c1 1.5 1 3.5 0 5M17 9.5c1 1.5 1 3.5 0 5"/></svg>',
+ strengthPotion:'<svg viewBox="0 0 24 24"><path d="M10 3h4M11 3v4l-4 9a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4l-4-9V3"/><path d="M8 14h8M12 16.5l1.2 1.6M12 16.5l-1.2 1.6"/></svg>'
 };
 function addItem(id,n=1){
  state.bag[id]=(state.bag[id]||0)+n;
@@ -67,6 +75,8 @@ function useItem(id){
  const it=ITEMS[id];if(!it||it.cat!=="use")return;
  if(it.heal&&state.hp>=state.maxHp){notify("生命值已满");return}
  if(it.heal){state.hp=Math.min(state.maxHp,state.hp+it.heal);updateHP();EA()?.pickup();notify("使用 "+it.name+" · 恢复 "+it.heal+" 生命");}
+ /* 增益类物品（力量药剂）：限时提升攻击力 */
+ if(it.buff){state.buff={atk:it.buff.atk,until:performance.now()+it.buff.dur*1000};EA()?.pickup();notify("使用 "+it.name+" · 攻击 +"+it.buff.atk+"，持续 "+it.buff.dur+" 秒");}
  removeItem(id);renderInventory();saveGame();
 }
 
@@ -170,6 +180,7 @@ function markExplored(){
  }
  for(const l of landmarks)if(l.type!=="stone"&&dist(player,l)<330)l.seen=true;
  for(const f of campfires)if(dist(player,f)<320)f.seen=true;
+ checkAchievements();
 }
 
 /* ---------- 生成世界 ---------- */
@@ -233,7 +244,9 @@ function generateWorld(){
  addLandmark(430,420,"ruin","旧灯塔");
  addLandmark(720,1590,"ruin","藤蔓遗迹");
  addLandmark(1550,430,"shrine","回声神殿");
- addLandmark(2150,1500,"shrine","潮汐祭坛");
+ addLandmark(2050,1420,"shrine","潮汐祭坛");
+ // 钓鱼点：湖边浅水，靠近可垂钓
+ addLandmark(2200,1350,"fishing","湖畔钓点");
  // NPC
  addNPC(1260,820,"艾琳","村庄向导","#e7b85b");
  addNPC(1390,900,"诺安","铁匠","#b87b62");
@@ -248,12 +261,12 @@ function generateWorld(){
  // 资源按生态分布：森林木材草药野果 / 山地铁矿晶矿石材 / 湖边水草贝壳
  for(let i=0;i<16;i++)addResource(rnd(120,900),rnd(140,2000),["wood","herb","berry"][i%3]);
  for(let i=0;i<14;i++)addResource(rnd(2060,2920),rnd(120,960),["ore","crystal","stone"][i%3]);
- for(let i=0;i<12;i++){const a=rnd(0,Math.PI*2),r=rnd(.62,.92);addResource(2320+Math.cos(a)*620*r,1770+Math.sin(a)*480*r,i%2?"grass":"shell")}
+ for(let i=0;i<12;i++){const a=rnd(0,Math.PI*2),r=rnd(1.05,1.25);addResource(2320+Math.cos(a)*620*r,1770+Math.sin(a)*480*r,i%2?"grass":"shell")}
  for(let i=0;i<14;i++)addResource(rnd(1000,1750),rnd(300,1900),["herb","wood","ore"][i%3]);
  // 宝箱：普通 / 精致（精英看守） / 隐藏（不显示）
  addChest(560,360);addChest(880,1380);addChest(1020,620);addChest(1580,1840);addChest(1660,1180);addChest(2100,1580);
  addChest(2580,470,"rare");
- addChest(690,1665,"hidden");addChest(2810,1500,"hidden");
+ addChest(690,1665,"hidden");addChest(2760,1450,"hidden");
  // 石门
  addGate(930,1120,"森林石门");
  addGate(1760,1250,"湖畔古门");
@@ -330,6 +343,7 @@ function advanceQuest(n,msg){
  const qt=$("questTrack");
  if(qt){qt.classList.remove("flash");void qt.offsetWidth;qt.classList.add("flash")}
  notify(msg||("任务更新："+questTitle()));
+ checkAchievements(); /* 任务奖励金币可能触发财富成就 */
  updateQuestUI();saveGame();
 }
 function updateQuestUI(){
@@ -345,11 +359,32 @@ let dialogueQueue=[];
 function talk(npc){
  state.dialogue=true;
  if(npc.name==="艾琳"){
+  /* 艾琳：按任务阶段推进的对话树 */
   if(state.quest===0){
    dialogueQueue=[
     ["艾琳","村庄向导","你终于来了。晨雾谷最近总能听见森林深处传来奇怪的回声。"],
     ["艾琳","村庄向导","先别急着追问。顺着西边的小径往森林里走，留意树干和地面——异常最先出现在那里。"],
     ["艾琳","村庄向导","如果遇到野兽，看清它们的动作再出手。它们扑上来之前，总会先压低身子。"]
+   ];
+  }else if(state.quest===1){
+   dialogueQueue=[
+    ["艾琳","村庄向导","西边森林查得怎么样了？抓痕、营地，任何细节都别放过。"],
+    ["艾琳","村庄向导","那些痕迹出现的地方，草叶都会在夜里微微发光。跟着光走。"]
+   ];
+  }else if(state.quest===2){
+   dialogueQueue=[
+    ["艾琳","村庄向导","狼群只是被那个声音吓坏了。让它们安静下来，村里人才敢进林砍柴。"],
+    ["艾琳","村庄向导","小心它们的扑击——看清红色的预兆再闪避，别逞强。"]
+   ];
+  }else if(state.quest===3){
+   dialogueQueue=[
+    ["艾琳","村庄向导","旧灯塔在森林最深处。塔灯熄了很多年，可最近有人说看见塔顶在夜里发光。"],
+    ["艾琳","村庄向导","到塔顶去看看。如果回声真有源头，那里一定留着什么。"]
+   ];
+  }else if(state.quest===4){
+   dialogueQueue=[
+    ["艾琳","村庄向导","回声不在风里，在水下……那就去潮汐祭坛。沿湖往东，别绕进高地。"],
+    ["艾琳","村庄向导","湖边新支了个钓点，路过时可以甩两竿，烤条鱼再上路。"]
    ];
   }else if(state.quest===5){
    dialogueQueue=[
@@ -358,17 +393,65 @@ function talk(npc){
     ["艾琳","村庄向导","拿着这个。晨雾谷欠你一次。以后无论走到哪里，这里都是你的村庄。"]
    ];
   }else{
-   dialogueQueue=[
-    ["艾琳","村庄向导","森林里的路最近安静了不少。可那个声音……还在。"],
-    ["艾琳","村庄向导","顺着水边继续走吧。也许答案就在潮汐祭坛。"]
+   /* 第一章完成后的日常对话（轮换） */
+   const daily=[
+    ["艾琳","村庄向导","村里一切都好。要是累了，去营火边烤条鱼，比什么都强。"],
+    ["艾琳","村庄向导","湖畔钓点最近收获不错，去试试手气？钓上来的鱼还能烤着吃。"],
+    ["艾琳","村庄向导","回声碎片还在大陆的各处沉睡。收集得越多，这个世界的故事就越完整。"]
    ];
+   dialogueQueue=[daily[Math.floor(Math.random()*daily.length)]];
   }
  }else if(npc.name==="诺安"){
-  dialogueQueue=[["诺安","铁匠","你的剑刃磨损得厉害。野外可不是只有风景。"],["诺安","铁匠","高地上能挖到铁矿和晶矿。攒够了材料，我替你打一把真正的剑。"]];
+  /* 诺安：根据玩家背包里的矿石变化 */
+  const hasOre=(state.bag.ore||0)>0,hasCrystal=(state.bag.crystal||0)>0;
+  if(hasOre&&hasCrystal){
+   dialogueQueue=[
+    ["诺安","铁匠","铁矿和晶矿都带来了？好料子！这成色，打一把好剑绰绰有余。"],
+    ["诺安","铁匠","对了——用一块晶矿配两株晨雾草，在营火上能调一剂力量药剂。要拼命的时候，喝它。"]
+   ];
+  }else if(hasOre){
+   dialogueQueue=[
+    ["诺安","铁匠","铁矿不错，是好底子。可要打出真正的好剑，还差晶矿——高地上发蓝光的那些就是。"],
+    ["诺安","铁匠","风痕高地往北走。小心岩甲兽，它们挥下来之前，地面会先红。"]
+   ];
+  }else if(hasCrystal){
+   dialogueQueue=[
+    ["诺安","铁匠","哟，晶矿！成色真好。再挖几块铁矿来，我就能替你开工。"],
+    ["诺安","铁匠","铁矿也在高地上，灰蓝色的石头，一眼就能认出来。"]
+   ];
+  }else{
+   dialogueQueue=[
+    ["诺安","铁匠","你的剑刃磨损得厉害。野外可不是只有风景。"],
+    ["诺安","铁匠","高地上能挖到铁矿和晶矿。攒够了材料，我替你打一把真正的剑。"]
+   ];
+  }
  }else if(npc.name==="米娅"){
-  dialogueQueue=[["米娅","杂货商","晨雾草在湖畔也能找到。它们的花瓣在夜里会发光。"],["米娅","杂货商","湖边的贝壳别嫌多，总有人愿意收。"]];
+  /* 米娅：根据背包里是否有晨雾草变化 */
+  if((state.bag.herb||0)>0){
+   dialogueQueue=[
+    ["米娅","杂货商","嗯？你身上有晨雾草的味道。夜里发光的花瓣，磨成粉能安神，也能入药。"],
+    ["米娅","杂货商","留两株在身上——听说配着晶矿在营火上熬，能调出让人力大无穷的药剂。"]
+   ];
+  }else{
+   dialogueQueue=[
+    ["米娅","杂货商","晨雾草在湖畔也能找到。它们的花瓣在夜里会发光。"],
+    ["米娅","杂货商","湖边的贝壳别嫌多，总有人愿意收。要是钓上鱼来，我这里也收。"]
+   ];
+  }
  }else{
-  dialogueQueue=[["莱恩","巡林者","别往北面的高地走太深。那里的岩甲兽比看起来更难对付。"],["莱恩","巡林者","听到岩石滚动的声音就闪开。它们挥下来之前，地面会先红。"]];
+  /* 莱恩：根据玩家等级变化 */
+  if(state.level<8){
+   dialogueQueue=[
+    ["莱恩","巡林者","别往北面的高地走太深。那里的岩甲兽比看起来更难对付。"],
+    ["莱恩","巡林者","以你现在的身手，还不足以应付高地的家伙。先在森林和湖畔多历练历练吧。"],
+    ["莱恩","巡林者","听到岩石滚动的声音就闪开。它们挥下来之前，地面会先红。"]
+   ];
+  }else{
+   dialogueQueue=[
+    ["莱恩","巡林者","看你的眼神就知道，你已经是个老手了。高地以北的路，你可以走。"],
+    ["莱恩","巡林者","要是遇到古龙，记住：它积蓄冲击波的时候，跑得越远越好。"]
+   ];
+  }
  }
  renderDialogue();
 }
@@ -410,6 +493,140 @@ function nextDialogue(){
  renderDialogue();
 }
 
+/* ================= 探索成就系统 ================= */
+const ACHIEVEMENTS=[
+ {id:"firstKill",name:"首次击杀",desc:"击败第一只荒原狼"},
+ {id:"collect3",name:"收集者 · 初识",desc:"收集 3 个回声碎片"},
+ {id:"collect6",name:"收集者 · 渐入",desc:"收集 6 个回声碎片"},
+ {id:"collect9",name:"收集者 · 圆满",desc:"收集 9 个回声碎片"},
+ {id:"explore25",name:"探险家 · 一隅",desc:"探索 25% 的地图"},
+ {id:"explore50",name:"探险家 · 半壁",desc:"探索 50% 的地图"},
+ {id:"explore75",name:"探险家 · 远方",desc:"探索 75% 的地图"},
+ {id:"gold500",name:"财富 · 小有积蓄",desc:"拥有 500 金币"},
+ {id:"gold1000",name:"财富 · 富甲一方",desc:"拥有 1000 金币"}
+];
+/* 解锁成就：金色卡片从右上角滑入 */
+function unlockAch(id){
+ if(state.achievements[id])return;
+ const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;
+ state.achievements[id]=true;
+ showAchCard(a);EA()?.levelUp?.();saveGame();
+}
+/* 条件检查：在击杀 / 拾取 / 探索 / 金币变动等时机调用 */
+function checkAchievements(){
+ if(state.kills>=1)unlockAch("firstKill");
+ if(state.echoes>=3)unlockAch("collect3");
+ if(state.echoes>=6)unlockAch("collect6");
+ if(state.echoes>=9)unlockAch("collect9");
+ const exp=exploredSet.size/(FOG_ROWS*FOG_COLS)*100;
+ if(exp>=25)unlockAch("explore25");
+ if(exp>=50)unlockAch("explore50");
+ if(exp>=75)unlockAch("explore75");
+ if(state.coins>=500)unlockAch("gold500");
+ if(state.coins>=1000)unlockAch("gold1000");
+}
+function showAchCard(a){
+ let layer=$("achLayer");
+ if(!layer){layer=document.createElement("div");layer.id="achLayer";document.body.appendChild(layer)}
+ const card=document.createElement("div");
+ card.className="ach-card";
+ card.innerHTML='<i>◆</i><div class="ach-card-text"><small>成就解锁</small><b>'+a.name+'</b><span>'+a.desc+'</span></div>';
+ layer.appendChild(card);
+ requestAnimationFrame(()=>card.classList.add("in"));
+ setTimeout(()=>card.classList.add("out"),2600);
+ setTimeout(()=>card.remove(),3150);
+}
+/* 任务面板底部的成就列表 */
+function renderAchievements(){
+ const main=document.querySelector("#questPanel .quest-main");if(!main)return;
+ let sec=$("achSection");
+ if(!sec){
+  sec=document.createElement("section");
+  sec.id="achSection";sec.className="quest-log ach-section";
+  sec.innerHTML='<small>成就</small><div id="achList" class="ach-list"></div>';
+  main.appendChild(sec);
+ }
+ $("achList").innerHTML=ACHIEVEMENTS.map(a=>{
+  const un=!!state.achievements[a.id];
+  return '<div class="ach-row'+(un?" done":"")+'"><i>'+(un?"✓":"○")+'</i><b>'+a.name+'</b><span>'+a.desc+'</span></div>';
+ }).join("");
+}
+
+/* ================= 钓鱼系统 ================= */
+let fishingTimer=0;
+function showFishingUI(text){
+ hideFishingUI();
+ const ui=document.createElement("div");
+ ui.id="fishingUI";
+ ui.innerHTML='<div class="fishing-panel"><div class="fishing-bobber"></div><span>'+text+'</span></div>';
+ document.body.appendChild(ui);
+}
+function hideFishingUI(){$("fishingUI")?.remove()}
+function cancelFishing(){
+ if(!state.fishing)return;
+ clearTimeout(fishingTimer);state.fishing=false;hideFishingUI();notify("收起了鱼竿");
+}
+function startFishing(){
+ if(state.fishing)return;
+ state.fishing=true;
+ showFishingUI("等待鱼儿上钩…");
+ EA()?.pickup?.();
+ /* 等待 2-4 秒后判定，70% 成功率 */
+ fishingTimer=setTimeout(()=>{
+  state.fishing=false;hideFishingUI();
+  if(Math.random()<.7){
+   /* 收获：水草 ×2 / 贝壳 ×1 / 鱼 ×1 */
+   const roll=Math.random();let gain;
+   if(roll<.4){addItem("grass",2);gain="水草 ×2"}
+   else if(roll<.7){addItem("shell",1);gain="贝壳 ×1"}
+   else{addItem("fish",1);gain="鱼 ×1"}
+   playRewardFx("钓获 "+gain,"湖畔钓点 · 垂钓成功");
+   notify("钓到了："+gain);
+   emit(player.x,player.y,"#8ecfe0",18);EA()?.shard?.();
+  }else{
+   notify("鱼儿溜走了…");
+  }
+  renderInventory();saveGame();
+ },rnd(2000,4000));
+}
+
+/* ================= 合成系统（营火） ================= */
+const RECIPES={
+ grilledFish:{name:"烤鱼",icon:"grilledFish",cost:{fish:1,wood:1},desc:"鱼 ×1 + 木材 ×1 · 恢复 150 生命"},
+ strengthPotion:{name:"力量药剂",icon:"strengthPotion",cost:{crystal:1,herb:2},desc:"晶矿 ×1 + 晨雾草 ×2 · 攻击 +10（60 秒）"}
+};
+function canCraft(id){const r=RECIPES[id];return Object.keys(r.cost).every(k=>(state.bag[k]||0)>=r.cost[k])}
+function openCraft(fire){
+ state.craft=true;
+ renderCraft(fire);
+}
+function renderCraft(fire){
+ let p=$("craftPanel");
+ if(!p){p=document.createElement("div");p.id="craftPanel";document.body.appendChild(p)}
+ p.innerHTML='<div class="craft-box"><small>CAMPFIRE · '+(fire?fire.name:"营火")+'</small><h3>营火 · 合成</h3><div class="craft-list">'+
+  Object.keys(RECIPES).map(id=>{
+   const r=RECIPES[id],ok=canCraft(id);
+   return '<button class="craft-row" data-craft="'+id+'"'+(ok?"":" disabled")+'>'+
+    '<span class="craft-icon">'+ICONS[r.icon]+'</span>'+
+    '<span class="craft-info"><b>'+r.name+'</b><em>'+r.desc+'</em></span>'+
+    '<span class="craft-act">'+(ok?"合成":"材料不足")+'</span></button>';
+  }).join("")+
+  '</div><button class="craft-leave" data-craft-leave>离开营火</button></div>';
+ p.querySelectorAll("[data-craft]").forEach(b=>b.addEventListener("click",()=>craft(b.dataset.craft)));
+ p.querySelector("[data-craft-leave]").addEventListener("click",closeCraft);
+}
+function craft(id){
+ const r=RECIPES[id];if(!r)return;
+ if(!canCraft(id)){notify("材料不足");return}
+ for(const k in r.cost)removeItem(k,r.cost[k]);
+ addItem(id);
+ emit(player.x,player.y,"#f0cf72",20);EA()?.pickup();
+ playRewardFx("合成 "+r.name,r.desc);
+ renderInventory();saveGame();
+ renderCraft(); /* 刷新材料可用状态 */
+}
+function closeCraft(){state.craft=false;$("craftPanel")?.remove()}
+
 /* ================= 回声碎片叙事卡 ================= */
 function showLore(text,after){
  state.lore=true;
@@ -441,23 +658,51 @@ function closeFullPanel(id){
 function closeAllPanels(){PANELS.forEach(x=>$(x)?.classList.add("hidden"));state.panel=false}
 
 function renderCharacter(){
- $("charLevel").textContent="Lv. "+state.level+" · "+zoneAt(player.x,player.y)+"的旅人";
+ const zone=zoneAt(player.x,player.y);
+ $("charLevel").textContent="Lv. "+state.level+" · "+zone+"的旅人";
  $("charHp").textContent=Math.ceil(state.hp)+" / "+state.maxHp;
  $("charPower").textContent=state.equipment.power;
  $("charSp").textContent=Math.floor(player.stamina);
  $("charXp").textContent=state.xp+" / "+state.nextXp;
  $("charEcho").textContent=state.echoes;
  $("charWeapon").textContent=state.equipment.weapon;
+ const xf=$("charXpFill");if(xf)xf.style.width=Math.min(100,state.xp/state.nextXp*100)+"%";
+ const mn=$("charMapName");if(mn)mn.textContent=zone;
+ const titles=["雾谷初行者","林间访客","灯塔守望人","回声拾遗者"];
+ const ti=$("charTitle");if(ti)ti.textContent=titles[Math.min(titles.length-1,Math.floor(state.echoes/3))];
 }
+const INV_CAP=30,CAT_NAMES={equip:"装备",use:"消耗品",mat:"材料",quest:"任务"};
+let invSorted=false;
 function renderInventory(){
  const box=$("invGrid");if(!box)return;
- const ids=Object.keys(state.bag).filter(id=>ITEMS[id]&&(invCat==="all"||ITEMS[id].cat===invCat));
+ let ids=Object.keys(state.bag).filter(id=>ITEMS[id]&&(invCat==="all"||ITEMS[id].cat===invCat));
+ if(invSorted){const order={equip:0,use:1,mat:2,quest:3};ids.sort((a,b)=>order[ITEMS[a].cat]-order[ITEMS[b].cat]||ITEMS[a].name.localeCompare(ITEMS[b].name,"zh"))}
+ const cap=$("invCap");if(cap)cap.textContent=Object.keys(state.bag).length+" / "+INV_CAP;
+ const used=ids.length,emptyCount=invCat==="all"?Math.max(0,Math.min(INV_CAP-used,6)):0;
  if(!ids.length){box.innerHTML='<div class="inv-empty">这一栏还空着</div>';return}
  box.innerHTML=ids.map(id=>{
   const it=ITEMS[id],n=state.bag[id];
   return '<div class="inv-slot'+(it.cat==="use"?" inv-use":"")+(it.rare?" inv-rare":"")+'" data-item="'+id+'" title="'+(it.cat==="use"?"点击使用":"")+'">'+ICONS[id]+'<span class="inv-name">'+it.name+'</span>'+(n>1?'<span class="inv-n">×'+n+'</span>':"")+'</div>';
- }).join("");
- box.querySelectorAll("[data-item]").forEach(el=>el.addEventListener("click",()=>useItem(el.dataset.item)));
+ }).join("")+Array.from({length:emptyCount},()=>'<div class="inv-slot inv-blank" aria-hidden="true"></div>').join("");
+ const tip=$("invTip");
+ box.querySelectorAll("[data-item]").forEach(el=>{
+  el.addEventListener("click",()=>useItem(el.dataset.item));
+  el.addEventListener("mouseenter",()=>{
+   const it=ITEMS[el.dataset.item];if(!it||!tip)return;
+   $("invTipName").textContent=it.name;
+   $("invTipType").textContent=CAT_NAMES[it.cat]+(it.rare?" · 稀有":"");
+   /* 新物品优先显示定义描述，再按旧逻辑兜底 */
+   $("invTipDesc").textContent=it.desc?it.desc:(it.heal?("恢复 "+it.heal+" 点生命。"):(it.rare?"泛着微光的珍稀之物，似乎与回声有关。":"旅途中的寻常物资。"));
+   $("invTipCount").textContent="持有 × "+state.bag[el.dataset.item];
+   tip.classList.remove("hidden");
+  });
+  el.addEventListener("mousemove",e=>{
+   if(!tip)return;
+   const px=Math.min(innerWidth-220,e.clientX+16),py=Math.min(innerHeight-140,e.clientY+16);
+   tip.style.left=px+"px";tip.style.top=py+"px";
+  });
+  el.addEventListener("mouseleave",()=>tip&&tip.classList.add("hidden"));
+ });
 }
 function renderQuestPanel(){
  $("qpTitle").textContent=questTitle();
@@ -470,6 +715,13 @@ function renderQuestPanel(){
  const seen=landmarks.filter(l=>l.seen&&l.type!=="stone");
  const log=seen.map(l=>"<span>"+l.name+"</span>").join("")+'<span>回声碎片 × '+state.echoes+"</span>";
  $("exploreLog").innerHTML=log||"<span>还没有探索记录</span>";
+ document.querySelectorAll("#questChapters li").forEach(li=>{
+  const q=+li.dataset.qc,ic=li.querySelector("i");
+  li.classList.toggle("done",q<state.quest);
+  li.classList.toggle("now",q===state.quest);
+  if(ic)ic.textContent=q<state.quest?"✓":(q===state.quest?"◆":"·");
+ });
+ renderAchievements(); /* 面板底部：成就列表 */
 }
 
 /* ================= 系统菜单（第四层） ================= */
@@ -478,6 +730,8 @@ function openMenu(){
  state.menuOpen=true;
  $("menu")?.classList.remove("hidden");
  $("menuHelp")?.classList.add("hidden");
+ $("menuPaneDefault")?.classList.remove("hidden");
+ document.querySelectorAll(".menu-list button").forEach((x,i)=>x.classList.toggle("active",i===0));
  const lt=$("lowToggle");if(lt)lt.checked=state.settings.low;
  const vt=$("vibToggle");if(vt)vt.checked=state.settings.vib;
  const st=$("sfxToggle");if(st)st.checked=state.settings.sfx;
@@ -580,6 +834,11 @@ function drawMapPanel(){
  // 玩家
  m.save();m.translate(toX(player.x),toY(player.y));m.rotate(player.dir);
  m.fillStyle="#fff";m.beginPath();m.moveTo(7,0);m.lineTo(-5,4.5);m.lineTo(-5,-4.5);m.closePath();m.fill();m.restore();
+ // 面板状态：当前区域 + 探索度
+ const rg=$("mapRegion");if(rg)rg.textContent="当前区域 · "+zoneAt(player.x,player.y);
+ const total=FOG_ROWS*FOG_COLS,exp=Math.round(exploredSet.size/total*100);
+ const et=$("mapExpText");if(et)et.textContent="探索度 "+exp+"%";
+ const ef=$("mapExpFill");if(ef)ef.style.width=exp+"%";
 }
 
 /* ================= 绘制：世界 ================= */
@@ -743,6 +1002,7 @@ function drawBuilding(b){
 }
 function drawLandmark(l){
  if(l.type==="stone")return;
+ if(l.type==="fishing"){drawFishingSpot(l);return}
  const s=worldToScreen(l.x,l.y);if(s.x<-100||s.x>W+100||s.y<-100||s.y>H+100)return;
  ctx.save();ctx.translate(s.x,s.y);
  ctx.fillStyle="#0004";ctx.beginPath();ctx.ellipse(0,22,42,13,0,0,Math.PI*2);ctx.fill();
@@ -754,6 +1014,29 @@ function drawLandmark(l){
   ctx.fillStyle="#9b896e";ctx.fillRect(-35,-84,70,18);ctx.fillStyle="#bba37c";ctx.fillRect(-14,-50,28,8);
   if(l.name==="旧灯塔"){ctx.fillStyle="#e6c66d";ctx.shadowColor="#ffd873";ctx.shadowBlur=25;ctx.beginPath();ctx.arc(0,-60,8,0,Math.PI*2);ctx.fill()}
  }
+ ctx.restore();
+}
+/* 钓鱼点：水面涟漪扩散 + 浮标上下浮动 */
+function drawFishingSpot(l){
+ const s=worldToScreen(l.x,l.y);if(s.x<-90||s.x>W+90||s.y<-90||s.y>H+90)return;
+ const t=performance.now()/1000;
+ ctx.save();ctx.translate(s.x,s.y);
+ // 水面涟漪：三道由内向外扩散的椭圆波纹
+ if(!state.settings.low){
+  ctx.lineWidth=2;
+  for(let i=0;i<3;i++){
+   const ph=(t*.45+i/3)%1;
+   ctx.globalAlpha=.5*(1-ph);
+   ctx.strokeStyle="rgba(225,245,245,.6)";
+   ctx.beginPath();ctx.ellipse(0,0,14+ph*46,7+ph*22,0,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+ }
+ // 浮标：随波上下浮动，红白两节
+ const bob=Math.sin(t*2.2)*3;
+ ctx.strokeStyle="#8a6a45";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,bob-26);ctx.lineTo(0,bob-6);ctx.stroke();
+ ctx.fillStyle="#d95f52";ctx.beginPath();ctx.arc(0,bob-4,5,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#f4ecd8";ctx.beginPath();ctx.arc(0,bob-4,5,Math.PI,Math.PI*2);ctx.fill();
  ctx.restore();
 }
 function drawNPC(n){
@@ -925,7 +1208,7 @@ function drawQuestWorldMarker(){
 /* 最近可互动对象的世界内提示 */
 function drawWorldLabel(){
  const t=nearestInteractable();
- if(!t||state.dialogue||state.menuOpen||state.panel||!state.started)return;
+ if(!t||state.dialogue||state.menuOpen||state.panel||state.fishing||state.craft||!state.started)return;
  const p=worldToVisual(t.x,t.y);
  ctx.save();ctx.textAlign="center";
  ctx.font="600 12px 'Noto Serif SC',serif";ctx.fillStyle="#fff";ctx.shadowColor="#000";ctx.shadowBlur=6;
@@ -963,7 +1246,7 @@ function recoverFromObstacle(){
   }
  }
 }
-function uiBlocking(){return state.dialogue||state.menuOpen||state.panel||state.lore}
+function uiBlocking(){return state.dialogue||state.menuOpen||state.panel||state.lore||state.fishing||state.craft}
 function move(){
  if(!state.started||uiBlocking())return;
  recoverFromObstacle();
@@ -1002,14 +1285,16 @@ function attack(){
  const bossInRange=!!(boss&&boss.active&&!boss.dead&&dist(player,boss)<115);
  if(!target&&!bossInRange){emit(player.x+Math.cos(player.dir)*25,player.y+Math.sin(player.dir)*25,"#d9c17a",4);return}
  state.combo=state.comboTimer>0?Math.min(state.combo+1,5):1;state.comboTimer=.9;
- const damage=Math.floor(state.equipment.power*(1+Math.max(0,state.combo-1)*.12));
+ /* 力量药剂增益：有效期内攻击 +10 */
+ const buffAtk=state.buff&&performance.now()<state.buff.until?state.buff.atk:0;
+ const damage=Math.floor((state.equipment.power+buffAtk)*(1+Math.max(0,state.combo-1)*.12));
  player.attack=.32;
  if(bossInRange){
   boss.hp-=damage;boss.hit=.15;emit(boss.x,boss.y,"#f4d18a",14);floatText(boss.x,boss.y-90,"-"+damage,"#ffe1a1");EA()?.hit();
   if(boss.hp<=0){
    boss.dead=true;state.defeatedBoss=true;state.coins+=600;addItem("core");
    gainXp(520);playRewardFx("古龙核心","击败暮岩古龙 · +600 金币");
-   notify("暮岩古龙已击败！获得古龙核心");saveGame();
+   notify("暮岩古龙已击败！获得古龙核心");checkAchievements();saveGame();
   }
   return;
  }
@@ -1027,6 +1312,7 @@ function killEnemy(e){
  gainXp(cfg.xp);
  notify("击败 "+e.type);
  if(state.quest===2&&state.kills>=3)advanceQuest(3);
+ checkAchievements(); /* 成就：首次击杀 / 财富 */
  updateQuestUI();saveGame();
 }
 function skill(){
@@ -1143,12 +1429,14 @@ function nearestInteractable(){
  const consider=(o,r,name,verb)=>{const d=dist(player,o);if(d<r&&d<bd){bd=d;best={x:o.x,y:o.y,name,verb,obj:o}}};
  for(const e of echoes)if(!e.taken)consider(e,68,"回声碎片","拾取");
  for(const f of campfires)consider(f,82,f.name,"休息");
+ /* 钓鱼点：湖边浅水处可垂钓 */
+ for(const l of landmarks)if(l.type==="fishing")consider(l,90,l.name,"钓鱼");
  for(const r of resources)if(!r.taken)consider(r,58,RES_NAME[r.type],"采集");
  for(const ch of chests)if(!ch.opened&&ch.found)consider(ch,65,ch.kind==="rare"?"精致宝箱":"宝箱","开启");
  for(const g of gates)consider(g,76,g.name,g.open?"查看":"开启");
  for(const c of clues)if(!c.found)consider(c,72,c.name,"调查");
  for(const n of npcs)consider(n,95,n.name,"交谈");
- for(const l of landmarks)if(l.type!=="stone")consider(l,100,l.name,l.type==="boss"?"挑战":"查看");
+ for(const l of landmarks)if(l.type!=="stone"&&l.type!=="fishing")consider(l,100,l.name,l.type==="boss"?"挑战":"查看");
  for(const b of buildings)if(b.name)consider(b,90,b.name,"查看");
  return best;
 }
@@ -1162,6 +1450,7 @@ function interact(){
   o.taken=true;state.echoes++;state.coins+=15;addItem("shard");
   emit(o.x,o.y,"#8ee5ed",28);EA()?.shard();
   gainXp(25);
+  checkAchievements(); /* 成就：收集者 / 财富 */
   const idx=state.echoes-1;
   showLore(FRAG_LORE[idx]||FRAG_LORE[0],()=>{
    if(state.echoes>=9){
@@ -1172,11 +1461,12 @@ function interact(){
   });
   updateQuestUI();return;
  }
- // 营火：恢复
+ // 营火：恢复 + 打开合成界面
  if(campfires.includes(o)){
   state.hp=state.maxHp;player.stamina=100;
   emit(o.x,o.y,"#f1c96e",32);EA()?.pickup();
-  notify(o.name+"：生命与体力已恢复");updateHP();saveGame();return;
+  notify(o.name+"：生命与体力已恢复");updateHP();
+  openCraft(o);saveGame();return;
  }
  // 资源采集
  if(resources.includes(o)){
@@ -1203,7 +1493,7 @@ function interact(){
    state.coins+=35;addItem("potion");
    playRewardFx("宝箱奖励","+35 金币 · 治疗药草 ×1");
   }
-  emit(o.x,o.y,"#f0d47e",26);EA()?.pickup();saveGame();return;
+  emit(o.x,o.y,"#f0d47e",26);EA()?.pickup();checkAchievements();saveGame();return;
  }
  // 石门
  if(gates.includes(o)){
@@ -1228,6 +1518,8 @@ function interact(){
  if(npcs.includes(o)){talk(o);return}
  // 地标
  if(landmarks.includes(o)){
+  /* 钓鱼点：开始垂钓小游戏 */
+  if(o.type==="fishing"){o.seen=true;startFishing();return}
   if(o.type==="boss"){
    if(!boss.dead){boss.active=true;notify("暮岩古龙苏醒了");emit(o.x,o.y,"#d8666a",30)}
    else notify("巢穴安静了下来。");
@@ -1348,6 +1640,8 @@ function loop(t){
   player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
   state.comboTimer=Math.max(0,state.comboTimer-dt);if(state.comboTimer<=0)state.combo=0;
   state.time=(state.time+dt*.22)%24;
+  /* 力量药剂增益到期提示 */
+  if(state.buff&&performance.now()>state.buff.until){state.buff=null;notify("力量药剂的效果消退了")}
   updateCamera();
   updateParticles2(dt);
   updateHP();updateSP();updateClockHUD();updateCombatHUD();updateQuestGuide();syncInteractButton();
@@ -1404,6 +1698,8 @@ addEventListener("keydown",e=>{
  if(k==="k"){saveGame();notify("进度已保存")}
  if(k==="escape"){
   if(state.lore){$("loreOk")?.click()}
+  else if(state.fishing){cancelFishing()}
+  else if(state.craft){closeCraft()}
   else if(state.dialogue){dialogueQueue=[];endDialogue()}
   else if(PANELS.some(x=>!$(x)?.classList.contains("hidden")))closeAllPanels();
   else if(state.menuOpen)closeMenu();
@@ -1480,15 +1776,32 @@ function setupUI(){
  }));
  document.querySelectorAll(".menu-list button").forEach(b=>b.addEventListener("click",()=>{
   const act=b.dataset.act;
+  document.querySelectorAll(".menu-list button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  $("menuPaneDefault")?.classList.toggle("hidden",act==="help");
+  $("menuHelp")?.classList.toggle("hidden",act!=="help");
   if(act==="resume")closeMenu();
   if(act==="save"){saveGame();notify("进度已保存")}
-  if(act==="help")$("menuHelp")?.classList.toggle("hidden");
   if(act==="title"){saveGame();location.reload()}
  }));
  $("menu")?.addEventListener("click",e=>{if(e.target===$("menu"))closeMenu()});
  $("lowToggle")?.addEventListener("change",e=>state.settings.low=e.target.checked);
  $("vibToggle")?.addEventListener("change",e=>state.settings.vib=e.target.checked);
  $("sfxToggle")?.addEventListener("change",e=>{state.settings.sfx=e.target.checked;EA()?.setEnabled(e.target.checked)});
+ // 角色标签
+ document.querySelectorAll("[data-ctab]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-ctab]").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  $("ctabEquip")?.classList.toggle("hidden",b.dataset.ctab!=="equip");
+  $("ctabSkill")?.classList.toggle("hidden",b.dataset.ctab!=="skill");
+ }));
+ // 背包整理
+ $("invSortBtn")?.addEventListener("click",()=>{invSorted=!invSorted;renderInventory()});
+ // 地图缩放
+ let mapScale=1;
+ $("mapZoomIn")?.addEventListener("click",()=>{mapScale=Math.min(2,mapScale+.15);applyMapZoom()});
+ $("mapZoomOut")?.addEventListener("click",()=>{mapScale=Math.max(.6,mapScale-.15);applyMapZoom()});
+ function applyMapZoom(){const c=$("mapCanvas");if(!c)return;c.style.transform="scale("+mapScale+")";c.style.transformOrigin="center center"}
  // 地图传送：点击已点亮的营火
  $("mapCanvas")?.addEventListener("click",e=>{
   const c=$("mapCanvas"),r=c.getBoundingClientRect();
@@ -1509,7 +1822,7 @@ function saveGame(){
  try{
   localStorage.setItem("etheria-save-v2",JSON.stringify({
    v:2,
-   state:{hp:state.hp,maxHp:state.maxHp,time:state.time,coins:state.coins,quest:state.quest,kills:state.kills,clues:state.clues,echoes:state.echoes,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,chestsOpened:state.chestsOpened,bag:state.bag,equipment:state.equipment,settings:state.settings},
+   state:{hp:state.hp,maxHp:state.maxHp,time:state.time,coins:state.coins,quest:state.quest,kills:state.kills,clues:state.clues,echoes:state.echoes,level:state.level,xp:state.xp,nextXp:state.nextXp,defeatedBoss:state.defeatedBoss,chestsOpened:state.chestsOpened,bag:state.bag,equipment:state.equipment,settings:state.settings,achievements:state.achievements},
    player:{x:player.x,y:player.y,stamina:player.stamina},
    echoTaken:echoes.map(x=>x.taken),
    chestOpened:chests.map(x=>x.opened),
@@ -1530,6 +1843,9 @@ function loadGame(){
   const s=JSON.parse(localStorage.getItem("etheria-save-v2")||"null");if(!s)return;
   Object.assign(state,s.state||{});
   state.dialogue=false;state.menuOpen=false;state.panel=false;state.lore=false;state.started=true;
+  /* 瞬态状态不入档：钓鱼 / 合成 / 药剂增益读档后重置 */
+  state.fishing=false;state.craft=false;state.buff=null;
+  if(!state.achievements||typeof state.achievements!=="object")state.achievements={};
   if(s.player)Object.assign(player,s.player);
   s.echoTaken?.forEach((v,i)=>{if(echoes[i])echoes[i].taken=!!v});
   s.chestOpened?.forEach((v,i)=>{if(chests[i])chests[i].opened=!!v});

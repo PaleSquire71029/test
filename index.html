@@ -76,29 +76,45 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
   <div class="start-tip">开放世界 · 探索 · 战斗 · 收集</div>
 </div>
 
-<!-- ============ 第四层：系统菜单（只做系统的事） ============ -->
+<!-- ============ 第四层：系统菜单（左导航 + 右内容） ============ -->
 <div id="menu" class="overlay hidden">
-  <div class="menu-panel">
-    <small>ETHERIA</small>
-    <h2>旅途</h2>
-    <div class="menu-list">
-      <button data-act="resume">继续游戏</button>
-      <button data-act="save">保存进度</button>
-      <button data-act="help">帮助</button>
-      <button data-act="title">返回标题</button>
-    </div>
-    <div class="menu-sep"></div>
-    <div class="menu-settings">
-      <label><span>低画质模式</span><input type="checkbox" id="lowToggle"></label>
-      <label><span>屏幕震动</span><input type="checkbox" id="vibToggle" checked></label>
-      <label><span>音效</span><input type="checkbox" id="sfxToggle" checked></label>
-    </div>
-    <div class="menu-help hidden" id="menuHelp">
-      <b>操作</b>
-      <p>桌面：WASD 移动 · Shift 疾跑 · 空格/左键 攻击 · Q 元素技 · E 互动 · M 地图 · Esc 菜单</p>
-      <p>移动端：左侧摇杆移动，右下按钮战斗；靠近可互动对象时会出现「互动」按钮。</p>
-      <b>世界</b>
-      <p>发光的菱形是回声碎片，收集它们会逐渐拼出这片大陆的故事。营火可以恢复生命，也是传送点。有些宝箱不会主动现身。</p>
+  <div class="menu-panel menu-split">
+    <aside class="menu-side">
+      <small>ETHERIA</small>
+      <h2>旅途</h2>
+      <nav class="menu-list" id="menuNav">
+        <button data-act="resume" class="active">继续游戏</button>
+        <button data-act="save">保存进度</button>
+        <button data-act="help">帮助</button>
+        <button data-act="title">返回标题</button>
+      </nav>
+      <div class="menu-sep"></div>
+      <div class="menu-stats">
+        <small>旅程统计</small>
+        <div><span>游戏时长</span><b>2.5 小时</b></div>
+        <div><span>击杀数</span><b>18</b></div>
+        <div><span>回声碎片</span><b>6</b></div>
+        <div><span>已探索区域</span><b>3 / 4</b></div>
+      </div>
+      <div class="menu-ver">ETHERIA v1.0 · 回声大陆<br>© 2026 ETHERIA STUDIO</div>
+    </aside>
+    <div class="menu-main">
+      <section class="menu-pane" id="menuPaneDefault">
+        <h3>旅途仍在继续</h3>
+        <p>雾还没散，回声还在远处等你。保存进度后可随时回到这里。</p>
+        <div class="menu-settings">
+          <label class="mswitch"><span>低画质模式</span><input type="checkbox" id="lowToggle"><i></i></label>
+          <label class="mswitch"><span>屏幕震动</span><input type="checkbox" id="vibToggle" checked><i></i></label>
+          <label class="mswitch"><span>音效</span><input type="checkbox" id="sfxToggle" checked><i></i></label>
+        </div>
+      </section>
+      <section class="menu-help hidden menu-pane" id="menuHelp">
+        <b>操作</b>
+        <p>桌面：WASD 移动 · Shift 疾跑 · 空格/左键 攻击 · Q 元素技 · E 互动 · M 地图 · Esc 菜单</p>
+        <p>移动端：左侧摇杆移动，右下按钮战斗；靠近可互动对象时会出现「互动」按钮。</p>
+        <b>世界</b>
+        <p>发光的菱形是回声碎片，收集它们会逐渐拼出这片大陆的故事。营火可以恢复生命，也是传送点。有些宝箱不会主动现身。</p>
+      </section>
     </div>
   </div>
 </div>
@@ -108,22 +124,62 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
   <button class="full-close" data-close-panel="characterPanel" aria-label="返回">×</button>
   <div class="char-layout">
     <div class="char-stage">
+      <div class="stage-aura"></div>
       <svg class="traveler-figure" viewBox="0 0 260 520" aria-hidden="true"><defs><linearGradient id="travelerMetal" x1="0" x2="1"><stop offset="0" stop-color="#718985"/><stop offset=".52" stop-color="#d8c68e"/><stop offset="1" stop-color="#3b4c50"/></linearGradient></defs><circle cx="130" cy="67" r="42" fill="#d7c28c"/><path d="M91 62Q96 17 131 18Q166 18 171 62Q151 42 130 44Q108 43 91 62Z" fill="#25343a"/><path d="M92 113Q130 91 168 113L192 251L168 335L177 486L130 505L83 486L92 335L68 251Z" fill="url(#travelerMetal)"/><path d="M92 137L42 257L70 275L109 192M168 137L218 257L190 275L151 192" fill="#50676a"/><path d="M105 332L80 488M155 332L180 488" stroke="#d8c68e" stroke-width="18" stroke-linecap="round"/><path d="M74 247Q130 285 186 247" stroke="#ead79d" stroke-width="5" fill="none"/></svg>
       <div class="stage-ring"></div>
+      <div class="stage-title"><span>称号</span><b id="charTitle">雾谷初行者</b></div>
     </div>
     <div class="char-info">
       <small>TRAVELER</small>
       <h2>旅者</h2>
       <p id="charLevel">Lv. 7 · 晨雾谷的旅人</p>
+      <div class="xp-wrap">
+        <div class="xp-head"><span>经验</span><b id="charXp">0 / 240</b></div>
+        <div class="xp-bar"><i id="charXpFill"></i></div>
+      </div>
       <div class="stat-lines">
         <div><span>生命</span><b id="charHp">820 / 820</b></div>
         <div><span>攻击</span><b id="charPower">95</b></div>
+        <div><span>防御</span><b id="charDef">32</b></div>
+        <div><span>暴击率</span><b id="charCrit">12%</b></div>
+        <div><span>移动速度</span><b id="charSpeed">4.2</b></div>
         <div><span>体力</span><b id="charSp">100</b></div>
-        <div><span>经验</span><b id="charXp">0 / 240</b></div>
         <div><span>回声碎片</span><b id="charEcho">0</b></div>
       </div>
-      <div class="equip-line"><span>武器</span><b id="charWeapon">旅者短剑</b></div>
+      <div class="char-tabs">
+        <button class="active" data-ctab="equip">装备</button>
+        <button data-ctab="skill">技能</button>
+      </div>
+      <div class="char-tab-pane" id="ctabEquip">
+        <div class="equip-line"><span>武器</span><b id="charWeapon">旅者短剑</b></div>
+        <div class="equip-line"><span>护甲</span><b>雾行斗篷</b></div>
+        <div class="equip-line"><span>饰品</span><b>未佩戴</b></div>
+      </div>
+      <div class="char-tab-pane hidden" id="ctabSkill">
+        <div class="equip-line"><span>元素技</span><b>回声震荡</b></div>
+        <div class="equip-line"><span>被动</span><b>雾中疾行</b></div>
+        <div class="equip-line"><span>未解锁</span><b>???</b></div>
+      </div>
     </div>
+    <aside class="char-map">
+      <small>当前位置</small>
+      <div class="char-map-frame">
+        <svg viewBox="0 0 200 146" aria-hidden="true">
+          <rect x="0" y="0" width="200" height="146" fill="#0a161c"/>
+          <rect x="0" y="0" width="63" height="146" fill="#16261f"/>
+          <rect x="137" y="0" width="63" height="60" fill="#182521"/>
+          <rect x="113" y="83" width="87" height="63" fill="#152427"/>
+          <ellipse cx="154" cy="117" rx="42" ry="31" fill="#173038"/>
+          <path d="M0 70 Q50 62 100 70 T200 68" stroke="#3d4a3e" stroke-width="1.6" fill="none"/>
+          <circle cx="88" cy="66" r="4" fill="var(--gold)"/>
+          <circle cx="88" cy="66" r="8" fill="none" stroke="var(--gold)" stroke-opacity=".5">
+            <animate attributeName="r" values="5;10;5" dur="2.4s" repeatCount="indefinite"/>
+            <animate attributeName="stroke-opacity" values=".6;0;.6" dur="2.4s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>
+      <span class="char-map-name" id="charMapName">晨雾谷</span>
+    </aside>
   </div>
 </div>
 
@@ -131,7 +187,13 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 <div id="inventoryPanel" class="full-panel hidden">
   <button class="full-close" data-close-panel="inventoryPanel" aria-label="返回">×</button>
   <div class="panel-page">
-    <header class="panel-head"><small>INVENTORY</small><h2>背包</h2></header>
+    <header class="panel-head inv-head">
+      <div><small>INVENTORY</small><h2>背包</h2></div>
+      <div class="inv-tools">
+        <span class="inv-cap" id="invCap">12 / 30</span>
+        <button class="inv-sort" id="invSortBtn" title="按类型整理">整理</button>
+      </div>
+    </header>
     <nav class="inv-cats" id="invCats">
       <button class="active" data-cat="all">全部</button>
       <button data-cat="equip">装备</button>
@@ -140,25 +202,55 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
       <button data-cat="quest">任务</button>
     </nav>
     <div id="invGrid" class="inv-grid"></div>
+    <div id="invTip" class="inv-tip hidden" role="tooltip">
+      <b id="invTipName"></b>
+      <span id="invTipType"></span>
+      <p id="invTipDesc"></p>
+      <em id="invTipCount"></em>
+    </div>
   </div>
 </div>
 
 <!-- ============ 第三层：任务 ============ -->
 <div id="questPanel" class="full-panel hidden">
   <button class="full-close" data-close-panel="questPanel" aria-label="返回">×</button>
-  <div class="panel-page">
+  <div class="panel-page quest-page">
     <header class="panel-head"><small>QUEST</small><h2>任务</h2></header>
-    <section class="quest-focus">
-      <small>正在发生</small>
-      <h3 id="qpTitle"></h3>
-      <p id="qpDesc"></p>
-      <div id="qpObjectives" class="qp-objectives"></div>
-      <div id="qpRewards" class="qp-rewards"></div>
-    </section>
-    <section class="quest-log">
-      <small>探索记录</small>
-      <div id="exploreLog" class="explore-log"></div>
-    </section>
+    <div class="quest-cols">
+      <aside class="quest-chapters">
+        <small>第一章 · 晨雾谷的回声</small>
+        <ol id="questChapters">
+          <li data-qc="0"><i>✓</i><span>初见晨雾谷</span></li>
+          <li data-qc="1"><i>✓</i><span>森林异动</span></li>
+          <li data-qc="2"><i>✓</i><span>森林中的威胁</span></li>
+          <li data-qc="3"><i>◇</i><span>旧灯塔</span></li>
+          <li data-qc="4"><i>·</i><span>回声的源头</span></li>
+          <li data-qc="5"><i>·</i><span>回到晨雾谷</span></li>
+          <li data-qc="6"><i>·</i><span>新的回声</span></li>
+        </ol>
+      </aside>
+      <div class="quest-main">
+        <section class="quest-focus">
+          <small>正在发生</small>
+          <h3 id="qpTitle"></h3>
+          <p id="qpDesc"></p>
+          <div id="qpObjectives" class="qp-objectives"></div>
+          <div class="qp-reward-row">
+            <span class="qp-rw"><i class="rw rw-xp"></i>经验</span>
+            <span class="qp-rw"><i class="rw rw-coin"></i>金币</span>
+            <span class="qp-rw"><i class="rw rw-mat"></i>材料</span>
+          </div>
+          <div id="qpRewards" class="qp-rewards"></div>
+        </section>
+        <section class="quest-log">
+          <small>探索记录</small>
+          <div class="timeline">
+            <div class="tl-line"></div>
+            <div id="exploreLog" class="explore-log"></div>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -167,7 +259,31 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
   <button class="full-close" data-close-panel="mapPanel" aria-label="返回">×</button>
   <div class="panel-page map-page">
     <header class="panel-head"><small>WORLD MAP</small><h2 id="mapTitle">晨雾谷</h2></header>
-    <div class="map-wrap"><canvas id="mapCanvas" width="900" height="660"></canvas></div>
+    <div class="map-stage">
+      <div class="map-wrap">
+        <canvas id="mapCanvas" width="900" height="660"></canvas>
+        <span class="map-region-tag" style="left:12%;top:38%">静谧森林</span>
+        <span class="map-region-tag" style="left:78%;top:16%">风痕高地</span>
+        <span class="map-region-tag" style="left:76%;top:72%">暮潮湖畔</span>
+        <span class="map-region-tag" style="left:48%;top:48%">晨雾谷</span>
+        <div class="map-zoom">
+          <button id="mapZoomIn" aria-label="放大">+</button>
+          <button id="mapZoomOut" aria-label="缩小">−</button>
+        </div>
+      </div>
+      <ul class="map-legend">
+        <li><i class="lg lg-player"></i>玩家</li>
+        <li><i class="lg lg-fire"></i>营火</li>
+        <li><i class="lg lg-mark"></i>地标</li>
+        <li><i class="lg lg-quest"></i>任务目标</li>
+        <li><i class="lg lg-fog"></i>未探索</li>
+      </ul>
+    </div>
+    <div class="map-status">
+      <span id="mapRegion">当前区域 · 晨雾谷</span>
+      <div class="map-exp"><i id="mapExpFill"></i></div>
+      <span id="mapExpText">探索度 46%</span>
+    </div>
     <p class="map-tip">雾气之下是尚未踏足的土地 · 点击已点亮的营火可以传送</p>
   </div>
 </div>
